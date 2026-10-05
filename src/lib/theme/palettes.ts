@@ -93,6 +93,23 @@ export interface ThemeDefinition {
    * 这个顺序在几乎所有主题里都能取到对比清晰的三个色相。
    */
   rainbow: [string, string, string];
+  /**
+   * 缩略图用的语法色。
+   *
+   * 仅供设置面板的**主题预览**使用：用几根彩色短线模拟真实代码的配色，
+   * 让用户一眼看出「这套主题长什么样」，而不是只看两个色块。
+   *
+   * 取值必须与 `editor` 里的 `styles` 一致——缩略图若与真实编辑器
+   * 不是同一套颜色，预览就失去意义。这几支色也就是该主题最具辨识度的
+   * 那几种语法元素（关键字 / 字符串 / 函数 / 类型 / 注释）。
+   */
+  preview: {
+    keyword: string;
+    string: string;
+    fn: string;
+    type: string;
+    comment: string;
+  };
   /** 编辑器扩展（含界面样式与语法高亮）。 */
   editor: Extension;
 }
@@ -116,6 +133,14 @@ const sesameLight: ThemeDefinition = {
   accentFg: '#ffffff',
   // 取自下面语法高亮里的关键字紫 / 字符串绿 / 数字橙
   rainbow: ['#7c3aed', '#15803d', '#b45309'],
+  /* 缩略图用的语法色，与下面 styles 保持一致 */
+  preview: {
+    keyword: '#7c3aed',
+    string: '#15803d',
+    fn: '#1d4ed8',
+    type: '#0e7490',
+    comment: '#7d8f69',
+  },
   editor: createTheme({
     theme: 'light',
     settings: {
@@ -166,6 +191,14 @@ const sesameDark: ThemeDefinition = {
   accentFg: '#241c14',
   // 暗色下用比亮色更亮的三档，否则与背景对比不足
   rainbow: ['#c4a2f0', '#9ecf8a', '#e89a6a'],
+  /* 缩略图用的语法色，与下面 styles 保持一致 */
+  preview: {
+    keyword: '#c4a2f0',
+    string: '#9ecf8a',
+    fn: '#8fb8f0',
+    type: '#7fc9d6',
+    comment: '#8a9480',
+  },
   editor: createTheme({
     theme: 'dark',
     settings: {
@@ -226,6 +259,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#bd93f9',
     accentFg: '#21222c',
     rainbow: ['#bd93f9', '#50fa7b', '#ffb86c'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#ff79c6',
+      string: '#f1fa8c',
+      fn: '#50fa7b',
+      type: '#8be9fd',
+      comment: '#6272a4',
+    },
     editor: dracula,
   },
   {
@@ -237,6 +278,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#0969da',
     accentFg: '#ffffff',
     rainbow: ['#8250df', '#116329', '#953800'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#d73a49',
+      string: '#032f62',
+      fn: '#6f42c1',
+      type: '#005cc5',
+      comment: '#6a737d',
+    },
     editor: githubLight,
   },
   {
@@ -248,6 +297,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#a6e22e',
     accentFg: '#1e1f1c',
     rainbow: ['#ae81ff', '#a6e22e', '#fd971f'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#f92672',
+      string: '#e6db74',
+      fn: '#a6e22e',
+      type: '#66d9ef',
+      comment: '#88846f',
+    },
     editor: monokai,
   },
   {
@@ -259,6 +316,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#58a6ff',
     accentFg: '#0d1117',
     rainbow: ['#d2a8ff', '#7ee787', '#ffa657'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#ff7b72',
+      string: '#a5d6ff',
+      fn: '#d2a8ff',
+      type: '#79c0ff',
+      comment: '#8b949e',
+    },
     editor: githubDark,
   },
   {
@@ -270,6 +335,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#61afef',
     accentFg: '#21252b',
     rainbow: ['#c678dd', '#98c379', '#d19a66'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#c678dd',
+      string: '#98c379',
+      fn: '#61afef',
+      type: '#e5c07b',
+      comment: '#7d8799',
+    },
     editor: atomone,
   },
   {
@@ -281,6 +354,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#268bd2',
     accentFg: '#fdf6e3',
     rainbow: ['#6c71c4', '#859900', '#cb4b16'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#859900',
+      string: '#2aa198',
+      fn: '#268bd2',
+      type: '#b58900',
+      comment: '#93a1a1',
+    },
     editor: solarizedLight,
   },
   {
@@ -292,6 +373,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#88c0d0',
     accentFg: '#2e3440',
     rainbow: ['#b48ead', '#a3be8c', '#ebcb8b'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#5e81ac',
+      string: '#a3be8c',
+      fn: '#8fbcbb',
+      type: '#ebcb8b',
+      comment: '#4c566a',
+    },
     editor: nord,
   },
   {
@@ -303,6 +392,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#2aa198',
     accentFg: '#002b36',
     rainbow: ['#6c71c4', '#859900', '#cb4b16'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#859900',
+      string: '#2aa198',
+      fn: '#268bd2',
+      type: '#b58900',
+      comment: '#586e75',
+    },
     editor: solarizedDark,
   },
   {
@@ -314,6 +411,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#7aa2f7',
     accentFg: '#1a1b26',
     rainbow: ['#bb9af7', '#9ece6a', '#ff9e64'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#bb9af7',
+      string: '#9ece6a',
+      fn: '#7aa2f7',
+      type: '#0db9d7',
+      comment: '#444b6a',
+    },
     editor: tokyoNight,
   },
   {
@@ -325,6 +430,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#0070c1',
     accentFg: '#ffffff',
     rainbow: ['#af00db', '#098658', '#795e26'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#0000ff',
+      string: '#a31515',
+      fn: '#795e26',
+      type: '#267f99',
+      comment: '#008000',
+    },
     editor: vscodeLight,
   },
   {
@@ -336,6 +449,14 @@ export const THEMES: readonly ThemeDefinition[] = [
     accent: '#569cd6',
     accentFg: '#1e1e1e',
     rainbow: ['#c586c0', '#6a9955', '#ce9178'],
+    /* 缩略图用的语法色，与下面 styles 保持一致 */
+    preview: {
+      keyword: '#569cd6',
+      string: '#ce9178',
+      fn: '#dcdcaa',
+      type: '#4ec9b0',
+      comment: '#6a9955',
+    },
     editor: vscodeDark,
   },
 ];

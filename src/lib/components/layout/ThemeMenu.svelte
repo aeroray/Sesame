@@ -8,32 +8,47 @@
  * 编辑器配色（含语法高亮），因此按钮列出的是**具体主题**，
  * 而不是抽象的亮暗模式。
  *
- * ## 图标反映当前主题的亮暗
+ * ## 按浅色 / 深色分组
  *
- * 主题自带 `mode`，用它选图标——用户想一眼看出「现在是亮还是暗」。
- * 这比给每套主题画一个专属图标务实：13 套主题画 13 个图标，
- * 既难辨认也难维护。
+ * 13 套主题平铺会让菜单很长且难找。按亮暗分组后：
  *
- * ## 每一项左侧显示配色预览
+ * - 想换「亮一点的」的人直接在「浅色」组里挑
+ * - 组内按亮度排，视觉上有秩序
  *
- * 用两个小色块（背景 + 强调色）示意，比纯文字列表直观得多——
- * 「Dracula 长什么样」光看名字想不起来。
+ * 分组标题用 `DropdownMenuLabel`，与菜单里的其他分组标题样式一致。
+ *
+ * ## 缩略图见 ThemeThumbnail
+ *
+ * 画的是**缩略代码**而不是色块——色块看不出主题的性格，
+ * 而用户真正在意的是代码显示出来的效果。
  */
 import { Check, Moon, Sun } from '@lucide/svelte';
+import ThemeThumbnail from '$lib/components/common/ThemeThumbnail.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DropdownMenuContent,
   Item as DropdownMenuItem,
+  Label as DropdownMenuLabel,
   Root as DropdownMenuRoot,
+  Separator as DropdownMenuSeparator,
   Trigger as DropdownMenuTrigger,
 } from '$lib/components/ui/dropdown-menu';
 import { t } from '$lib/i18n';
 import { settings, updateSetting } from '$lib/state/settings.svelte';
 import { getTheme } from '$lib/state/theme.svelte';
-import { THEMES } from '$lib/theme/palettes';
+import { THEMES, type ThemeDefinition } from '$lib/theme/palettes';
 
 /** 当前主题。 */
 const current = $derived(getTheme());
+
+/** 按亮暗分组。 */
+const lightThemes = $derived(THEMES.filter((item) => item.mode === 'light'));
+const darkThemes = $derived(THEMES.filter((item) => item.mode === 'dark'));
+
+/** 渲染一组主题。 */
+function pick(item: ThemeDefinition) {
+  void updateSetting('theme', item.id);
+}
 </script>
 
 <DropdownMenuRoot>
@@ -55,20 +70,28 @@ const current = $derived(getTheme());
     {/snippet}
   </DropdownMenuTrigger>
 
-  <DropdownMenuContent align="end" class="w-56">
-    {#each THEMES as item (item.id)}
-      <DropdownMenuItem class="gap-2" onSelect={() => updateSetting('theme', item.id)}>
-        <!--
-          配色预览：左半是背景、右半是强调色。
-          用内联 style 而不是工具类——色值来自主题数据，不是固定的设计令牌。
-        -->
-        <span
-          class="flex size-3.5 shrink-0 overflow-hidden rounded-sm ring-1 ring-border-subtle"
-          aria-hidden="true"
-        >
-          <span class="h-full w-1/2" style="background-color: {item.bg}"></span>
-          <span class="h-full w-1/2" style="background-color: {item.accent}"></span>
-        </span>
+  <DropdownMenuContent align="end" class="w-64">
+    <DropdownMenuLabel class="text-[11px] font-normal text-content-faint">
+      {t('settings.themeLight')}
+    </DropdownMenuLabel>
+    {#each lightThemes as item (item.id)}
+      <DropdownMenuItem class="gap-2.5" onSelect={() => pick(item)}>
+        <ThemeThumbnail theme={item} size="sm" />
+        <span class="truncate">{item.name}</span>
+        {#if settings.theme === item.id}
+          <Check class="ml-auto size-3.5 shrink-0 text-brand-500" />
+        {/if}
+      </DropdownMenuItem>
+    {/each}
+
+    <DropdownMenuSeparator />
+
+    <DropdownMenuLabel class="text-[11px] font-normal text-content-faint">
+      {t('settings.themeDark')}
+    </DropdownMenuLabel>
+    {#each darkThemes as item (item.id)}
+      <DropdownMenuItem class="gap-2.5" onSelect={() => pick(item)}>
+        <ThemeThumbnail theme={item} size="sm" />
         <span class="truncate">{item.name}</span>
         {#if settings.theme === item.id}
           <Check class="ml-auto size-3.5 shrink-0 text-brand-500" />

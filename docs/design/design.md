@@ -114,6 +114,46 @@ Tokyo Night、GitHub Light / Dark、Solarized Light / Dark、VS Code Light / Dar
 - Dracula 的 `propertyName` 用 `#66d9ef`，该色不在官方调色板里；`number` 未定义。
 - Nord 的前景用纯白 `#FFFFFF`，官方规范是 nord4 `#d8dee9`。
 
+#### 主题选择器：缩略代码预览 + 亮暗分组
+
+**不要用「色块 + 名字」表达一套主题。** 早先每个主题只画两个小色块
+（背景色 + 强调色），问题是：**色块说明不了一套主题长什么样**——
+Dracula 和 Monokai 都是深紫调，光看色块几乎分不出来。
+
+改为 [`ThemeThumbnail.svelte`](../../src/lib/components/common/ThemeThumbnail.svelte)：
+用该主题**真实的语法色**画出几根彩色短线，模拟「关键字、字符串、
+函数、类型、注释」的样子。用户一眼就能看出主题的性格。
+
+两个实现要点：
+
+- **颜色必须与真实编辑器一致。** 取自 `ThemeDefinition.preview`，
+  而那几支色与主题的 `editor.styles` 是同一套值。缩略图若与真实编辑器
+  不是同一配色，预览就失去意义。
+- **线条宽度刻意不规则。** 每根线一样长会看起来像条形码；
+  按「词长」排布才像代码。
+
+**按浅色 / 深色分组。** 13 套主题平铺会让列表很长且难找；
+分组后「想要亮一点的」能直接定位。组内顺序即 `THEMES` 的顺序。
+
+#### 对话框必须限高，否则内容会溢出窗口
+
+`dialog-content` 默认是 `grid` 且没有高度上限。设置项本来不多，
+所以一直没暴露问题；加了 13 套主题的预览列表之后，内容高度超过窗口，
+底部的「恢复默认」与「完成」按钮被切在窗口外（**实测如此，用户够不到**）。
+
+修法：
+
+```svelte
+<DialogContent class="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]">
+  <DialogHeader />
+  <div class="min-h-0 overflow-y-auto">…</div>   <!-- 只有中间区滚动 -->
+  <DialogFooter />
+</DialogContent>
+```
+
+`minmax(0, 1fr)` 里的 **`0` 是关键**：不写的话 grid 子项的最小高度是
+内容高度，滚动区会被内容撑开、`overflow` 失效。
+
 #### 主题内的每个装饰都必须跟随主题
 
 这是最容易漏的地方。**每一个带颜色的编辑器装饰都要从主题取色**，

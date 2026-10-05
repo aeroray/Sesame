@@ -137,6 +137,9 @@ export const en = {
 
     theme: 'Theme',
     themePlaceholder: 'Choose a theme',
+    /* 主题分组的标题。主题名是专有名词，不翻译；这两个词是分组标签。 */
+    themeLight: 'Light',
+    themeDark: 'Dark',
     language: 'Language',
 
     uiFont: 'Interface font',

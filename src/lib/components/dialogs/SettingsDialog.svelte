@@ -2,9 +2,10 @@
 /**
  * 设置面板。
  */
-import { RotateCcw } from '@lucide/svelte';
+import { Check, RotateCcw } from '@lucide/svelte';
 import { cancelAllAutoSave } from '$lib/actions/autosave';
 import FontPicker from '$lib/components/common/FontPicker.svelte';
+import ThemeThumbnail from '$lib/components/common/ThemeThumbnail.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DialogContent,
@@ -28,6 +29,7 @@ import { type MessageKey, t } from '$lib/i18n';
 import { resetSettings, settings, updateSetting } from '$lib/state/settings.svelte';
 import type { LanguageSetting } from '$lib/state/types';
 import { THEMES } from '$lib/theme/palettes';
+import { cn } from '$lib/utils/cn';
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '$src/constants';
 
 interface Props {
@@ -38,13 +40,12 @@ interface Props {
 let { open = $bindable(), onOpenChange }: Props = $props();
 
 /**
- * 主题选项。
+ * 主题按亮暗分组。
  *
- * 主题是**完整配色方案**（界面 + 编辑器 + 语法高亮），不再拆成
- * 「亮暗开关 + 强调色」两个控件。主题名是专有名词（Dracula 等），
- * 因此直接取主题数据里的 `name`，不走 i18n 字典。
+ * 13 套平铺会让列表很长且难找；分组后「想要亮一点的」能直接定位。
  */
-const themeItems = THEMES.map((item) => ({ value: item.id, label: item.name }));
+const lightThemes = $derived(THEMES.filter((item) => item.mode === 'light'));
+const darkThemes = $derived(THEMES.filter((item) => item.mode === 'dark'));
 
 /** 语言选项。`system` 表示跟随系统。 */
 const languages: { value: LanguageSetting; label: MessageKey }[] = [
@@ -111,47 +112,78 @@ async function handleReset() {
 </script>
 
 <DialogRoot bind:open>
-  <DialogContent class="max-w-md">
+  <!--
+    对话框整体限高并让**内容区**滚动，而不是让整个对话框溢出窗口。
+
+    默认的 `dialog-content` 是 `grid` 且没有高度上限。设置项本来就不多，
+    所以一直没暴露问题；加了 13 套主题的预览列表之后，内容高度超过窗口，
+    底部的「恢复默认」按钮直接被切在窗口外（实测如此）——用户够不到。
+
+    `max-h-[85vh]` 留出上下边距，`grid-rows-[auto_minmax(0,1fr)_auto]`
+    让头部与底部按内容高度、中间区吸收剩余空间。
+    `minmax(0,1fr)` 里的 `0` 很关键：不写的话 grid 子项的最小高度是内容高度，
+    滚动区会被内容撑开、`overflow` 失效。
+  -->
+  <DialogContent class="max-w-lg max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]">
     <DialogHeader>
       <DialogTitle>{t('settings.title')}</DialogTitle>
       <DialogDescription>{t('settings.description')}</DialogDescription>
     </DialogHeader>
 
-    <div class="flex flex-col gap-4 py-2">
+    <div class="flex min-h-0 flex-col gap-4 overflow-y-auto py-2 pr-1">
       <!--
         主题（皮肤）。
         一套主题同时决定界面配色与编辑器配色（含语法高亮），
         因此只有一个控件，不再拆成「亮暗 + 强调色」。
+
+        用**列表 + 缩略图**而不是下拉框：13 套主题若只显示名字，
+        用户看不出「Dracula 和 Monokai 差在哪」；缩略图一次展示多套，
+        扫一眼就能比较。分组标题让「想要亮一点的」这类需求能直接定位。
       -->
-      <div class="flex items-center justify-between gap-4">
-        <Label for="setting-theme" class="text-sm font-normal">{t('settings.theme')}</Label>
-        <Select
-          type="single"
-          value={settings.theme}
-          onValueChange={(value) => updateSetting('theme', value)}
-          items={themeItems}
+      <div class="flex flex-col gap-2">
+        <Label class="text-sm font-normal">{t('settings.theme')}</Label>
+
+        <!--
+          固定高度 + 滚动：13 套主题全铺开会把对话框撑得过高。
+          `max-h-80` 约能露出 5 套，其余滚动，既给了充分的预览空间，
+          又不至于让「设置」这个动作变成翻长列表。
+        -->
+        <div
+          class="flex max-h-80 flex-col gap-0.5 overflow-y-auto rounded-lg border border-border-subtle p-1"
+          role="radiogroup"
+          aria-label={t('settings.theme')}
         >
-          <SelectTrigger id="setting-theme" class="w-44">
-            <SelectValue placeholder={t('settings.themePlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            {#each THEMES as item (item.id)}
-              <SelectItem value={item.id} label={item.name}>
-                <span class="flex items-center gap-2">
-                  <!-- 配色预览：左半背景、右半强调色 -->
-                  <span
-                    class="flex size-3.5 shrink-0 overflow-hidden rounded-sm ring-1 ring-border-subtle"
-                    aria-hidden="true"
-                  >
-                    <span class="h-full w-1/2" style="background-color: {item.bg}"></span>
-                    <span class="h-full w-1/2" style="background-color: {item.accent}"></span>
-                  </span>
-                  <span>{item.name}</span>
-                </span>
-              </SelectItem>
+          {#each [lightThemes, darkThemes] as group, gi (gi)}
+            <div
+              class="px-2 py-1 text-[11px] text-content-faint {gi > 0
+                ? 'mt-1 border-t border-border-subtle pt-2'
+                : ''}"
+            >
+              {gi === 0 ? t('settings.themeLight') : t('settings.themeDark')}
+            </div>
+
+            {#each group as item (item.id)}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={settings.theme === item.id}
+                class={cn(
+                  'flex items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors',
+                  settings.theme === item.id
+                    ? 'bg-brand-50 text-brand-900 dark:bg-brand-900/40 dark:text-brand-100'
+                    : 'hover:bg-secondary',
+                )}
+                onclick={() => updateSetting('theme', item.id)}
+              >
+                <ThemeThumbnail theme={item} />
+                <span class="min-w-0 flex-1 truncate text-sm font-normal">{item.name}</span>
+                {#if settings.theme === item.id}
+                  <Check class="size-3.5 shrink-0" />
+                {/if}
+              </button>
             {/each}
-          </SelectContent>
-        </Select>
+          {/each}
+        </div>
       </div>
 
       <!-- 语言 -->

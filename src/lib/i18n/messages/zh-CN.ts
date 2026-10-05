@@ -132,6 +132,9 @@ export const zhCN: Messages = {
 
     theme: '主题',
     themePlaceholder: '选择主题',
+    /* 主题分组的标题。主题名是专有名词，不翻译；这两个词是分组标签。 */
+    themeLight: '浅色',
+    themeDark: '深色',
     language: '语言',
 
     uiFont: '界面字体',
