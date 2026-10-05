@@ -18,7 +18,9 @@
     markDirty,
     peekTabContent,
     setTabContent,
+    setTabHistory,
     takeRestoreTarget,
+    takeTabHistory,
     updateCursor,
     updateScroll,
   } from '$lib/state/tabs.svelte';
@@ -103,6 +105,14 @@
         tabSize: settings.tabSize,
         showIndentGuides: settings.showIndentGuides,
         /*
+         * 恢复撤销历史。
+         *
+         * 休眠唤醒、切回编辑模式都会重建视图，历史若不带上就丢了。
+         * 取出即清除：历史里存的是相对文档的变更集，只能用一次——
+         * 留着下次重建时用会与当时的文档对不上，撤销出乱码。
+         */
+        history: takeTabHistory(tab.id),
+        /*
          * 二进制文件只读。
          *
          * 后端探测到大量无法解码的字节时会把编码标为 `binary` 并返回空正文；
@@ -178,12 +188,14 @@
       disposed = true;
       handle = null;
       ready = false;
-      // 销毁前把正文留下来，供下次重建（休眠唤醒、组件重挂）使用
+      // 销毁前把正文与撤销历史留下来，供下次重建（休眠唤醒、组件重挂）使用
       const existing = getView(tab.id);
       if (existing) {
         const content = existing.getContent();
+        const history = existing.exportHistory();
         detachView(tab.id);
         setTabContent(tab.id, content);
+        setTabHistory(tab.id, history);
       }
     };
   });

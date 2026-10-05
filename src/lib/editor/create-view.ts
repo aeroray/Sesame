@@ -7,6 +7,8 @@
 
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
+import { historyField } from '@codemirror/commands';
+import { logError } from '$lib/utils/log';
 import {
   buildExtensions,
   createCompartments,
@@ -32,6 +34,13 @@ export interface CreateViewOptions {
   readOnly: boolean;
   /** 是否显示缩进参考线。 */
   showIndentGuides: boolean;
+  /**
+   * 要恢复的撤销历史（`exportHistory()` 的返回值）。
+   *
+   * 视图重建时传入，撤销栈得以延续。**文档内容必须与导出时一致**——
+   * 历史里存的是相对文档的变更集，文档对不上会导致撤销出乱码。
+   */
+  history?: unknown;
   /**
    * 内容变化回调。
    *
@@ -72,6 +81,20 @@ export interface EditorHandle {
   setContent(content: string): void;
   /** 恢复滚动位置。 */
   restoreScroll(scrollTop: number): void;
+  /**
+   * 导出撤销历史，供视图重建时恢复。
+   *
+   * 休眠、切换 Markdown 预览都会销毁 `EditorView`，而撤销栈存在
+   * EditorState 里，随之丢失——用户切一下预览就再也按不回 Ctrl+Z。
+   *
+   * 用 `EditorState.toJSON({ history: historyField })` 导出：
+   * `historyField` 的类型是 `StateField<unknown>`，直接调它的
+   * `toJSON` 没有类型信息；而 `EditorState` 的序列化接口接受
+   * 「字段 → 序列化函数」的映射，正好用来取历史。
+   *
+   * 返回 `null` 表示没有可导出的历史。
+   */
+  exportHistory(): unknown;
   destroy(): void;
 }
 
@@ -98,10 +121,40 @@ function listenerExtension(options: CreateViewOptions): Extension {
 export function createEditorView(options: CreateViewOptions): EditorHandle {
   const compartments = createCompartments();
 
-  const state = EditorState.create({
-    doc: options.doc,
-    extensions: [...buildExtensions(compartments, options), listenerExtension(options)],
-  });
+  const extensions = [...buildExtensions(compartments, options), listenerExtension(options)];
+
+  /*
+   * 有历史可恢复时，用 `EditorState.fromJSON` 建状态；否则正常建。
+   *
+   * 为什么整份状态序列化、而不是只存 history 字段：
+   * `historyField` 的类型是 `StateField<unknown>`，直接调它的
+   * `toJSON` / `fromJSON` 拿不到类型；而 `EditorState` 的序列化接口
+   * 接受「字段 → 序列化函数」的映射，正好用来把历史一并带上。
+   * 整份状态里还包含光标与选区，一起恢复反而更完整。
+   *
+   * 前提：`options.doc` 与导出历史时的文档一致。调用方（EditorHost）
+   * 传的正是同一份正文，因此成立。
+   */
+  let state: EditorState;
+  if (options.history) {
+    try {
+      state = EditorState.fromJSON(
+        options.history as object,
+        { extensions },
+        { history: historyField },
+      );
+    } catch (err) {
+      /*
+       * 历史格式不对（旧版本存的、或文档已被外部改动）时退回正常创建。
+       * 让编辑器打不开才是真的糟糕——用户会丢掉整个文件，
+       * 而这里丢的只是「不能撤销」。
+       */
+      logError('editor', '恢复撤销历史失败，已退回新建状态', err);
+      state = EditorState.create({ doc: options.doc, extensions });
+    }
+  } else {
+    state = EditorState.create({ doc: options.doc, extensions });
+  }
 
   const view = new EditorView({ state, parent: options.parent });
 
@@ -171,6 +224,20 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
 
     restoreScroll(scrollTop) {
       view.scrollDOM.scrollTop = scrollTop;
+    },
+
+    exportHistory() {
+      /*
+       * 序列化整份状态，但只保留 history 字段——文档与选区每次都会
+       * 从 `peekTabContent` 与 `setRestoreTarget` 单独恢复，
+       * 重复带上反而可能与它们不一致。
+       */
+      try {
+        return view.state.toJSON({ history: historyField });
+      } catch (err) {
+        logError('editor', '导出撤销历史失败', err);
+        return null;
+      }
     },
 
     destroy() {

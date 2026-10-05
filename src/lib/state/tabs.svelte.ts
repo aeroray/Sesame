@@ -29,6 +29,39 @@ const views = new Map<string, EditorHandle>();
  */
 const pendingContent = new Map<string, string>();
 
+/**
+ * 标签页的待恢复撤销历史。
+ *
+ * 休眠与切换 Markdown 预览都会销毁 `EditorView`，而撤销栈存在
+ * EditorState 里，随之丢失——用户切一下预览就再也按不回 Ctrl+Z。
+ * 销毁前把历史存到这里，重建时交给 `createEditorView` 灌回去。
+ *
+ * 与正文一样放在普通 Map 里：序列化后的历史体积可观，
+ * 且只在创建视图时读一次，不需要响应式。
+ */
+const pendingHistory = new Map<string, unknown>();
+
+/** 记录待恢复的撤销历史。 */
+export function setTabHistory(id: string, history: unknown): void {
+  if (history === null || history === undefined) {
+    pendingHistory.delete(id);
+    return;
+  }
+  pendingHistory.set(id, history);
+}
+
+/** 取出待恢复的撤销历史（读取后清除，避免下次重建时用到过期历史）。 */
+export function takeTabHistory(id: string): unknown {
+  const history = pendingHistory.get(id);
+  pendingHistory.delete(id);
+  return history;
+}
+
+/** 丢弃某个标签的待恢复历史（内容被整体替换时调用）。 */
+export function dropTabHistory(id: string): void {
+  pendingHistory.delete(id);
+}
+
 /** 记录标签页的初始内容。 */
 export function setTabContent(id: string, content: string): void {
   pendingContent.set(id, content);
@@ -47,6 +80,15 @@ export function setTabContent(id: string, content: string): void {
  */
 export function replaceTabContent(id: string, content: string): void {
   setTabContent(id, content);
+
+  /*
+   * 整体替换内容时**必须丢掉旧历史**。
+   *
+   * 历史里存的是相对旧文档的变更集，文档被换掉之后再用它撤销，
+   * 会把旧内容按错误的偏移插回来——「加载磁盘内容」和「换编码重开」
+   * 都会走到这里，两者都是整篇替换。
+   */
+  dropTabHistory(id);
 
   const handle = views.get(id);
   if (handle) handle.setContent(content);
