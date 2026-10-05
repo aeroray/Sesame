@@ -255,19 +255,23 @@ export function rainbowBrackets(): Extension {
 /**
  * 三档颜色。
  *
- * 用色相区分而不是明度：明度差在深色主题下容易被背景吞掉。
- * 三档足够看出层级，又不会像七色那样花。
+ * ## 颜色来自主题，不写死
  *
- * 深色主题单独提亮一档，否则三档都偏暗、与正文对比不足。
+ * 早先这里是 6 个硬编码的 oklch 值（亮暗各三档）。问题是：换到 Monokai、
+ * Dracula、Solarized 这些主题后，括号颜色仍是那套蓝/绿/橙，
+ * 与主题的调色板完全无关——和之前「匹配括号高亮」踩的是同一个坑。
+ *
+ * 现在读 `--rainbow-0/1/2`（由 `theme-tokens.ts` 从主题推导）。
+ *
+ * ## 为什么用色相区分而不是明度
+ *
+ * 明度差在深色主题下容易被背景吞掉；色相差在亮暗两种底色上都稳定可辨。
+ * 三档足够看出层级，又不会像七色那样花。
  */
 export const rainbowBracketsTheme: Extension = EditorView.baseTheme({
-  '.cm-rainbow-0': { color: 'oklch(0.62 0.16 264)' },
-  '.cm-rainbow-1': { color: 'oklch(0.58 0.15 150)' },
-  '.cm-rainbow-2': { color: 'oklch(0.64 0.16 40)' },
-
-  '&dark .cm-rainbow-0': { color: 'oklch(0.76 0.13 264)' },
-  '&dark .cm-rainbow-1': { color: 'oklch(0.78 0.13 150)' },
-  '&dark .cm-rainbow-2': { color: 'oklch(0.8 0.13 40)' },
+  '.cm-rainbow-0': { color: 'var(--rainbow-0)' },
+  '.cm-rainbow-1': { color: 'var(--rainbow-1)' },
+  '.cm-rainbow-2': { color: 'var(--rainbow-2)' },
 });
 
 /**

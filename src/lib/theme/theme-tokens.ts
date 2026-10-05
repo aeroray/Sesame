@@ -73,7 +73,7 @@ function step(base: string, dir: 'white' | 'black', weight: number): string {
  * 即比背景略亮一点点。
  */
 export function deriveTokens(theme: ThemeDefinition): ThemeTokens {
-  const { bg, fg, accent, accentFg, mode } = theme;
+  const { bg, fg, accent, accentFg, mode, rainbow } = theme;
   const light = mode === 'light';
 
   /*
@@ -191,6 +191,16 @@ export function deriveTokens(theme: ThemeDefinition): ThemeTokens {
      * 匹配括号底纹用的强调色（见 editor/themes.ts）。
      */
     '--match-bracket': accent,
+
+    /*
+     * 括号彩虹三档（见 editor/rainbow-brackets.ts）。
+     *
+     * 由主题提供而不是在编辑器里写死：换到 Monokai / Dracula 后，
+     * 括号颜色必须跟着换，否则又是「界面一个配色、编辑器另一个配色」。
+     */
+    '--rainbow-0': rainbow[0],
+    '--rainbow-1': rainbow[1],
+    '--rainbow-2': rainbow[2],
 
     // ---- 强调色色阶（供 bg-brand-* / text-brand-* 等工具类使用）----
     ...Object.fromEntries(brandSteps.map(([step_, value]) => [`--brand-${step_}`, value])),

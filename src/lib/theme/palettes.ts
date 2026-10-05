@@ -83,6 +83,16 @@ export interface ThemeDefinition {
   accent: string;
   /** 强调色上的文字色。 */
   accentFg: string;
+  /**
+   * 括号彩虹的三档颜色。
+   *
+   * 从该主题的语法调色板里取三支**色相差别明显**的颜色，
+   * 这样括号彩虹与主题是同一套配色，而不是外挂上去的。
+   *
+   * 顺序约定：[0] 紫/蓝系、[1] 绿/青系、[2] 橙/黄系——
+   * 这个顺序在几乎所有主题里都能取到对比清晰的三个色相。
+   */
+  rainbow: [string, string, string];
   /** 编辑器扩展（含界面样式与语法高亮）。 */
   editor: Extension;
 }
@@ -104,6 +114,8 @@ const sesameLight: ThemeDefinition = {
   fg: '#2c2723',
   accent: '#8a5a2b',
   accentFg: '#ffffff',
+  // 取自下面语法高亮里的关键字紫 / 字符串绿 / 数字橙
+  rainbow: ['#7c3aed', '#15803d', '#b45309'],
   editor: createTheme({
     theme: 'light',
     settings: {
@@ -152,6 +164,8 @@ const sesameDark: ThemeDefinition = {
   fg: '#ebe6e0',
   accent: '#d99a5b',
   accentFg: '#241c14',
+  // 暗色下用比亮色更亮的三档，否则与背景对比不足
+  rainbow: ['#c4a2f0', '#9ecf8a', '#e89a6a'],
   editor: createTheme({
     theme: 'dark',
     settings: {
@@ -211,6 +225,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#f8f8f2',
     accent: '#bd93f9',
     accentFg: '#21222c',
+    rainbow: ['#bd93f9', '#50fa7b', '#ffb86c'],
     editor: dracula,
   },
   {
@@ -221,6 +236,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#24292e',
     accent: '#0969da',
     accentFg: '#ffffff',
+    rainbow: ['#8250df', '#116329', '#953800'],
     editor: githubLight,
   },
   {
@@ -231,6 +247,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#f8f8f2',
     accent: '#a6e22e',
     accentFg: '#1e1f1c',
+    rainbow: ['#ae81ff', '#a6e22e', '#fd971f'],
     editor: monokai,
   },
   {
@@ -241,6 +258,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#c9d1d9',
     accent: '#58a6ff',
     accentFg: '#0d1117',
+    rainbow: ['#d2a8ff', '#7ee787', '#ffa657'],
     editor: githubDark,
   },
   {
@@ -251,6 +269,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#abb2bf',
     accent: '#61afef',
     accentFg: '#21252b',
+    rainbow: ['#c678dd', '#98c379', '#d19a66'],
     editor: atomone,
   },
   {
@@ -261,6 +280,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#657b83',
     accent: '#268bd2',
     accentFg: '#fdf6e3',
+    rainbow: ['#6c71c4', '#859900', '#cb4b16'],
     editor: solarizedLight,
   },
   {
@@ -271,6 +291,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#d8dee9',
     accent: '#88c0d0',
     accentFg: '#2e3440',
+    rainbow: ['#b48ead', '#a3be8c', '#ebcb8b'],
     editor: nord,
   },
   {
@@ -281,6 +302,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#839496',
     accent: '#2aa198',
     accentFg: '#002b36',
+    rainbow: ['#6c71c4', '#859900', '#cb4b16'],
     editor: solarizedDark,
   },
   {
@@ -291,6 +313,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#c0caf5',
     accent: '#7aa2f7',
     accentFg: '#1a1b26',
+    rainbow: ['#bb9af7', '#9ece6a', '#ff9e64'],
     editor: tokyoNight,
   },
   {
@@ -301,6 +324,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#383a42',
     accent: '#0070c1',
     accentFg: '#ffffff',
+    rainbow: ['#af00db', '#098658', '#795e26'],
     editor: vscodeLight,
   },
   {
@@ -311,6 +335,7 @@ export const THEMES: readonly ThemeDefinition[] = [
     fg: '#d4d4d4',
     accent: '#569cd6',
     accentFg: '#1e1e1e',
+    rainbow: ['#c586c0', '#6a9955', '#ce9178'],
     editor: vscodeDark,
   },
 ];

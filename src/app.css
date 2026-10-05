@@ -146,6 +146,14 @@
   --match-bracket: #8a5a2b;
 
   /*
+   * 括号彩虹三档（见 editor/rainbow-brackets.ts）。
+   * 由主题提供，运行时覆盖；这里是 Sesame Light 的兜底值。
+   */
+  --rainbow-0: #7c3aed;
+  --rainbow-1: #15803d;
+  --rainbow-2: #b45309;
+
+  /*
    * 强调色色阶。
    *
    * 由主题的强调色按固定比例推导（见 theme-tokens.ts）。
