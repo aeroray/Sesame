@@ -138,7 +138,9 @@ pnpm tauri dev
 | 查找 / 下一个匹配 | `Ctrl+F` / `Ctrl+G` |
 | 选中全部匹配 | `Ctrl+Shift+L` |
 | 跳转到行 | `Ctrl+Alt+G` |
+| 自动补全 | `Ctrl+Space` |
 | 撤销 / 重做 | `Ctrl+Z` / `Ctrl+Y` |
+| 全选 | `Ctrl+A` |
 | 切换行注释 | `Ctrl+/` |
 | 增加 / 减少缩进 | `Ctrl+]` / `Ctrl+[` |
 | 上移 / 下移当前行 | `Alt+↑` / `Alt+↓` |

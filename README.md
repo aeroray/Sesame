@@ -140,7 +140,9 @@ In the editor:
 | Find / Find next | `Ctrl+F` / `Ctrl+G` |
 | Select all matches | `Ctrl+Shift+L` |
 | Go to line | `Ctrl+Alt+G` |
+| Autocomplete | `Ctrl+Space` |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Y` |
+| Select all | `Ctrl+A` |
 | Toggle line comment | `Ctrl+/` |
 | Indent / outdent | `Ctrl+]` / `Ctrl+[` |
 | Move line up / down | `Alt+↑` / `Alt+↓` |
