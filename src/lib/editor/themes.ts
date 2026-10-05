@@ -83,10 +83,42 @@ const lightUi = EditorView.theme(
       padding: '0 4px',
       borderRadius: '0.25rem',
     },
+    /*
+     * 匹配括号的高亮。
+     *
+     * ## 默认用**强调色**，而不是写死的颜色
+     *
+     * 早先这里写死 `oklch(0.88 0.06 62 / 0.5)`（暖米色），
+     * 那是强调色系统引入之前留下的。结果是括号高亮与整体配色脱节，
+     * 用户换强调色时它纹丝不动。
+     *
+     * 现在用 `var(--brand-500)`——与按钮、焦点描边同一个来源，
+     * 换强调色时括号高亮跟着变。
+     */
     '.cm-matchingBracket, .cm-nonmatchingBracket': {
-      backgroundColor: 'oklch(0.88 0.06 62 / 0.5)',
+      backgroundColor: 'color-mix(in oklch, var(--brand-500) 24%, transparent)',
       outline: 'none',
+      borderRadius: '2px',
     },
+    /*
+     * 开启括号彩虹时，改用**该括号自己的颜色**做底纹。
+     *
+     * CodeMirror 生成的 DOM 是**嵌套**的，实测确认：
+     *     <span class="cm-rainbow-1"><span class="cm-matchingBracket">[</span></span>
+     * 匹配括号是内层 span，彩虹类是它的**直接父级**。
+     * 因此用子选择器 `>` 精确匹配「有彩虹父级」的情形，
+     * 内层通过 `currentColor` 拿到外层的彩虹色。
+     *
+     * 用属性前缀 `[class*="cm-rainbow-"]` 而不是逐个列出三个类名：
+     * 档位数以后若从 3 调到 4，这条规则不需要跟着改。
+     *
+     * 这条比上面那条更具体（多一个父级限定），因此会覆盖它——
+     * 不需要 `!important`，也不依赖选择器书写顺序。
+     */
+    '[class*="cm-rainbow-"] > .cm-matchingBracket, [class*="cm-rainbow-"] > .cm-nonmatchingBracket':
+      {
+        backgroundColor: 'color-mix(in oklch, currentColor 22%, transparent)',
+      },
     '.cm-searchMatch': {
       backgroundColor: 'oklch(0.88 0.06 62 / 0.6)',
       outline: '1px solid oklch(0.72 0.12 58)',
@@ -291,10 +323,21 @@ const darkUi = EditorView.theme(
       padding: '0 4px',
       borderRadius: '0.25rem',
     },
+    /*
+     * 匹配括号高亮（暗色）。
+     *
+     * 与亮色主题同一套逻辑：默认用强调色，开了彩虹则用括号自己的颜色。
+     * 亮色用 24% 的底纹，暗色提到 30%——深底上低透明度几乎看不出来。
+     */
     '.cm-matchingBracket, .cm-nonmatchingBracket': {
-      backgroundColor: 'oklch(0.47 0.11 50 / 0.4)',
+      backgroundColor: 'color-mix(in oklch, var(--brand-500) 30%, transparent)',
       outline: 'none',
+      borderRadius: '2px',
     },
+    '[class*="cm-rainbow-"] > .cm-matchingBracket, [class*="cm-rainbow-"] > .cm-nonmatchingBracket':
+      {
+        backgroundColor: 'color-mix(in oklch, currentColor 28%, transparent)',
+      },
     '.cm-searchMatch': {
       backgroundColor: 'oklch(0.47 0.11 50 / 0.5)',
       outline: '1px solid oklch(0.64 0.14 55)',
