@@ -167,9 +167,12 @@ export function readOnlyExtension(readOnly: boolean): Extension {
  *
  * 关闭时返回空数组，此时 `indentGuides()` 的字段与监听器都不注册——
  * 不是「注册了但不画」，而是彻底不参与，省下每次滚动的重算开销。
+ *
+ * `tabSize` 必须传进来：竖线间距等于一个缩进宽度，写死会让
+ * 用户改成 4 空格时线还停在 2 空格的位置。
  */
-export function indentGuidesExtension(enabled: boolean): Extension {
-  return enabled ? [indentGuides(), indentGuideTheme] : [];
+export function indentGuidesExtension(enabled: boolean, tabSize: number): Extension {
+  return enabled ? [indentGuides(), indentGuideTheme(tabSize)] : [];
 }
 
 /** 组装完整扩展集。 */
@@ -199,6 +202,8 @@ export function buildExtensions(
     compartments.wordWrap.of(wordWrapExtension(options.wordWrap)),
     compartments.tabSize.of(tabSizeExtension(options.tabSize)),
     compartments.readOnly.of(readOnlyExtension(options.readOnly)),
-    compartments.indentGuides.of(indentGuidesExtension(options.showIndentGuides)),
+    compartments.indentGuides.of(
+      indentGuidesExtension(options.showIndentGuides, options.tabSize),
+    ),
   ];
 }

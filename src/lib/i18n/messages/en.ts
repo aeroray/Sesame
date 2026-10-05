@@ -93,6 +93,9 @@ export const en = {
     unsavedStillInEditor: 'Not saved; your edits are still here',
     largeFileMode: 'Large file — switched to chunked mode',
     noClosedTabs: 'No recently closed tabs',
+    pathCopied: 'Path copied',
+    noPathToCopy: 'This tab has no path yet',
+    noPathToReveal: 'This tab has no path yet',
     restoredDrafts: {
       one: 'Restored {count} unsaved file',
       other: 'Restored {count} unsaved files',
@@ -241,6 +244,8 @@ export const en = {
     description: 'Content is re-read from disk. Unsaved changes in this tab will be lost.',
     autoDetected: 'Auto-detected',
     unsupported: 'This encoding is not supported',
+    loseChanges: 'Reopening will discard the unsaved changes in this tab. Continue?',
+    reopened: 'Reopened as {encoding}',
   },
 
   lineEnding: {
@@ -285,6 +290,9 @@ export const en = {
     unknown: 'An unknown error occurred',
     linkOpenFailed: 'Could not open the link',
     renderFailed: 'Could not render this document',
+    copyFailed: 'Could not copy to the clipboard',
+    revealFailed: 'Could not show the file in its folder',
+    encodingFailed: 'Could not reopen with that encoding',
   },
 
   /** 相对时间（最近文件列表）。 */

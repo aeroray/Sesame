@@ -110,6 +110,15 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
     compartments,
 
     reconfigure(next) {
+      /*
+       * 先算出「合并后的完整选项」，再据此生成 effects。
+       *
+       * 必须这样做而不是直接读 `options`：`options` 只在函数末尾才被更新，
+       * 中途读到的还是**旧值**。参考线同时依赖 `showIndentGuides` 与 `tabSize`，
+       * 若其中一个没在这次调用里传，就得沿用旧值——用合并结果最直观。
+       */
+      const merged = { ...options, ...next };
+
       // 逐段重配置：只替换变化的扩展段
       const effects = [];
       if (next.language !== undefined) {
@@ -133,10 +142,11 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
       if (next.readOnly !== undefined) {
         effects.push(compartments.readOnly.reconfigure(readOnlyExtension(next.readOnly)));
       }
-      if (next.showIndentGuides !== undefined) {
+      // 参考线的竖线间距等于一个缩进宽度，因此 tabSize 变化也要重配
+      if (next.showIndentGuides !== undefined || next.tabSize !== undefined) {
         effects.push(
           compartments.indentGuides.reconfigure(
-            indentGuidesExtension(next.showIndentGuides),
+            indentGuidesExtension(merged.showIndentGuides, merged.tabSize),
           ),
         );
       }

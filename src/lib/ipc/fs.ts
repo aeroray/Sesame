@@ -50,9 +50,19 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
   }
 }
 
-/** 读取文件内容与元数据。 */
-export function openFile(path: string): Promise<FilePayload> {
-  return call<FilePayload>('open_file', { path });
+/**
+ * 读取文件内容与元数据。
+ *
+ * `encoding` 为手动指定的编码；省略时由后端自动探测。
+ * 用户可能因为探测错误而手动纠正（见 EncodingPicker）。
+ */
+export function openFile(path: string, encoding?: string): Promise<FilePayload> {
+  return call<FilePayload>('open_file', { path, encoding: encoding ?? null });
+}
+
+/** 列出可手动指定的编码。由后端提供，避免前后端两份列表漂移。 */
+export function listEncodings(): Promise<string[]> {
+  return call<string[]>('list_encodings');
 }
 
 /**

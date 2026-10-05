@@ -15,51 +15,31 @@
  *
  * ## 响应式
  *
- * `locale.current` 是 `$state`，`t()` 读它，因此在模板或 `$derived`
- * 里调用 `t()` 会自动跟随语言切换重算，不需要手动刷新。
+ * 本文件是**普通 `.ts`**，不能直接声明 runes——那样会在启动时抛
+ * `rune_outside_svelte` 并让整个应用白屏（`svelte-check` 查不出来）。
+ * 语言状态因此放在 `locale.svelte.ts`，这里只读它。
+ * `t()` 读 `locale.current`，所以在模板或 `$derived` 里调用它会自动跟随切换。
  */
 
 import { en, type Messages } from './messages/en';
 import { zhCN } from './messages/zh-CN';
-import { detectSystemLocale, normalizeLocale, type Locale } from './locale';
+import { locale } from './locale.svelte';
+import type { Locale } from './locale';
+
+/*
+ * 把语言状态与解析工具**再导出**一次。
+ *
+ * 调用方只需要 `from '$lib/i18n'` 一个入口，不必关心内部把状态
+ * 放在了 `.svelte.ts` 里——那是实现细节。
+ */
+export { locale, setLocale, applySystemLocale, resolveLocale } from './locale.svelte';
+export { LOCALES, LOCALE_LABELS, detectSystemLocale, normalizeLocale } from './locale';
+export type { Locale } from './locale';
 
 const DICTIONARIES: Record<Locale, Messages> = {
   en,
   'zh-CN': zhCN,
 };
-
-/**
- * 当前语言。
- *
- * 初始值取系统语言，随后由设置加载流程覆盖（用户显式选过的语言优先）。
- * 用 `$state` 让所有 `t()` 调用点自动响应切换。
- */
-export const locale = $state<{ current: Locale }>({
-  current: detectSystemLocale(),
-});
-
-/** 切换语言。 */
-export function setLocale(next: Locale): void {
-  locale.current = next;
-}
-
-/** 把系统语言应用为当前语言（仅在用户没显式选过时调用）。 */
-export function applySystemLocale(): void {
-  locale.current = detectSystemLocale();
-}
-
-/**
- * 从任意值解析出语言，认不出时回退。
- *
- * 用于读取持久化的设置：老版本没有 `language` 字段，
- * 或者值被手工改坏时，都不该让应用起不来。
- */
-export function resolveLocale(value: unknown): Locale | null {
-  if (typeof value !== 'string' || value === '') return null;
-  // 只接受受支持的取值；`system` 由调用方另行处理
-  if (value === 'zh-CN' || value === 'en') return value;
-  return normalizeLocale(value);
-}
 
 /** 取值路径，例如 `['settings', 'autoSave']`。 */
 type Path = readonly string[];

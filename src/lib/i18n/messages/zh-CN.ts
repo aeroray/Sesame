@@ -89,6 +89,9 @@ export const zhCN: Messages = {
     unsavedStillInEditor: '未保存，修改仍在编辑器中',
     largeFileMode: '文件较大，已切换为大文件模式',
     noClosedTabs: '没有刚关闭的标签',
+    pathCopied: '已复制路径',
+    noPathToCopy: '此标签还没有路径',
+    noPathToReveal: '此标签还没有路径',
     restoredDrafts: {
       one: '已恢复 {count} 个未保存的文件',
       other: '已恢复 {count} 个未保存的文件',
@@ -225,6 +228,8 @@ export const zhCN: Messages = {
     description: '将从磁盘重新读取内容，本标签未保存的修改会丢失。',
     autoDetected: '自动探测',
     unsupported: '不支持这种编码',
+    loseChanges: '重新打开会丢弃本标签未保存的修改。要继续吗？',
+    reopened: '已按 {encoding} 重新打开',
   },
 
   lineEnding: {
@@ -267,6 +272,9 @@ export const zhCN: Messages = {
     unknown: '发生未知错误',
     linkOpenFailed: '打开链接失败',
     renderFailed: '无法渲染此文档',
+    copyFailed: '无法复制到剪贴板',
+    revealFailed: '无法在文件夹中显示',
+    encodingFailed: '无法用该编码重新打开',
   },
 
   time: {

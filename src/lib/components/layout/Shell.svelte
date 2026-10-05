@@ -34,6 +34,8 @@
   import { saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
   import { flushAutoSave } from '$lib/actions/autosave';
   import { flushDrafts, clearAllDrafts } from '$lib/actions/draft';
+  import { reopenClosedTab } from '$lib/actions/reopen-tab';
+  import { copyPath } from '$lib/actions/file-actions';
   import { t } from '$lib/i18n';
 
   let settingsOpen = $state(false);
@@ -138,6 +140,18 @@
         label: t('command.closeTab'),
         group: t('shortcuts.groupFile'),
         handler: () => void requestCloseActive(),
+      },
+      {
+        keys: 'Ctrl+Shift+T',
+        label: t('action.reopenClosed'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void reopenClosedTab(),
+      },
+      {
+        keys: 'Ctrl+Shift+C',
+        label: t('action.copyPath'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void copyPath(),
       },
       {
         keys: 'Ctrl+B',

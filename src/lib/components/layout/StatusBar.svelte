@@ -6,6 +6,7 @@
   import { WrapText, ListOrdered, Eye, Code } from '@lucide/svelte';
   import { Badge } from '$lib/components/ui/badge';
   import Hint from '$lib/components/common/Hint.svelte';
+  import EncodingPicker from '$lib/components/common/EncodingPicker.svelte';
   import { activeTab } from '$lib/state/tabs.svelte';
   import { settings, updateSetting } from '$lib/state/settings.svelte';
   import { isPreviewing } from '$lib/state/layout.svelte';
@@ -65,7 +66,15 @@
         <span class="text-border-strong">·</span>
         <span class="px-1">{LANGUAGE_LABELS[tab.language]}</span>
         <span class="text-border-strong">·</span>
-        <span class="px-1" title={t('editor.encoding')}>{encodingLabel}</span>
+        <!--
+          编码可点击：探测不可能全对，用户需要一个纠正误判的入口。
+          未命名标签没有磁盘文件可重读，因此只在有路径时可交互。
+        -->
+        {#if tab.path}
+          <EncodingPicker {tab} />
+        {:else}
+          <span class="px-1" title={t('editor.encoding')}>{encodingLabel}</span>
+        {/if}
         <span class="text-border-strong">·</span>
         <span class="px-1" title={t('editor.lineEnding')}>{lineEndingLabel}</span>
 
