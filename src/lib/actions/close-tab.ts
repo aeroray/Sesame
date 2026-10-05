@@ -9,17 +9,17 @@
  */
 
 import { message } from '@tauri-apps/plugin-dialog';
-import {
-  closeTab,
-  closeOtherTabs,
-  closeAllTabs,
-  tabs,
-  tabDisplayName,
-} from '$lib/state/tabs.svelte';
-import { saveTab } from '$lib/actions/save-file';
 import { cancelAutoSave } from '$lib/actions/autosave';
 import { dropDraft } from '$lib/actions/draft';
+import { saveTab } from '$lib/actions/save-file';
 import { t } from '$lib/i18n';
+import {
+  closeAllTabs,
+  closeOtherTabs,
+  closeTab,
+  tabDisplayName,
+  tabs,
+} from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 
 /** 用户对「未保存的修改」的选择。 */

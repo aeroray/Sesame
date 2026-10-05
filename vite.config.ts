@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
-import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite';
 
 const host = process.env.TAURI_DEV_HOST;
 

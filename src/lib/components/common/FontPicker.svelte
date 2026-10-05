@@ -1,79 +1,79 @@
 <script lang="ts">
-  /**
-   * 字体选择器。
-   *
-   * 用 Popover + 搜索列表而不是 Select：系统字体可能有几百个，
-   * 塞进下拉菜单既难找也无法预览。这里每个条目用该字体自身渲染，
-   * 用户能直接看到效果再决定。
-   */
-  import { Check, Loader2, Search } from '@lucide/svelte';
-  import { Popover as PopoverPrimitive } from 'bits-ui';
-  import { Input } from '$lib/components/ui/input';
-  import { ScrollArea } from '$lib/components/ui/scroll-area';
-  import { Button } from '$lib/components/ui/button';
-  import { cn } from '$lib/utils/cn';
-  import { fontList, ensureFonts, filterFonts } from '$lib/state/fonts.svelte';
-  import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
-  import { t } from '$lib/i18n';
+/**
+ * 字体选择器。
+ *
+ * 用 Popover + 搜索列表而不是 Select：系统字体可能有几百个，
+ * 塞进下拉菜单既难找也无法预览。这里每个条目用该字体自身渲染，
+ * 用户能直接看到效果再决定。
+ */
+import { Check, Loader2, Search } from '@lucide/svelte';
+import { Popover as PopoverPrimitive } from 'bits-ui';
+import { Button } from '$lib/components/ui/button';
+import { Input } from '$lib/components/ui/input';
+import { ScrollArea } from '$lib/components/ui/scroll-area';
+import { t } from '$lib/i18n';
+import { ensureFonts, filterFonts, fontList } from '$lib/state/fonts.svelte';
+import { cn } from '$lib/utils/cn';
+import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
 
-  interface Props {
-    /** 当前值。空字符串表示「默认」。 */
-    value: string;
-    /** 默认项的显示名。 */
-    defaultLabel: string;
-    /** 选中变化回调。 */
-    onchange: (value: string) => void;
-    /** 等宽字体是否优先展示（编辑器字体用）。 */
-    preferMonospace?: boolean;
-  }
+interface Props {
+  /** 当前值。空字符串表示「默认」。 */
+  value: string;
+  /** 默认项的显示名。 */
+  defaultLabel: string;
+  /** 选中变化回调。 */
+  onchange: (value: string) => void;
+  /** 等宽字体是否优先展示（编辑器字体用）。 */
+  preferMonospace?: boolean;
+}
 
-  let { value, defaultLabel, onchange, preferMonospace = false }: Props = $props();
+let { value, defaultLabel, onchange, preferMonospace = false }: Props = $props();
 
-  let open = $state(false);
-  let query = $state('');
+let open = $state(false);
+let query = $state('');
 
-  /**
-   * 一次最多渲染多少个字体。
-   *
-   * 系统字体可能有几百个，而每个条目都带一个用该字体渲染的预览 span
-   * （内联 font-family 字符串）。全部渲染意味着每次敲键都要重建几百个节点，
-   * 输入会明显发顿。截断到 60 个足够找到目标——找不到时用户自然会继续输入，
-   * 而搜索本来就是按名字过滤的。
-   */
-  const RENDER_LIMIT = 60;
+/**
+ * 一次最多渲染多少个字体。
+ *
+ * 系统字体可能有几百个，而每个条目都带一个用该字体渲染的预览 span
+ * （内联 font-family 字符串）。全部渲染意味着每次敲键都要重建几百个节点，
+ * 输入会明显发顿。截断到 60 个足够找到目标——找不到时用户自然会继续输入，
+ * 而搜索本来就是按名字过滤的。
+ */
+const RENDER_LIMIT = 60;
 
-  /** 过滤后的列表。 */
-  const filtered = $derived(filterFonts(query));
+/** 过滤后的列表。 */
+const filtered = $derived(filterFonts(query));
 
-  /** 实际渲染的列表（截断后）。 */
-  const results = $derived(filtered.slice(0, RENDER_LIMIT));
+/** 实际渲染的列表（截断后）。 */
+const results = $derived(filtered.slice(0, RENDER_LIMIT));
 
-  /** 是否因截断而隐藏了部分结果。 */
-  const truncated = $derived(filtered.length > RENDER_LIMIT);
+/** 是否因截断而隐藏了部分结果。 */
+const truncated = $derived(filtered.length > RENDER_LIMIT);
 
-  /** 打开时才加载字体，避免拖慢设置面板首次渲染。 */
-  $effect(() => {
-    if (open) void ensureFonts();
-  });
+/** 打开时才加载字体，避免拖慢设置面板首次渲染。 */
+$effect(() => {
+  if (open) void ensureFonts();
+});
 
-  /** 当前选中项的展示名。 */
-  const currentLabel = $derived(value || defaultLabel);
+/** 当前选中项的展示名。 */
+const currentLabel = $derived(value || defaultLabel);
 
-  function pick(name: string) {
-    onchange(name);
-    open = false;
-    query = '';
-  }
+function pick(name: string) {
+  onchange(name);
+  open = false;
+  query = '';
+}
 
-  /**
-   * 预览样式。
-   *
-   * 预览文本必须同时含中英文——用户最需要判断的正是
-   * 「这个字体下中英文是否协调」。只预览英文会掩盖回退问题。
-   */
-  function previewStyle(name: string): string {
-    return `font-family: ${quoteFont(name)}, ${CJK_FALLBACK_STACK}`;
-  }
+/**
+ * 预览样式。
+ *
+ * 预览文本必须同时含中英文——用户最需要判断的正是
+ * 「这个字体下中英文是否协调」。只预览英文会掩盖回退问题。
+ */
+function previewStyle(name: string): string {
+  return `font-family: ${quoteFont(name)}, ${CJK_FALLBACK_STACK}`;
+}
 </script>
 
 <PopoverPrimitive.Root bind:open>

@@ -31,7 +31,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi", "dmg", "app"],
+    "publisher": "Sesame contributors",
+    "copyright": "Copyright (c) 2026 Sesame contributors",
+    "category": "DeveloperTool",
+    "shortDescription": "Fast, lightweight text editor and file viewer",
+    "longDescription": "Sesame opens instantly and handles the files other editors choke on: huge logs, GBK-encoded configs, and images. Files over 5 MB load in chunks, saves are atomic, and the encoding you opened with is the encoding written back.",
+    "license": "MIT",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -43,25 +49,25 @@
       {
         "ext": ["txt", "log", "ini", "conf", "cfg"],
         "name": "Text File",
-        "description": "纯文本文件",
+        "description": "Plain text file",
         "role": "Editor"
       },
       {
         "ext": ["md", "markdown"],
         "name": "Markdown File",
-        "description": "Markdown 文档",
+        "description": "Markdown document",
         "role": "Editor"
       },
       {
         "ext": ["json", "jsonc"],
         "name": "JSON File",
-        "description": "JSON 数据文件",
+        "description": "JSON data file",
         "role": "Editor"
       },
       {
         "ext": ["js", "mjs", "cjs", "ts", "tsx", "jsx"],
         "name": "JavaScript File",
-        "description": "JavaScript 源文件",
+        "description": "JavaScript source file",
         "role": "Editor"
       },
       {
@@ -70,7 +76,7 @@
           "css", "html", "xml", "yml", "yaml", "sql", "sh", "toml"
         ],
         "name": "Source Code File",
-        "description": "源代码文件",
+        "description": "Source code file",
         "role": "Editor"
       }
     ]

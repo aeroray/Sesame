@@ -1,53 +1,53 @@
 <script lang="ts">
-  /**
-   * 标题栏右侧的应用菜单。
-   *
-   * 快捷键可能被输入法或系统占用，因此每个功能都必须有可点击的入口，
-   * 不能只依赖快捷键。
-   */
-  import {
-    Menu,
-    Settings,
-    Keyboard,
-    Sun,
-    Moon,
-    Monitor,
-    Info,
-    Copy,
-    FolderOpen,
-    Undo2,
-  } from '@lucide/svelte';
-  import {
-    Root as DropdownMenuRoot,
-    Trigger as DropdownMenuTrigger,
-    Content as DropdownMenuContent,
-    Item as DropdownMenuItem,
-    Separator as DropdownMenuSeparator,
-    Label as DropdownMenuLabel,
-  } from '$lib/components/ui/dropdown-menu';
-  import { Button } from '$lib/components/ui/button';
-  import { setMode } from 'mode-watcher';
-  import { settings, updateSetting } from '$lib/state/settings.svelte';
-  import { activeTab } from '$lib/state/tabs.svelte';
-  import { copyPath, revealInFolder } from '$lib/actions/file-actions';
-  import { reopenClosedTab } from '$lib/actions/reopen-tab';
-  import { t } from '$lib/i18n';
+/**
+ * 标题栏右侧的应用菜单。
+ *
+ * 快捷键可能被输入法或系统占用，因此每个功能都必须有可点击的入口，
+ * 不能只依赖快捷键。
+ */
+import {
+  Copy,
+  FolderOpen,
+  Info,
+  Keyboard,
+  Menu,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  Undo2,
+} from '@lucide/svelte';
+import { setMode } from 'mode-watcher';
+import { copyPath, revealInFolder } from '$lib/actions/file-actions';
+import { reopenClosedTab } from '$lib/actions/reopen-tab';
+import { Button } from '$lib/components/ui/button';
+import {
+  Content as DropdownMenuContent,
+  Item as DropdownMenuItem,
+  Label as DropdownMenuLabel,
+  Root as DropdownMenuRoot,
+  Separator as DropdownMenuSeparator,
+  Trigger as DropdownMenuTrigger,
+} from '$lib/components/ui/dropdown-menu';
+import { t } from '$lib/i18n';
+import { settings, updateSetting } from '$lib/state/settings.svelte';
+import { activeTab } from '$lib/state/tabs.svelte';
 
-  interface Props {
-    onOpenSettings: () => void;
-    onOpenShortcuts: () => void;
-  }
+interface Props {
+  onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
+}
 
-  let { onOpenSettings, onOpenShortcuts }: Props = $props();
+let { onOpenSettings, onOpenShortcuts }: Props = $props();
 
-  /** 当前是否有带路径的文件——决定「复制路径」等项是否可用。 */
-  const hasFile = $derived(activeTab()?.path != null);
+/** 当前是否有带路径的文件——决定「复制路径」等项是否可用。 */
+const hasFile = $derived(activeTab()?.path != null);
 
-  /** 切换主题并落盘。 */
-  async function pickTheme(value: 'light' | 'dark' | 'system') {
-    await updateSetting('theme', value);
-    setMode(value);
-  }
+/** 切换主题并落盘。 */
+async function pickTheme(value: 'light' | 'dark' | 'system') {
+  await updateSetting('theme', value);
+  setMode(value);
+}
 </script>
 
 <DropdownMenuRoot>

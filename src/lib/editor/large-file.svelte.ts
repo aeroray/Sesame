@@ -7,11 +7,11 @@
  * （那会引入大量难以验证的边界情况）。
  */
 
-import * as ipc from '$lib/ipc/fs';
-import { CHUNK_SIZE, MAX_LOAD_ALL_BYTES } from '$src/constants';
-import { getView } from '$lib/state/tabs.svelte';
 import { Annotation } from '@codemirror/state';
+import * as ipc from '$lib/ipc/fs';
+import { getView } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { CHUNK_SIZE, MAX_LOAD_ALL_BYTES } from '$src/constants';
 
 /**
  * 标记「这次文档变更是分块追加造成的」。
@@ -115,12 +115,7 @@ export async function loadNextChunk(tab: Tab): Promise<boolean> {
   publish(tab.id, { ...current, loading: true });
 
   try {
-    const chunk = await ipc.readChunk(
-      tab.path,
-      current.loadedBytes,
-      tab.encoding,
-      CHUNK_SIZE,
-    );
+    const chunk = await ipc.readChunk(tab.path, current.loadedBytes, tab.encoding, CHUNK_SIZE);
 
     const doc = handle.view.state.doc;
     handle.view.dispatch({

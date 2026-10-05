@@ -2,7 +2,7 @@
  * 展示格式化工具。
  */
 
-import { t, locale } from '$lib/i18n';
+import { locale, t } from '$lib/i18n';
 
 /** 把字节数格式化为易读字符串。 */
 export function formatBytes(bytes: number): string {

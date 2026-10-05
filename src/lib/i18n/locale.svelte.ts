@@ -9,7 +9,7 @@
  * 整个应用白屏——这类错误只有真跑起来才会暴露，`svelte-check` 查不出来。
  */
 
-import { detectSystemLocale, normalizeLocale, type Locale } from './locale';
+import { detectSystemLocale, type Locale, normalizeLocale } from './locale';
 
 /**
  * 当前语言。

@@ -10,6 +10,7 @@
  */
 
 import type { MessageKey } from '$lib/i18n';
+import { IS_MAC } from '$lib/utils/platform';
 
 export interface HotkeyBinding {
   /** 组合键描述，例如 `Ctrl+N`。 */
@@ -84,8 +85,14 @@ const PUNCTUATION_CODES: Record<string, string> = {
 /** 特殊键的 `event.key` 值。 */
 const NAMED_KEYS = new Set(['enter', 'escape', 'tab', 'space', 'backspace', 'delete']);
 
-const IS_MAC =
-  typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
+/*
+ * 平台判定统一走 `utils/platform.ts`。
+ *
+ * 这里曾经自己写了一份 `navigator.platform.includes('MAC')`，与
+ * `platform.ts` 的 `navigator.userAgent` 判定是两套逻辑。两者结果
+ * 通常一致，但**判据不同**意味着将来只改一处就会出现「标题栏认为是
+ * macOS、快捷键认为是 Windows」这类不一致。同一事实只该有一个来源。
+ */
 
 /** 判断事件是否匹配组合键描述。 */
 function matches(event: KeyboardEvent, keys: string): boolean {

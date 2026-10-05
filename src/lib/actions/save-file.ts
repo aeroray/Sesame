@@ -2,12 +2,14 @@
  * 保存文件的行为编排。
  */
 
-import { save } from '@tauri-apps/plugin-dialog';
-import { message } from '@tauri-apps/plugin-dialog';
-import { notify } from '$lib/state/status.svelte';
-import { fileFilters } from '$src/constants';
+import { message, save } from '@tauri-apps/plugin-dialog';
+import { dropDraft } from '$lib/actions/draft';
+import { reportError } from '$lib/actions/open-file';
+import { clearProgress, getProgress, initProgress } from '$lib/editor/large-file.svelte';
+import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { addRecent } from '$lib/state/recents.svelte';
+import { notify } from '$lib/state/status.svelte';
 import {
   editVersion,
   getView,
@@ -19,11 +21,8 @@ import {
   setTruncated,
   tabDisplayName,
 } from '$lib/state/tabs.svelte';
-import { clearProgress, getProgress, initProgress } from '$lib/editor/large-file.svelte';
-import { reportError } from '$lib/actions/open-file';
-import { dropDraft } from '$lib/actions/draft';
-import { t } from '$lib/i18n';
 import type { Tab } from '$lib/state/types';
+import { fileFilters } from '$src/constants';
 
 /**
  * 取得标签页的当前正文。
@@ -218,11 +217,7 @@ async function handleWriteBlocked(tab: Tab, content: string, err: unknown): Prom
 
 /** 判断错误是否为外部修改冲突。 */
 function isConflict(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    (err as { code?: string }).code === 'conflict'
-  );
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'conflict';
 }
 
 /**

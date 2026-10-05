@@ -5,10 +5,10 @@
  * 定时器按 tab id 分开，因此多个标签同时编辑互不干扰。
  */
 
-import { AUTOSAVE_DEBOUNCE } from '$src/constants';
-import { settings } from '$lib/state/settings.svelte';
 import { autoSaveTab } from '$lib/actions/save-file';
+import { settings } from '$lib/state/settings.svelte';
 import { tabs } from '$lib/state/tabs.svelte';
+import { AUTOSAVE_DEBOUNCE } from '$src/constants';
 
 /** tab id → 待触发的定时器。 */
 const timers = new Map<string, ReturnType<typeof setTimeout>>();

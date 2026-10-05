@@ -1,47 +1,47 @@
 <script lang="ts">
-  /**
-   * 标题栏中央的状态提示。
-   *
-   * 取代了原先的 toast：位置固定、不遮挡内容、几秒后自动消失。
-   * 设计取舍见 `state/status.svelte.ts`。
-   *
-   * ## 为什么这里不再显示文件名
-   *
-   * 原先这里一直显示当前标签的文件名——但标签栏已经写着同样的名字，
-   * 两者相距不到 40px，纯属重复。空间留给真正会变的信息：
-   * 「刚才那件事做成了没有」。
-   *
-   * ## 过渡
-   *
-   * 用 `{#if}` + CSS 过渡而不是 `transition:` 指令：
-   * 提示会**整条替换**（文字和语气同时变），指令式过渡在内容变化时的
-   * 行为不好预测，而这里只需要「淡入淡出」一种效果。
-   */
-  import { CircleCheck, CircleX, Info, TriangleAlert } from '@lucide/svelte';
-  import { status, type StatusKind } from '$lib/state/status.svelte';
+/**
+ * 标题栏中央的状态提示。
+ *
+ * 取代了原先的 toast：位置固定、不遮挡内容、几秒后自动消失。
+ * 设计取舍见 `state/status.svelte.ts`。
+ *
+ * ## 为什么这里不再显示文件名
+ *
+ * 原先这里一直显示当前标签的文件名——但标签栏已经写着同样的名字，
+ * 两者相距不到 40px，纯属重复。空间留给真正会变的信息：
+ * 「刚才那件事做成了没有」。
+ *
+ * ## 过渡
+ *
+ * 用 `{#if}` + CSS 过渡而不是 `transition:` 指令：
+ * 提示会**整条替换**（文字和语气同时变），指令式过渡在内容变化时的
+ * 行为不好预测，而这里只需要「淡入淡出」一种效果。
+ */
+import { CircleCheck, CircleX, Info, TriangleAlert } from '@lucide/svelte';
+import { type StatusKind, status } from '$lib/state/status.svelte';
 
-  /** 语气 → 图标。 */
-  const ICONS: Record<StatusKind, typeof CircleCheck> = {
-    success: CircleCheck,
-    error: CircleX,
-    warning: TriangleAlert,
-    info: Info,
-  };
+/** 语气 → 图标。 */
+const ICONS: Record<StatusKind, typeof CircleCheck> = {
+  success: CircleCheck,
+  error: CircleX,
+  warning: TriangleAlert,
+  info: Info,
+};
 
-  /**
-   * 语气 → 文字颜色。
-   *
-   * 只有图标与文字上色，**不加底色**——标题栏是常驻界面元素，
-   * 一块彩色背景会显得像系统通知，与「安静」的定位冲突。
-   */
-  const COLORS: Record<StatusKind, string> = {
-    success: 'text-[oklch(0.55_0.13_150)]',
-    error: 'text-destructive',
-    warning: 'text-[oklch(0.62_0.14_75)]',
-    info: 'text-content-muted',
-  };
+/**
+ * 语气 → 文字颜色。
+ *
+ * 只有图标与文字上色，**不加底色**——标题栏是常驻界面元素，
+ * 一块彩色背景会显得像系统通知，与「安静」的定位冲突。
+ */
+const COLORS: Record<StatusKind, string> = {
+  success: 'text-[oklch(0.55_0.13_150)]',
+  error: 'text-destructive',
+  warning: 'text-[oklch(0.62_0.14_75)]',
+  info: 'text-content-muted',
+};
 
-  const current = $derived(status.current);
+const current = $derived(status.current);
 </script>
 
 <!--

@@ -6,10 +6,10 @@
  * 通过 `editorFontTheme()` 生成的动态主题注入（见文件末尾）。
  */
 
-import { EditorView } from '@codemirror/view';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { tags as t } from '@lezer/highlight';
 import type { Extension } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { tags as t } from '@lezer/highlight';
 import { CJK_FALLBACK, quoteFont } from '$lib/utils/fonts';
 
 /** 亮色主题的界面样式。 */

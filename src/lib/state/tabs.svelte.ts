@@ -9,13 +9,13 @@
  * 只把「哪些 id 有视图」这一事实通过 `$state` 暴露给 UI。
  */
 
-import * as ipc from '$lib/ipc/fs';
-import type { LanguageId, LineEnding, Tab } from '$lib/state/types';
 import type { EditorHandle } from '$lib/editor/create-view';
-import { clearPreview } from '$lib/state/layout.svelte';
-import { releaseImage } from '$lib/state/images.svelte';
-import { rememberClosed } from '$lib/state/closed-tabs.svelte';
 import { t } from '$lib/i18n';
+import * as ipc from '$lib/ipc/fs';
+import { rememberClosed } from '$lib/state/closed-tabs.svelte';
+import { releaseImage } from '$lib/state/images.svelte';
+import { clearPreview } from '$lib/state/layout.svelte';
+import type { LanguageId, LineEnding, Tab } from '$lib/state/types';
 import { logError } from '$lib/utils/log';
 
 /** 视图句柄表。故意不是响应式的。 */
@@ -116,10 +116,7 @@ export function hasTabContent(id: string): boolean {
  * 往往发生在视图挂载之后，直接改 tab 字段是无效的（实测光标总是回到第 1 行）。
  * 因此把目标位置放进这里，由 EditorHost 在创建视图时消费。
  */
-const restoreTargets = new Map<
-  string,
-  { line: number; column: number; scrollTop: number }
->();
+const restoreTargets = new Map<string, { line: number; column: number; scrollTop: number }>();
 
 /** 登记待恢复的位置。 */
 export function setRestoreTarget(
@@ -300,11 +297,7 @@ export function createTabFromDraft(draft: {
 }
 
 /** 由图片创建标签页。 */
-export function createImageTab(payload: {
-  path: string;
-  name: string;
-  size: number;
-}): Tab {
+export function createImageTab(payload: { path: string; name: string; size: number }): Tab {
   const tab: Tab = {
     id: newId(),
     path: payload.path,

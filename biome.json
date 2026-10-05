@@ -6,13 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": [
-      "**",
-      "!**/dist",
-      "!**/src-tauri",
-      "!**/node_modules",
-      "!**/src/lib/components/ui"
-    ]
+    "includes": ["**", "!**/dist", "!**/src-tauri", "!**/node_modules", "!**/src/lib/components/ui"]
   },
   "formatter": {
     "enabled": true,
@@ -25,6 +19,13 @@
       "quoteStyle": "single",
       "semicolons": "always",
       "trailingCommas": "all"
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "allowWrongLineComments": false,
+      "tailwindDirectives": true
     }
   },
   "linter": {

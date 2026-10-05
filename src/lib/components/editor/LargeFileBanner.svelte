@@ -1,37 +1,37 @@
 <script lang="ts">
-  /**
-   * 大文件提示条。
-   *
-   * 文件超过阈值时只加载了首块，这里告诉用户当前状态并提供「继续加载」入口。
-   * 不自动全部加载，是因为把几百兆文本铺进 WebView 会让应用直接卡死。
-   *
-   * 另外提醒「查找只覆盖已加载部分」——这是个容易踩的坑：
-   * 用户按 Ctrl+F 搜一个词、没搜到，会以为文件里确实没有，
-   * 而实际上那部分内容还没加载进来。
-   */
-  import { Loader2, FileWarning, ChevronsDown, SearchX } from '@lucide/svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { formatBytes } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import type { ChunkProgress } from '$lib/editor/large-file.svelte';
+/**
+ * 大文件提示条。
+ *
+ * 文件超过阈值时只加载了首块，这里告诉用户当前状态并提供「继续加载」入口。
+ * 不自动全部加载，是因为把几百兆文本铺进 WebView 会让应用直接卡死。
+ *
+ * 另外提醒「查找只覆盖已加载部分」——这是个容易踩的坑：
+ * 用户按 Ctrl+F 搜一个词、没搜到，会以为文件里确实没有，
+ * 而实际上那部分内容还没加载进来。
+ */
+import { ChevronsDown, FileWarning, Loader2, SearchX } from '@lucide/svelte';
+import { Button } from '$lib/components/ui/button';
+import type { ChunkProgress } from '$lib/editor/large-file.svelte';
+import { t } from '$lib/i18n';
+import { formatBytes } from '$lib/utils/format';
 
-  interface Props {
-    progress: ChunkProgress;
-    onLoadMore: () => void;
-    onLoadAll: () => void;
-  }
+interface Props {
+  progress: ChunkProgress;
+  onLoadMore: () => void;
+  onLoadAll: () => void;
+}
 
-  let { progress, onLoadMore, onLoadAll }: Props = $props();
+let { progress, onLoadMore, onLoadAll }: Props = $props();
 
-  /** 已加载百分比。 */
-  const percent = $derived(
-    progress.totalBytes > 0
-      ? Math.min(100, Math.round((progress.loadedBytes / progress.totalBytes) * 100))
-      : 100,
-  );
+/** 已加载百分比。 */
+const percent = $derived(
+  progress.totalBytes > 0
+    ? Math.min(100, Math.round((progress.loadedBytes / progress.totalBytes) * 100))
+    : 100,
+);
 
-  /** 尚未加载的字节数，用于查找提示。 */
-  const remaining = $derived(Math.max(0, progress.totalBytes - progress.loadedBytes));
+/** 尚未加载的字节数，用于查找提示。 */
+const remaining = $derived(Math.max(0, progress.totalBytes - progress.loadedBytes));
 </script>
 
 <div

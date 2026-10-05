@@ -12,7 +12,7 @@ huge logs, GBK-encoded configs, a stray PNG you just want to look at.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#install)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
-[![Binary size](https://img.shields.io/badge/binary-3.8%20MB-brightgreen.svg)](#why-it-stays-small)
+[![Binary size](https://img.shields.io/badge/installer-1.9%20MB-brightgreen.svg)](#why-it-stays-small)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -50,14 +50,16 @@ file, or change three lines in it**, right now.
 | **Markdown preview** | Rendered and sanitized with DOMPurify; external links open in your browser, not inside the app |
 | **Image viewer** | Zoom, fit-to-window, 1:1, open in default app |
 | **Find & replace** | Regex, case-sensitive, whole-word and cross-line search, with replace |
-| **Indent guides** | Faint vertical rules at each indent level; toggle in settings |
+| **Indent guides** | Faint vertical rules at each indent level; on by default, toggle in settings |
+| **Rainbow brackets** | Colour brackets by nesting depth; off by default, toggle in settings |
 | **Memory-friendly** | Tabs you haven't touched release their editor instances after a while, and restore instantly when you come back |
 | **Theming** | Light/dark/system, four accent colors, and separately configurable UI and editor fonts |
 | **Interface language** | English and Simplified Chinese, following your system language by default |
 
 ### Why it stays small
 
-The shipped binary is about **3.8 MB**. Sesame uses the operating system's own webview
+The Windows installer is about **1.9 MB** (the executable itself is 4.3 MB; the
+installer compresses it). Sesame uses the operating system's own webview
 (WebView2 on Windows, WKWebView on macOS) rather than bundling a browser engine — which
 is also why it starts as fast as it does.
 
@@ -175,7 +177,6 @@ Settings are stored in your platform's app data directory:
 | --- | --- |
 | Windows | `%APPDATA%\com.sesame.app\` |
 | macOS | `~/Library/Application Support/com.sesame.app/` |
-| Linux | `~/.local/share/com.sesame.app/` |
 
 `settings.json` holds preferences; `recent.json`, `session.json` and `drafts/` are
 managed separately so that clearing your recent-files list never touches your session
@@ -218,8 +219,10 @@ Issues and pull requests are welcome. Before opening a PR:
 
 1. Run `pnpm check`, `pnpm lint` and `cargo test --lib` — all three should be clean.
 2. If your change affects appearance, read `docs/design/design.md` first and follow it.
-3. Keep the UI text concise and in Chinese; keep code comments in Chinese to match the
-   existing codebase.
+3. **All user-facing strings go through the i18n dictionary** (`src/lib/i18n/messages/`).
+   Add every new string to *both* `en.ts` and `zh-CN.ts` — a missing translation is a
+   type error, not a silent fallback. Keep code comments in Chinese to match the
+   existing codebase; comments and log messages are not translated.
 
 ## License
 

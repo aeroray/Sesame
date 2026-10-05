@@ -13,8 +13,8 @@
  * 与 `t()` 的 `{name}` 是两套互不干涉的机制，不要改写成 `{...}`。
  */
 
-import { EditorState } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
 import { t } from '$lib/i18n';
 
 /**

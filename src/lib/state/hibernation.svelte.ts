@@ -6,16 +6,16 @@
  * 这样用户看到的行为与「从未休眠」一致，只是内存占用降下来。
  */
 
-import { getView, detachView, setRestoreTarget, setTabContent, tabs } from '$lib/state/tabs.svelte';
 import { pruneProgress } from '$lib/editor/large-file.svelte';
 import { settings } from '$lib/state/settings.svelte';
+import { detachView, getView, setRestoreTarget, setTabContent, tabs } from '$lib/state/tabs.svelte';
+import type { Tab } from '$lib/state/types';
 import {
   HIBERNATE_DEEP_AFTER,
   HIBERNATE_MIN_SIZE,
   HIBERNATE_SHALLOW_AFTER,
   HIBERNATE_TICK,
 } from '$src/constants';
-import type { Tab } from '$lib/state/types';
 
 /** 休眠状态。 */
 export const hibernation = $state({

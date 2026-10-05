@@ -29,14 +29,14 @@
  * 每次滚动同步重算完全来得及，因此不需要额外的节流或 rAF 合并。
  */
 
+import type { Extension, Range } from '@codemirror/state';
 import {
-  EditorView,
   Decoration,
-  ViewPlugin,
   type DecorationSet,
+  EditorView,
+  ViewPlugin,
   type ViewUpdate,
 } from '@codemirror/view';
-import type { Extension, Range } from '@codemirror/state';
 
 /**
  * 数出某行的缩进**列数**。
@@ -107,18 +107,30 @@ function buildGuides(view: EditorView): DecorationSet {
  * 参考线插件。
  *
  * 构造函数负责**初始**计算（这一点 updateListener 做不到），
- * `update` 负责后续的文档与视口变化。
+ * `update` 负责后续的文档、视口与缩进宽度变化。
+ *
+ * `tabSize` 变化也必须重算：竖线间距来自每行内联的 `--indent-step`，
+ * 而那个值是在生成装饰时按当时的 `tabSize` 写死的。
+ * 不重算的话，用户把缩进从 2 改成 4，线还停在原来的间距上。
+ * 判据用 `state.tabSize` 的前后对比——它由 `EditorState.tabSize` facet
+ * 提供，改设置时 `reconfigure` 会让它变化。
  */
 const guidePlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    private tabSize: number;
 
     constructor(view: EditorView) {
+      this.tabSize = view.state.tabSize;
       this.decorations = buildGuides(view);
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged || update.geometryChanged) {
+      const tabSize = update.view.state.tabSize;
+      const tabSizeChanged = tabSize !== this.tabSize;
+
+      if (update.docChanged || update.viewportChanged || update.geometryChanged || tabSizeChanged) {
+        this.tabSize = tabSize;
         this.decorations = buildGuides(update.view);
       }
     }
@@ -156,8 +168,12 @@ export function indentGuides(): Extension {
  *
  * 用 `--border-strong` 而不是 `--border-subtle`：后者在深色主题下
  * 几乎看不见。透明度再压一档，保证它不抢正文注意力。
+ *
+ * 注意这里**不需要 tabSize 参数**：竖线间距由每行内联的
+ * `--indent-step` 变量给出（见 `guideDecoration`），
+ * 因此改缩进宽度时不必重建这份主题，重算装饰即可。
  */
-export function indentGuideTheme(tabSize: number): Extension {
+export function indentGuideTheme(): Extension {
   return EditorView.baseTheme({
     '.cm-indent-guide': {
       /*
@@ -177,23 +193,16 @@ export function indentGuideTheme(tabSize: number): Extension {
 }
 
 /**
- * 供测试与调试：计算某段文本在给定缩进宽度下的参考线行号。
+ * 供调试：计算某段文本里哪些行有缩进（返回 1 基行号）。
  *
- * 抽出来是为了能对纯逻辑做单测，不必真的建一个 EditorView。
+ * 本项目前端没有测试框架，因此这不是「供测试」。保留它是作为排查
+ * 「参考线为什么没画出来」时的探针，可在 DevTools 控制台手动调用。
  */
-export function guideLineNumbers(
-  lines: readonly string[],
-  tabSize: number,
-): number[] {
+export function guideLineNumbers(lines: readonly string[], tabSize: number): number[] {
   const out: number[] = [];
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i] ?? '';
     if (indentColumns(text, tabSize) > 0) out.push(i + 1);
   }
   return out;
-}
-
-/** 供测试与调试：取某行的缩进列数。 */
-export function indentColumnsOf(text: string, tabSize: number): number {
-  return indentColumns(text, tabSize);
 }

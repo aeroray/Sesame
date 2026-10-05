@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#安装)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
-[![Binary size](https://img.shields.io/badge/binary-3.8%20MB-brightgreen.svg)](#为什么这么小)
+[![Binary size](https://img.shields.io/badge/installer-1.9%20MB-brightgreen.svg)](#为什么这么小)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -49,14 +49,16 @@
 | **Markdown 预览** | 用 DOMPurify 净化后渲染；外链交给系统浏览器打开，不会把应用界面顶掉 |
 | **图片查看** | 缩放、适应窗口、1:1、用默认程序打开 |
 | **查找替换** | 支持正则、区分大小写、整词、跨行，并可在面板内替换 |
-| **缩进参考线** | 每一级缩进处画一条淡竖线，可在设置里关闭 |
+| **缩进参考线** | 每一级缩进处画一条淡竖线，默认开启，可在设置里关闭 |
+| **括号彩虹** | 按嵌套层级给括号上色，默认关闭，可在设置里开启 |
 | **省内存** | 长时间未看的标签会释放编辑器实例，切回来立刻重建 |
 | **主题** | 亮色 / 暗色 / 跟随系统，4 套强调色，界面字体与编辑器字体可分别设置 |
 | **界面语言** | 简体中文与英文，默认跟随系统语言 |
 
 ### 为什么这么小
 
-发行版二进制约 **3.8 MB**。Sesame 使用操作系统自带的 WebView
+Windows 安装包约 **1.9 MB**（可执行文件本身 4.3 MB，安装包会压缩它）。
+Sesame 使用操作系统自带的 WebView
 （Windows 上是 WebView2，macOS 上是 WKWebView），不打包浏览器内核——
 这也是它启动这么快的原因。
 
@@ -170,7 +172,6 @@ Sesame 是**单实例**的：打开第二个文件时，它会交给已在运行
 | --- | --- |
 | Windows | `%APPDATA%\com.sesame.app\` |
 | macOS | `~/Library/Application Support/com.sesame.app/` |
-| Linux | `~/.local/share/com.sesame.app/` |
 
 `settings.json` 存偏好设置；`recent.json`、`session.json` 与 `drafts/` 分开存放，
 因此「清空最近文件」不会波及你的会话与未保存内容。
@@ -212,7 +213,9 @@ cargo test --lib    # 运行 Rust 单测，需在 src-tauri/ 目录下
 
 1. 跑一遍 `pnpm check`、`pnpm lint`、`cargo test --lib`，三项都应是干净的。
 2. 若改动涉及外观，先读 `docs/design/design.md` 并遵循它。
-3. 界面文案保持简洁的中文；代码注释也用中文，与现有代码保持一致。
+3. **所有面向用户的文案都要走 i18n 字典**（`src/lib/i18n/messages/`）。
+   新增文案必须**同时**加进 `en.ts` 与 `zh-CN.ts`——漏一边是类型错误，
+   不会静默回退。代码注释保持中文，与现有代码一致；注释与日志不翻译。
 
 ## 许可证
 

@@ -6,9 +6,9 @@
  */
 
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
-import { activeTab } from '$lib/state/tabs.svelte';
-import { notify } from '$lib/state/status.svelte';
 import { t } from '$lib/i18n';
+import { notify } from '$lib/state/status.svelte';
+import { activeTab } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { logError } from '$lib/utils/log';
 

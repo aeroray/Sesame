@@ -6,10 +6,10 @@
  * 两者不重叠：有草稿的标签不会再从会话里恢复一次。
  */
 
-import { createTabFromDraft, findByPath, activateTab, tabs } from '$lib/state/tabs.svelte';
-import { loadDrafts, dropDraft } from '$lib/actions/draft';
+import { dropDraft, loadDrafts } from '$lib/actions/draft';
 import { restoreSession } from '$lib/actions/restore-session';
 import { settings } from '$lib/state/settings.svelte';
+import { activateTab, createTabFromDraft, findByPath, tabs } from '$lib/state/tabs.svelte';
 
 /** 恢复结果，供界面提示。 */
 export interface RestoreReport {

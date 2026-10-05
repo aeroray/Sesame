@@ -1,22 +1,22 @@
 <script lang="ts">
-  /**
-   * 欢迎页：空白标签页的内容。
-   *
-   * 采用「最近文件优先」布局——打开旧文件是高频动作，
-   * 新建/打开两个动作在上方按钮与标题栏都能触达。
-   */
-  import { FileText, FolderOpen, Clock, X } from '@lucide/svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { ScrollArea } from '$lib/components/ui/scroll-area';
-  import { recents, clearRecents, removeRecent } from '$lib/state/recents.svelte';
-  import { openPath, openViaDialog } from '$lib/actions/open-file';
-  import { newTab } from '$lib/actions/new-tab';
-  import { formatRelativeTime, basename, dirname } from '$lib/utils/format';
-  import { RECENT_DISPLAY_LIMIT } from '$src/constants';
-  import { t } from '$lib/i18n';
+/**
+ * 欢迎页：空白标签页的内容。
+ *
+ * 采用「最近文件优先」布局——打开旧文件是高频动作，
+ * 新建/打开两个动作在上方按钮与标题栏都能触达。
+ */
+import { Clock, FileText, FolderOpen, X } from '@lucide/svelte';
+import { newTab } from '$lib/actions/new-tab';
+import { openPath, openViaDialog } from '$lib/actions/open-file';
+import { Button } from '$lib/components/ui/button';
+import { ScrollArea } from '$lib/components/ui/scroll-area';
+import { t } from '$lib/i18n';
+import { clearRecents, recents, removeRecent } from '$lib/state/recents.svelte';
+import { basename, dirname, formatRelativeTime } from '$lib/utils/format';
+import { RECENT_DISPLAY_LIMIT } from '$src/constants';
 
-  /** 只展示前若干条，避免首屏过长。 */
-  const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
+/** 只展示前若干条，避免首屏过长。 */
+const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
 </script>
 
 <div class="flex h-full w-full items-center justify-center overflow-hidden bg-surface p-6">

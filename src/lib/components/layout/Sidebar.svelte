@@ -1,37 +1,37 @@
 <script lang="ts">
-  /**
-   * 左侧栏：已打开的文件与最近文件。
-   *
-   * 默认折叠（见 layout.svelte.ts），需要时按 Ctrl+B 展开。
-   * 窄窗口下自动折叠，避免挤压编辑区。
-   */
-  import { FileText, X, Clock, Layers, Moon } from '@lucide/svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { ScrollArea } from '$lib/components/ui/scroll-area';
-  import {
-    Provider as TooltipProvider,
-    Root as TooltipRoot,
-    Trigger as TooltipTrigger,
-    Content as TooltipContent,
-  } from '$lib/components/ui/tooltip';
-  import { activateTab, tabs } from '$lib/state/tabs.svelte';
-  import { recents, removeRecent } from '$lib/state/recents.svelte';
-  import { openPath } from '$lib/actions/open-file';
-  import { requestCloseTab } from '$lib/actions/close-tab';
-  import { formatRelativeTime } from '$lib/utils/format';
-  import { RECENT_DISPLAY_LIMIT } from '$src/constants';
-  import { cn } from '$lib/utils/cn';
-  import { t } from '$lib/i18n';
+/**
+ * 左侧栏：已打开的文件与最近文件。
+ *
+ * 默认折叠（见 layout.svelte.ts），需要时按 Ctrl+B 展开。
+ * 窄窗口下自动折叠，避免挤压编辑区。
+ */
+import { Clock, FileText, Layers, Moon, X } from '@lucide/svelte';
+import { requestCloseTab } from '$lib/actions/close-tab';
+import { openPath } from '$lib/actions/open-file';
+import { Button } from '$lib/components/ui/button';
+import { ScrollArea } from '$lib/components/ui/scroll-area';
+import {
+  Content as TooltipContent,
+  Provider as TooltipProvider,
+  Root as TooltipRoot,
+  Trigger as TooltipTrigger,
+} from '$lib/components/ui/tooltip';
+import { t } from '$lib/i18n';
+import { recents, removeRecent } from '$lib/state/recents.svelte';
+import { activateTab, tabs } from '$lib/state/tabs.svelte';
+import { cn } from '$lib/utils/cn';
+import { formatRelativeTime } from '$lib/utils/format';
+import { RECENT_DISPLAY_LIMIT } from '$src/constants';
 
-  let { open }: { open: boolean } = $props();
+let { open }: { open: boolean } = $props();
 
-  const visibleRecents = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
+const visibleRecents = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
 
-  /** 已在标签页中打开的文件路径集合，用于避免在最近列表里重复展示。 */
-  const openPaths = $derived(new Set(tabs.items.map((t) => t.path).filter(Boolean)));
+/** 已在标签页中打开的文件路径集合，用于避免在最近列表里重复展示。 */
+const openPaths = $derived(new Set(tabs.items.map((t) => t.path).filter(Boolean)));
 
-  /** 过滤掉已经打开的，避免同一文件出现两次。 */
-  const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path)));
+/** 过滤掉已经打开的，避免同一文件出现两次。 */
+const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path)));
 </script>
 
 <aside

@@ -7,23 +7,12 @@
  */
 
 import {
-  Compartment,
-  EditorState,
-  type Extension,
-} from '@codemirror/state';
-import {
-  EditorView,
-  drawSelection,
-  dropCursor,
-  highlightActiveLine,
-  highlightActiveLineGutter,
-  highlightSpecialChars,
-  keymap,
-  lineNumbers,
-  rectangularSelection,
-  crosshairCursor,
-  highlightTrailingWhitespace,
-} from '@codemirror/view';
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from '@codemirror/autocomplete';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import {
   bracketMatching,
   codeFolding,
@@ -32,19 +21,26 @@ import {
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
-import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
+import { lintKeymap } from '@codemirror/lint';
 import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
-import { searchPhrases } from './search-i18n';
-import { foldMarkerDOM, foldGutterTheme, lineNumberGutterTheme } from './fold-gutter';
+import { Compartment, EditorState, type Extension } from '@codemirror/state';
+import {
+  crosshairCursor,
+  drawSelection,
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  highlightTrailingWhitespace,
+  keymap,
+  lineNumbers,
+  rectangularSelection,
+} from '@codemirror/view';
+import { foldGutterTheme, foldMarkerDOM, lineNumberGutterTheme } from './fold-gutter';
 import { indentGuides, indentGuideTheme } from './indent-guides';
 import { rainbowBrackets, rainbowBracketsTheme } from './rainbow-brackets';
-import {
-  autocompletion,
-  closeBrackets,
-  closeBracketsKeymap,
-  completionKeymap,
-} from '@codemirror/autocomplete';
-import { lintKeymap } from '@codemirror/lint';
+import { searchPhrases } from './search-i18n';
 
 /**
  * 需要用 Compartment 动态重配置的部分。
@@ -160,15 +156,21 @@ export function tabSizeExtension(size: number): Extension {
 
 /** 只读开关。 */
 export function readOnlyExtension(readOnly: boolean): Extension {
-  return [
-    EditorState.readOnly.of(readOnly),
-    EditorView.editable.of(!readOnly),
-  ];
+  return [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)];
 }
 
-/** 缩进参考线开关。 */
-export function indentGuidesExtension(enabled: boolean, tabSize: number): Extension {
-  return enabled ? [indentGuides(), indentGuideTheme(tabSize)] : [];
+/**
+ * 缩进参考线开关。
+ *
+ * 关闭时返回空数组，此时 `indentGuides()` 的字段与监听器都不注册——
+ * 不是「注册了但不画」，而是彻底不参与，省下每次滚动的重算开销。
+ *
+ * 主题**不接收 `tabSize`**：竖线间距由每行内联的 `--indent-step` 给出
+ * （见 `indent-guides.ts` 的 `guideDecoration`），因此改缩进宽度时
+ * 只需重算装饰，不必重建主题。
+ */
+export function indentGuidesExtension(enabled: boolean): Extension {
+  return enabled ? [indentGuides(), indentGuideTheme()] : [];
 }
 
 /**
@@ -210,9 +212,7 @@ export function buildExtensions(
     compartments.wordWrap.of(wordWrapExtension(options.wordWrap)),
     compartments.tabSize.of(tabSizeExtension(options.tabSize)),
     compartments.readOnly.of(readOnlyExtension(options.readOnly)),
-    compartments.indentGuides.of(
-      indentGuidesExtension(options.showIndentGuides, options.tabSize),
-    ),
+    compartments.indentGuides.of(indentGuidesExtension(options.showIndentGuides)),
     compartments.rainbowBrackets.of(rainbowBracketsExtension(options.rainbowBrackets)),
   ];
 }

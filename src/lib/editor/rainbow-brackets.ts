@@ -33,15 +33,15 @@
  *    下标就够了。
  */
 
+import { syntaxTree } from '@codemirror/language';
+import { type EditorState, type Extension, type Range, StateField } from '@codemirror/state';
 import {
-  EditorView,
   Decoration,
-  ViewPlugin,
   type DecorationSet,
+  EditorView,
+  ViewPlugin,
   type ViewUpdate,
 } from '@codemirror/view';
-import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
-import { syntaxTree } from '@codemirror/language';
 
 /**
  * 超过这个文档长度就不启用（字符数）。

@@ -1,67 +1,68 @@
 <script lang="ts">
-  /**
-   * 快捷键一览。
-   */
-  import {
-    Root as DialogRoot,
-    Content as DialogContent,
-    Header as DialogHeader,
-    Title as DialogTitle,
-    Description as DialogDescription,
-    Footer as DialogFooter,
-  } from '$lib/components/ui/dialog';
-  import { Kbd } from '$lib/components/ui/kbd';
-  import { Button } from '$lib/components/ui/button';
-  import { formatKeys, EDITOR_HOTKEYS } from '$lib/utils/hotkeys';
-  import { t, type MessageKey } from '$lib/i18n';
+/**
+ * 快捷键一览。
+ */
 
-  interface Props {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-  }
+import { Button } from '$lib/components/ui/button';
+import {
+  Content as DialogContent,
+  Description as DialogDescription,
+  Footer as DialogFooter,
+  Header as DialogHeader,
+  Root as DialogRoot,
+  Title as DialogTitle,
+} from '$lib/components/ui/dialog';
+import { Kbd } from '$lib/components/ui/kbd';
+import { type MessageKey, t } from '$lib/i18n';
+import { EDITOR_HOTKEYS, formatKeys } from '$lib/utils/hotkeys';
 
-  let { open = $bindable(), onOpenChange }: Props = $props();
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-  /**
-   * 应用级快捷键分组。
-   *
-   * 必须与 `Shell.svelte` 里 `registerHotkeys([...])` 注册的保持一致。
-   * 之所以没做成「自动从注册表生成」：面板要在注册之前渲染，
-   * 而且这两份内容一处是「注册」一处是「展示」，耦合起来反而更难读。
-   * 但**编辑器内建的那些已经抽到 `EDITOR_HOTKEYS`**——那份最容易写错，
-   * 因为它的真实定义在 CodeMirror 里，不抽出来就无法集中核对。
-   *
-   * `title` 与 `label` 存的都是**文案 key**，渲染时才经 `t()` 解析：
-   * 在这里求值会固定在模块加载时的语言，切换语言后不会更新。
-   * `EDITOR_HOTKEYS` 的 `label` 同样已经是 key（见 `utils/hotkeys.ts`）。
-   */
-  const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] }[] = [
-    {
-      title: 'shortcuts.groupFile',
-      items: [
-        { keys: 'Ctrl+N', label: 'tab.new' },
-        { keys: 'Ctrl+O', label: 'command.openFile' },
-        { keys: 'Ctrl+S', label: 'action.save' },
-        { keys: 'Ctrl+Shift+S', label: 'action.saveAs' },
-        { keys: 'Ctrl+W', label: 'command.closeTab' },
-      ],
-    },
-    {
-      title: 'shortcuts.groupEdit',
-      items: EDITOR_HOTKEYS,
-    },
-    {
-      title: 'shortcuts.groupView',
-      items: [
-        { keys: 'Ctrl+B', label: 'command.toggleSidebar' },
-        { keys: 'Ctrl+Shift+M', label: 'editor.preview' },
-        { keys: 'Ctrl+,', label: 'menu.settings' },
-        { keys: 'Ctrl+Tab', label: 'tab.next' },
-        { keys: 'Ctrl+Shift+Tab', label: 'tab.previous' },
-        { keys: 'Ctrl+/', label: 'menu.shortcuts' },
-      ],
-    },
-  ];
+let { open = $bindable(), onOpenChange }: Props = $props();
+
+/**
+ * 应用级快捷键分组。
+ *
+ * 必须与 `Shell.svelte` 里 `registerHotkeys([...])` 注册的保持一致。
+ * 之所以没做成「自动从注册表生成」：面板要在注册之前渲染，
+ * 而且这两份内容一处是「注册」一处是「展示」，耦合起来反而更难读。
+ * 但**编辑器内建的那些已经抽到 `EDITOR_HOTKEYS`**——那份最容易写错，
+ * 因为它的真实定义在 CodeMirror 里，不抽出来就无法集中核对。
+ *
+ * `title` 与 `label` 存的都是**文案 key**，渲染时才经 `t()` 解析：
+ * 在这里求值会固定在模块加载时的语言，切换语言后不会更新。
+ * `EDITOR_HOTKEYS` 的 `label` 同样已经是 key（见 `utils/hotkeys.ts`）。
+ */
+const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] }[] = [
+  {
+    title: 'shortcuts.groupFile',
+    items: [
+      { keys: 'Ctrl+N', label: 'tab.new' },
+      { keys: 'Ctrl+O', label: 'command.openFile' },
+      { keys: 'Ctrl+S', label: 'action.save' },
+      { keys: 'Ctrl+Shift+S', label: 'action.saveAs' },
+      { keys: 'Ctrl+W', label: 'command.closeTab' },
+    ],
+  },
+  {
+    title: 'shortcuts.groupEdit',
+    items: EDITOR_HOTKEYS,
+  },
+  {
+    title: 'shortcuts.groupView',
+    items: [
+      { keys: 'Ctrl+B', label: 'command.toggleSidebar' },
+      { keys: 'Ctrl+Shift+M', label: 'editor.preview' },
+      { keys: 'Ctrl+,', label: 'menu.settings' },
+      { keys: 'Ctrl+Tab', label: 'tab.next' },
+      { keys: 'Ctrl+Shift+Tab', label: 'tab.previous' },
+      { keys: 'Ctrl+/', label: 'menu.shortcuts' },
+    ],
+  },
+];
 </script>
 
 <DialogRoot bind:open>

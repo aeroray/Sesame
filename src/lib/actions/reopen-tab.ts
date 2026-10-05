@@ -8,11 +8,11 @@
  * 重开若另写一份，两者迟早会不一致。
  */
 
-import { takeClosed, hasClosed } from '$lib/state/closed-tabs.svelte';
-import { activateTab, findByPath, setRestoreTarget } from '$lib/state/tabs.svelte';
 import { openPath } from '$lib/actions/open-file';
-import { notify } from '$lib/state/status.svelte';
 import { t } from '$lib/i18n';
+import { hasClosed, takeClosed } from '$lib/state/closed-tabs.svelte';
+import { notify } from '$lib/state/status.svelte';
+import { activateTab, findByPath, setRestoreTarget } from '$lib/state/tabs.svelte';
 
 /**
  * 重开最近关闭的一个标签。

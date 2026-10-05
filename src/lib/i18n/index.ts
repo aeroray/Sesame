@@ -21,21 +21,21 @@
  * `t()` 读 `locale.current`，所以在模板或 `$derived` 里调用它会自动跟随切换。
  */
 
+import { logError } from '$lib/utils/log';
+import type { Locale } from './locale';
+import { locale } from './locale.svelte';
 import { en, type Messages } from './messages/en';
 import { zhCN } from './messages/zh-CN';
-import { locale } from './locale.svelte';
-import type { Locale } from './locale';
-import { logError } from '$lib/utils/log';
 
+export type { Locale } from './locale';
+export { detectSystemLocale, LOCALE_LABELS, LOCALES, normalizeLocale } from './locale';
 /*
  * 把语言状态与解析工具**再导出**一次。
  *
  * 调用方只需要 `from '$lib/i18n'` 一个入口，不必关心内部把状态
  * 放在了 `.svelte.ts` 里——那是实现细节。
  */
-export { locale, setLocale, applySystemLocale, resolveLocale } from './locale.svelte';
-export { LOCALES, LOCALE_LABELS, detectSystemLocale, normalizeLocale } from './locale';
-export type { Locale } from './locale';
+export { applySystemLocale, locale, resolveLocale, setLocale } from './locale.svelte';
 
 const DICTIONARIES: Record<Locale, Messages> = {
   en,

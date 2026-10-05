@@ -1,57 +1,57 @@
 <script lang="ts">
-  /**
-   * 单个标签页。
-   *
-   * 未保存时用圆点替代关闭按钮（悬停时切回关闭按钮），
-   * 这是编辑器通行做法，既省空间又能一眼看出哪些没存。
-   *
-   * 拖拽排序用原生 HTML5 DnD：标签栏是纯横向列表，
-   * 引入拖拽库只为这点功能不值得。
-   */
-  import { X, FileText, Image as ImageIcon } from '@lucide/svelte';
-  import { cn } from '$lib/utils/cn';
-  import { LANGUAGE_LABELS } from '$lib/editor/languages';
-  import type { Tab } from '$lib/state/types';
-  import { t } from '$lib/i18n';
+/**
+ * 单个标签页。
+ *
+ * 未保存时用圆点替代关闭按钮（悬停时切回关闭按钮），
+ * 这是编辑器通行做法，既省空间又能一眼看出哪些没存。
+ *
+ * 拖拽排序用原生 HTML5 DnD：标签栏是纯横向列表，
+ * 引入拖拽库只为这点功能不值得。
+ */
+import { FileText, Image as ImageIcon, X } from '@lucide/svelte';
+import { LANGUAGE_LABELS } from '$lib/editor/languages';
+import { t } from '$lib/i18n';
+import type { Tab } from '$lib/state/types';
+import { cn } from '$lib/utils/cn';
 
-  interface Props {
-    tab: Tab;
-    active: boolean;
-    index: number;
-    /** 当前正在被拖拽的标签索引，用于显示落点指示。 */
-    draggingIndex: number | null;
-    onactivate: (id: string) => void;
-    onclose: (tab: Tab) => void;
-    ondragstart: (index: number) => void;
-    ondrop: (index: number) => void;
-    ondragend: () => void;
-    /** 方向键导航：+1 下一个，-1 上一个。 */
-    onnavigate: (step: number) => void;
-  }
+interface Props {
+  tab: Tab;
+  active: boolean;
+  index: number;
+  /** 当前正在被拖拽的标签索引，用于显示落点指示。 */
+  draggingIndex: number | null;
+  onactivate: (id: string) => void;
+  onclose: (tab: Tab) => void;
+  ondragstart: (index: number) => void;
+  ondrop: (index: number) => void;
+  ondragend: () => void;
+  /** 方向键导航：+1 下一个，-1 上一个。 */
+  onnavigate: (step: number) => void;
+}
 
-  let {
-    tab,
-    active,
-    index,
-    draggingIndex,
-    onactivate,
-    onclose,
-    ondragstart,
-    ondrop,
-    ondragend,
-    onnavigate,
-  }: Props = $props();
+let {
+  tab,
+  active,
+  index,
+  draggingIndex,
+  onactivate,
+  onclose,
+  ondragstart,
+  ondrop,
+  ondragend,
+  onnavigate,
+}: Props = $props();
 
-  let hovering = $state(false);
+let hovering = $state(false);
 
-  /** 是否显示关闭按钮：悬停时始终显示。 */
-  const showClose = $derived(hovering || !tab.dirty);
+/** 是否显示关闭按钮：悬停时始终显示。 */
+const showClose = $derived(hovering || !tab.dirty);
 
-  /** 是否是拖拽落点。 */
-  const isDropTarget = $derived(draggingIndex !== null && draggingIndex !== index);
+/** 是否是拖拽落点。 */
+const isDropTarget = $derived(draggingIndex !== null && draggingIndex !== index);
 
-  /** 拖拽源高亮。 */
-  const isDragging = $derived(draggingIndex === index);
+/** 拖拽源高亮。 */
+const isDragging = $derived(draggingIndex === index);
 </script>
 
 <div

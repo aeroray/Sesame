@@ -5,9 +5,9 @@
  * 若写进 session.svelte.ts 就会形成 actions ↔ state 的循环依赖。
  */
 
-import { findByPath, activateTab, setRestoreTarget, tabs } from '$lib/state/tabs.svelte';
-import { loadSnapshot } from '$lib/state/session.svelte';
 import { openPath } from '$lib/actions/open-file';
+import { loadSnapshot } from '$lib/state/session.svelte';
+import { activateTab, findByPath, setRestoreTarget, tabs } from '$lib/state/tabs.svelte';
 
 /**
  * 启动时恢复上次会话。

@@ -15,8 +15,8 @@
  * 展开时箭头朝下，折叠时旋转为朝右——与 VSCode 的折叠栏表现一致。
  */
 
-import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import { t } from '$lib/i18n';
 
 /** SVG 命名空间。 */

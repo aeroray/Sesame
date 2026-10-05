@@ -20,7 +20,7 @@
  */
 
 import * as ipc from '$lib/ipc/fs';
-import { getView, tabs, hasTabContent, peekTabContent } from '$lib/state/tabs.svelte';
+import { getView, hasTabContent, peekTabContent, tabs } from '$lib/state/tabs.svelte';
 import type { Draft, Tab } from '$lib/state/types';
 import { logError } from '$lib/utils/log';
 

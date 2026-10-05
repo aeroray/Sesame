@@ -5,20 +5,20 @@
  * 组件层只负责挂载与卸载。
  */
 
+import { historyField } from '@codemirror/commands';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import { historyField } from '@codemirror/commands';
 import { logError } from '$lib/utils/log';
 import {
   buildExtensions,
   createCompartments,
+  type EditorCompartments,
   gutterExtension,
   indentGuidesExtension,
   rainbowBracketsExtension,
   readOnlyExtension,
   tabSizeExtension,
   wordWrapExtension,
-  type EditorCompartments,
 } from './extensions';
 
 /** 创建视图所需的全部选项。 */
@@ -199,19 +199,22 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
       if (next.readOnly !== undefined) {
         effects.push(compartments.readOnly.reconfigure(readOnlyExtension(next.readOnly)));
       }
-      // 参考线的竖线间距等于一个缩进宽度，因此 tabSize 变化也要重配
-      if (next.showIndentGuides !== undefined || next.tabSize !== undefined) {
+      /*
+       * 参考线只依赖开关本身。
+       *
+       * 缩进宽度变化**不需要**重配这一段：竖线间距来自每行内联的
+       * `--indent-step`，而 `tabSize` 变化会让 `EditorState.tabSize`
+       * 改变，`guidePlugin.update` 检测到之后自己重算装饰。
+       * 因此这里只判断 `showIndentGuides`。
+       */
+      if (next.showIndentGuides !== undefined) {
         effects.push(
-          compartments.indentGuides.reconfigure(
-            indentGuidesExtension(merged.showIndentGuides, merged.tabSize),
-          ),
+          compartments.indentGuides.reconfigure(indentGuidesExtension(merged.showIndentGuides)),
         );
       }
       if (next.rainbowBrackets !== undefined) {
         effects.push(
-          compartments.rainbowBrackets.reconfigure(
-            rainbowBracketsExtension(next.rainbowBrackets),
-          ),
+          compartments.rainbowBrackets.reconfigure(rainbowBracketsExtension(next.rainbowBrackets)),
         );
       }
 

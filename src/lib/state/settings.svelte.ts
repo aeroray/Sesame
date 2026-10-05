@@ -6,11 +6,11 @@
  */
 
 import { load, type Store } from '@tauri-apps/plugin-store';
-import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
+import { applySystemLocale, resolveLocale, setLocale } from '$lib/i18n';
 import type { Settings } from '$lib/state/types';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
-import { applySystemLocale, setLocale, resolveLocale } from '$lib/i18n';
 import { logError } from '$lib/utils/log';
+import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {

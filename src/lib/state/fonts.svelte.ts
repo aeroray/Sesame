@@ -5,8 +5,8 @@
  * 因此这里做三件事：加载态、一次性缓存、失败降级。
  */
 
-import * as ipc from '$lib/ipc/fs';
 import { t } from '$lib/i18n';
+import * as ipc from '$lib/ipc/fs';
 import type { FontFamily } from '$lib/state/types';
 
 /** 响应式状态。 */

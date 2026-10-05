@@ -6,21 +6,21 @@
  */
 
 import { open } from '@tauri-apps/plugin-dialog';
-import { notify } from '$lib/state/status.svelte';
-import { fileFilters, IMAGE_EXTENSIONS } from '$src/constants';
+import { initProgress, loadNextChunk } from '$lib/editor/large-file.svelte';
 import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
+import { noteFileSize, touch } from '$lib/state/hibernation.svelte';
+import { ensureImage } from '$lib/state/images.svelte';
 import { addRecent } from '$lib/state/recents.svelte';
+import { scheduleSessionSave } from '$lib/state/session.svelte';
+import { notify } from '$lib/state/status.svelte';
 import {
   activateTab,
   createImageTab,
   createTabFromPayload,
   findByPath,
 } from '$lib/state/tabs.svelte';
-import { ensureImage } from '$lib/state/images.svelte';
-import { initProgress, loadNextChunk } from '$lib/editor/large-file.svelte';
-import { noteFileSize, touch } from '$lib/state/hibernation.svelte';
-import { scheduleSessionSave } from '$lib/state/session.svelte';
+import { fileFilters, IMAGE_EXTENSIONS } from '$src/constants';
 /** 提示错误信息。 */
 export function reportError(err: unknown, fallback = t('error.generic')): void {
   const message =

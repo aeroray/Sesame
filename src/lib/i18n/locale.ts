@@ -57,9 +57,7 @@ export function normalizeLocale(tag: string | null | undefined): Locale {
 export function detectSystemLocale(): Locale {
   if (typeof navigator === 'undefined') return FALLBACK_LOCALE;
 
-  const candidates = navigator.languages?.length
-    ? navigator.languages
-    : [navigator.language];
+  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
 
   for (const tag of candidates) {
     if (!tag) continue;

@@ -1,98 +1,99 @@
 <script lang="ts">
-  /**
-   * Markdown 预览。
-   *
-   * 安全说明（重要）：
-   * `marked` **不会**转义原始 HTML —— 文档里的 `<script>`、`<img onerror=...>`
-   * 会被原样输出。预览必须经 `{@html}` 注入，因此渲染结果一律先过 DOMPurify。
-   * 打开一个来路不明的 .md 就等于把它的内容当代码执行，这是必须挡住的。
-   */
-  import { marked } from 'marked';
-  import DOMPurify from 'dompurify';
-  import { openUrl } from '@tauri-apps/plugin-opener';
-  import { ScrollArea } from '$lib/components/ui/scroll-area';
-  import { t } from '$lib/i18n';
+/**
+ * Markdown 预览。
+ *
+ * 安全说明（重要）：
+ * `marked` **不会**转义原始 HTML —— 文档里的 `<script>`、`<img onerror=...>`
+ * 会被原样输出。预览必须经 `{@html}` 注入，因此渲染结果一律先过 DOMPurify。
+ * 打开一个来路不明的 .md 就等于把它的内容当代码执行，这是必须挡住的。
+ */
+
+import { openUrl } from '@tauri-apps/plugin-opener';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
+import { ScrollArea } from '$lib/components/ui/scroll-area';
+import { t } from '$lib/i18n';
 import { logError } from '$lib/utils/log';
 
-  interface Props {
-    content: string;
+interface Props {
+  content: string;
+}
+
+let { content }: Props = $props();
+
+marked.use({ gfm: true, breaks: false, async: false });
+
+/**
+ * 渲染并净化。
+ *
+ * DOMPurify 会剔除 script、事件属性（onerror 等）与 javascript: 协议，
+ * 同时保留正常的排版标签与链接。
+ */
+const html = $derived.by(() => {
+  try {
+    const raw = marked.parse(content, { async: false }) as string;
+    return DOMPurify.sanitize(raw, {
+      USE_PROFILES: { html: true },
+      // 明确禁止这些危险标签，即使 DOMPurify 默认已处理也写清楚意图
+      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    });
+  } catch (err) {
+    logError('MarkdownPreview', 'Markdown 渲染失败', err);
+    // 走 `t()` 而不是内联中文：这条兜底文案会真的显示在界面上
+    return `<p>${t('error.renderFailed')}</p>`;
   }
+});
 
-  let { content }: Props = $props();
+/**
+ * 拦截链接点击，交给系统默认浏览器打开。
+ *
+ * 不做这一步的话，点击外链会让 WebView 直接导航到那个网址：
+ * 应用界面被整个替换成网页，而窗口没有地址栏也没有后退按钮，
+ * 用户只能重启应用。
+ *
+ * 这里在**前端**拦是为了把外链交给系统浏览器（用户预期如此），
+ * 而 Rust 侧的导航守卫是最后一道防线——即使这里漏了，
+ * 导航也会被拒绝，界面不会被顶掉。
+ *
+ * 用原生 `addEventListener` 而不是模板上的 `onclick`：
+ * 处理器是给内部链接做**事件委托**的，`<article>` 本身不是可交互元素，
+ * 写成模板事件会被无障碍检查判为「非交互元素绑定了点击」。
+ */
+let article = $state<HTMLElement | null>(null);
 
-  marked.use({ gfm: true, breaks: false, async: false });
+$effect(() => {
+  const el = article;
+  if (!el) return;
 
-  /**
-   * 渲染并净化。
-   *
-   * DOMPurify 会剔除 script、事件属性（onerror 等）与 javascript: 协议，
-   * 同时保留正常的排版标签与链接。
-   */
-  const html = $derived.by(() => {
-    try {
-      const raw = marked.parse(content, { async: false }) as string;
-      return DOMPurify.sanitize(raw, {
-        USE_PROFILES: { html: true },
-        // 明确禁止这些危险标签，即使 DOMPurify 默认已处理也写清楚意图
-        FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
-      });
-    } catch (err) {
-      logError('MarkdownPreview', 'Markdown 渲染失败', err);
-      // 走 `t()` 而不是内联中文：这条兜底文案会真的显示在界面上
-      return `<p>${t('error.renderFailed')}</p>`;
-    }
-  });
+  const onClick = (event: MouseEvent) => {
+    const anchor = (event.target as HTMLElement | null)?.closest('a');
+    if (!anchor) return;
 
-  /**
-   * 拦截链接点击，交给系统默认浏览器打开。
-   *
-   * 不做这一步的话，点击外链会让 WebView 直接导航到那个网址：
-   * 应用界面被整个替换成网页，而窗口没有地址栏也没有后退按钮，
-   * 用户只能重启应用。
-   *
-   * 这里在**前端**拦是为了把外链交给系统浏览器（用户预期如此），
-   * 而 Rust 侧的导航守卫是最后一道防线——即使这里漏了，
-   * 导航也会被拒绝，界面不会被顶掉。
-   *
-   * 用原生 `addEventListener` 而不是模板上的 `onclick`：
-   * 处理器是给内部链接做**事件委托**的，`<article>` 本身不是可交互元素，
-   * 写成模板事件会被无障碍检查判为「非交互元素绑定了点击」。
-   */
-  let article = $state<HTMLElement | null>(null);
+    const href = anchor.getAttribute('href');
+    if (!href) return;
 
-  $effect(() => {
-    const el = article;
-    if (!el) return;
+    // 页面内锚点（#section）交给浏览器处理，不要当外链打开
+    if (href.startsWith('#')) return;
 
-    const onClick = (event: MouseEvent) => {
-      const anchor = (event.target as HTMLElement | null)?.closest('a');
-      if (!anchor) return;
+    // 任何链接都不该让应用自身导航走
+    event.preventDefault();
 
-      const href = anchor.getAttribute('href');
-      if (!href) return;
+    /*
+     * 只把真正的网络地址交给系统浏览器。
+     * `javascript:` / `data:` 之类既不是有效外链、也有安全风险，直接忽略
+     * （DOMPurify 已过滤大部分，这里是第二道）。
+     */
+    if (!/^https?:\/\//i.test(href)) return;
 
-      // 页面内锚点（#section）交给浏览器处理，不要当外链打开
-      if (href.startsWith('#')) return;
+    void openUrl(href).catch((err) => {
+      logError('MarkdownPreview', '打开链接失败', err);
+    });
+  };
 
-      // 任何链接都不该让应用自身导航走
-      event.preventDefault();
-
-      /*
-       * 只把真正的网络地址交给系统浏览器。
-       * `javascript:` / `data:` 之类既不是有效外链、也有安全风险，直接忽略
-       * （DOMPurify 已过滤大部分，这里是第二道）。
-       */
-      if (!/^https?:\/\//i.test(href)) return;
-
-      void openUrl(href).catch((err) => {
-        logError('MarkdownPreview', '打开链接失败', err);
-      });
-    };
-
-    el.addEventListener('click', onClick);
-    return () => el.removeEventListener('click', onClick);
-  });
+  el.addEventListener('click', onClick);
+  return () => el.removeEventListener('click', onClick);
+});
 </script>
 
 <ScrollArea class="h-full w-full bg-surface">

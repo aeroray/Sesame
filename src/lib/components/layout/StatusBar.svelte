@@ -1,43 +1,43 @@
 <script lang="ts">
-  /**
-   * 状态栏：展示当前文件的语言、编码、换行风格与光标位置。
-   * 右侧提供换行与行号的快捷开关。
-   */
-  import { WrapText, ListOrdered, Eye, Code } from '@lucide/svelte';
-  import { Badge } from '$lib/components/ui/badge';
-  import Hint from '$lib/components/common/Hint.svelte';
-  import EncodingPicker from '$lib/components/common/EncodingPicker.svelte';
-  import { activeTab } from '$lib/state/tabs.svelte';
-  import { settings, updateSetting } from '$lib/state/settings.svelte';
-  import { isPreviewing } from '$lib/state/layout.svelte';
-  import { requestTogglePreview } from '$lib/actions/preview';
-  import { LANGUAGE_LABELS } from '$lib/editor/languages';
-  import { t } from '$lib/i18n';
+/**
+ * 状态栏：展示当前文件的语言、编码、换行风格与光标位置。
+ * 右侧提供换行与行号的快捷开关。
+ */
+import { Code, Eye, ListOrdered, WrapText } from '@lucide/svelte';
+import { requestTogglePreview } from '$lib/actions/preview';
+import EncodingPicker from '$lib/components/common/EncodingPicker.svelte';
+import Hint from '$lib/components/common/Hint.svelte';
+import { Badge } from '$lib/components/ui/badge';
+import { LANGUAGE_LABELS } from '$lib/editor/languages';
+import { t } from '$lib/i18n';
+import { isPreviewing } from '$lib/state/layout.svelte';
+import { settings, updateSetting } from '$lib/state/settings.svelte';
+import { activeTab } from '$lib/state/tabs.svelte';
 
-  const tab = $derived(activeTab());
+const tab = $derived(activeTab());
 
-  /** 当前标签页能否预览（仅 Markdown）。 */
-  const canPreview = $derived(tab?.language === 'markdown');
+/** 当前标签页能否预览（仅 Markdown）。 */
+const canPreview = $derived(tab?.language === 'markdown');
 
-  /** 是否处于预览模式。 */
-  const previewing = $derived(tab ? isPreviewing(tab.id) : false);
+/** 是否处于预览模式。 */
+const previewing = $derived(tab ? isPreviewing(tab.id) : false);
 
-  /** 编码名大写展示，符合编辑器惯例。 */
-  const encodingLabel = $derived(tab?.encoding.toUpperCase() ?? '');
+/** 编码名大写展示，符合编辑器惯例。 */
+const encodingLabel = $derived(tab?.encoding.toUpperCase() ?? '');
 
-  /**
-   * 是否为「非文本」内容。
-   *
-   * 后端探测到大量无法解码的字节时会把编码标为 `binary` 并返回空正文。
-   * 这类文件（exe、zip、数据库……）**不能用文本编辑器保存**——
-   * 保存会把有损解码的乱码写回去，把原文件毁掉。
-   */
-  const isBinary = $derived(tab?.encoding === 'binary');
+/**
+ * 是否为「非文本」内容。
+ *
+ * 后端探测到大量无法解码的字节时会把编码标为 `binary` 并返回空正文。
+ * 这类文件（exe、zip、数据库……）**不能用文本编辑器保存**——
+ * 保存会把有损解码的乱码写回去，把原文件毁掉。
+ */
+const isBinary = $derived(tab?.encoding === 'binary');
 
-  /** 换行风格的展示名。 */
-  const lineEndingLabel = $derived(
-    tab?.lineEnding === 'crlf' ? 'CRLF' : tab?.lineEnding === 'cr' ? 'CR' : 'LF',
-  );
+/** 换行风格的展示名。 */
+const lineEndingLabel = $derived(
+  tab?.lineEnding === 'crlf' ? 'CRLF' : tab?.lineEnding === 'cr' ? 'CR' : 'LF',
+);
 </script>
 
 <footer

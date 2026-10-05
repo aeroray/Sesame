@@ -16,12 +16,12 @@
  * 编码根本不会变。因此这里必须绕过去重，直接走 IPC 再原地替换标签内容。
  */
 
-import * as ipc from '$lib/ipc/fs';
-import { replaceTabContent, renameTab, markDirty, setTruncated } from '$lib/state/tabs.svelte';
-import { clearProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { dropDraft } from '$lib/actions/draft';
 import { reportError } from '$lib/actions/open-file';
+import { clearProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { t } from '$lib/i18n';
+import * as ipc from '$lib/ipc/fs';
+import { markDirty, renameTab, replaceTabContent, setTruncated } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 
 /**

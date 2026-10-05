@@ -1,87 +1,87 @@
 <script lang="ts">
-  /**
-   * 图片查看器。
-   *
-   * 支持缩放、适应窗口与 1:1 原始尺寸，以及用系统默认程序打开。
-   * 缩放用 transform 而不是改宽高：后者会触发重排，拖动滑块时明显卡顿。
-   */
-  import { ZoomIn, ZoomOut, Maximize, Scan, ExternalLink, Loader2, ImageOff } from '@lucide/svelte';
-  import { untrack } from 'svelte';
-  import { Button } from '$lib/components/ui/button';
-  import Hint from '$lib/components/common/Hint.svelte';
-  import { openPath } from '@tauri-apps/plugin-opener';
-  import { ensureImage, getImage, isLoading } from '$lib/state/images.svelte';
-  import { formatBytes } from '$lib/utils/format';
-  import { reportError } from '$lib/actions/open-file';
-  import { t } from '$lib/i18n';
-  import type { Tab } from '$lib/state/types';
+/**
+ * 图片查看器。
+ *
+ * 支持缩放、适应窗口与 1:1 原始尺寸，以及用系统默认程序打开。
+ * 缩放用 transform 而不是改宽高：后者会触发重排，拖动滑块时明显卡顿。
+ */
+import { ExternalLink, ImageOff, Loader2, Maximize, Scan, ZoomIn, ZoomOut } from '@lucide/svelte';
+import { openPath } from '@tauri-apps/plugin-opener';
+import { untrack } from 'svelte';
+import { reportError } from '$lib/actions/open-file';
+import Hint from '$lib/components/common/Hint.svelte';
+import { Button } from '$lib/components/ui/button';
+import { t } from '$lib/i18n';
+import { ensureImage, getImage, isLoading } from '$lib/state/images.svelte';
+import type { Tab } from '$lib/state/types';
+import { formatBytes } from '$lib/utils/format';
 
-  interface Props {
-    tab: Tab;
-  }
+interface Props {
+  tab: Tab;
+}
 
-  let { tab }: Props = $props();
+let { tab }: Props = $props();
 
-  /** 缩放倍率。 */
-  let zoom = $state(1);
-  /** 是否处于「适应窗口」模式。 */
-  let fit = $state(true);
-  /** 图片的原始像素尺寸，由 img 元素加载后回填。 */
-  let natural = $state<{ w: number; h: number } | null>(null);
+/** 缩放倍率。 */
+let zoom = $state(1);
+/** 是否处于「适应窗口」模式。 */
+let fit = $state(true);
+/** 图片的原始像素尺寸，由 img 元素加载后回填。 */
+let natural = $state<{ w: number; h: number } | null>(null);
 
-  const payload = $derived(getImage(tab.id));
-  const loading = $derived(isLoading(tab.id));
+const payload = $derived(getImage(tab.id));
+const loading = $derived(isLoading(tab.id));
 
-  const MIN_ZOOM = 0.1;
-  const MAX_ZOOM = 8;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 8;
 
-  /*
-   * 标签出现时按需读取图片。
-   *
-   * `untrack` 是必须的：`ensureImage` 内部会读 `images` / `loading`
-   * 这两个响应式源，而它自己又会写 `loading`。若让 effect 追踪这些读取，
-   * 写入就会反过来触发 effect 重跑。当前靠「第二次进来就早退」收敛，
-   * 但那是不必要的隐式依赖——显式 untrack 后 effect 只依赖 `tab.id` 与 `tab.path`。
-   */
-  $effect(() => {
-    const id = tab.id;
-    const path = tab.path;
-    if (!path) return;
-    untrack(() => {
-      ensureImage(id, path).catch((err) => reportError(err, t('error.readImageFailed')));
-    });
+/*
+ * 标签出现时按需读取图片。
+ *
+ * `untrack` 是必须的：`ensureImage` 内部会读 `images` / `loading`
+ * 这两个响应式源，而它自己又会写 `loading`。若让 effect 追踪这些读取，
+ * 写入就会反过来触发 effect 重跑。当前靠「第二次进来就早退」收敛，
+ * 但那是不必要的隐式依赖——显式 untrack 后 effect 只依赖 `tab.id` 与 `tab.path`。
+ */
+$effect(() => {
+  const id = tab.id;
+  const path = tab.path;
+  if (!path) return;
+  untrack(() => {
+    ensureImage(id, path).catch((err) => reportError(err, t('error.readImageFailed')));
   });
+});
 
-  /** 图片加载完成后记录原始尺寸，用于显示与 1:1 切换。 */
-  function onLoad(event: Event) {
-    const img = event.currentTarget as HTMLImageElement;
-    natural = { w: img.naturalWidth, h: img.naturalHeight };
-  }
+/** 图片加载完成后记录原始尺寸，用于显示与 1:1 切换。 */
+function onLoad(event: Event) {
+  const img = event.currentTarget as HTMLImageElement;
+  natural = { w: img.naturalWidth, h: img.naturalHeight };
+}
 
-  function zoomBy(factor: number) {
-    fit = false;
-    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
-  }
+function zoomBy(factor: number) {
+  fit = false;
+  zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+}
 
-  function resetZoom() {
-    fit = true;
-    zoom = 1;
-  }
+function resetZoom() {
+  fit = true;
+  zoom = 1;
+}
 
-  function actualSize() {
-    fit = false;
-    zoom = 1;
-  }
+function actualSize() {
+  fit = false;
+  zoom = 1;
+}
 
-  /** 用系统默认程序打开原文件。 */
-  async function openExternally() {
-    if (!tab.path) return;
-    try {
-      await openPath(tab.path);
-    } catch (err) {
-      reportError(err, t('error.openExternallyFailed'));
-    }
+/** 用系统默认程序打开原文件。 */
+async function openExternally() {
+  if (!tab.path) return;
+  try {
+    await openPath(tab.path);
+  } catch (err) {
+    reportError(err, t('error.openExternallyFailed'));
   }
+}
 </script>
 
 <div class="flex h-full w-full flex-col bg-surface-sunken">
