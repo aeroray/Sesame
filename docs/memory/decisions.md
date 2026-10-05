@@ -2,6 +2,37 @@
 
 Entries are newest first.
 
+## MC-DEC-20261021-a1b2c3d4 — 视图重建时保留撤销历史
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261021-b2c3d4e5
+Facet: correctness
+Evidence:
+- repo:src/lib/editor/create-view.ts
+- repo:src/lib/state/tabs.svelte.ts
+- repo:src/lib/components/editor/EditorHost.svelte
+
+Decision:
+`EditorHandle` 新增 `exportHistory()`，用 `EditorState.toJSON({ history: historyField })` 导出；`CreateViewOptions` 新增 `history`，有值时用 `EditorState.fromJSON` 建状态。状态层新增 `pendingHistory` Map 与 set/take/drop 三个函数。EditorHost 在 effect 清理函数里先导出历史再销毁，重建时传入。
+Reason:
+休眠唤醒与切换 Markdown 预览都会销毁 `EditorView`，而撤销栈存在 EditorState 里随之丢失——用户切一下预览就再也按不回 Ctrl+Z。用整份状态序列化而不是只存 history 字段，是因为 `historyField` 的类型是 `StateField<unknown>`，直接调它的 `toJSON` 拿不到类型信息。两个必须注意的点：**取出即清除**（历史是相对文档的变更集，只能用一次，留着会用错偏移）；**整体替换内容时必须丢弃**（`replaceTabContent` 调 `dropTabHistory`，「加载磁盘内容」与「换编码重开」都是整篇替换）。恢复失败时退回正常创建——丢掉「能撤销」远好过让编辑器打不开。
+
+## MC-DEC-20261021-b2c3d4e5 — 括号彩虹默认关闭
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261021-c3d4e5f6
+Facet: interface
+Evidence:
+- user-confirmed
+- repo:src/lib/editor/rainbow-brackets.ts
+
+Decision:
+实现括号彩虹（按嵌套层级给括号上色），但**默认关闭**，可在设置里打开。层级用 `StateField` 预计算每行行首深度并缓存，`ViewPlugin` 只读缓存生成装饰。文档超过 20 万字符时不启用。扫描时跳过字符串与注释（用游标推进，不是每字符线性查找）。
+Reason:
+与「安静」的定位有张力——多色括号是主动吸引注意力的装饰，而缩进参考线可以在不被察觉的前提下提供价值，因此两者默认值相反。判定标准是「是否争夺注意力」而非「是否有用」。性能上的两个决定：预计算是 O(n) 且每行存一个数，大文件下语法高亮本身已吃力；跳过区间若每字符线性查找是 O(字符数 × 区间数)，几十万字符会慢到不可用（`syntaxTree.iterate` 按位置升序产生节点，一个只前进的下标即可）。跳过字符串是必须的：`printf("(((")` 会让后面所有括号层级错位。
+
 ## MC-DEC-20261020-a1b2c3d4 — 引入双语界面（简体中文 / 英文）
 
 Status: active

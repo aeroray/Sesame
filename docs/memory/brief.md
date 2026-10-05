@@ -28,6 +28,8 @@ System shape:
 - 操作反馈用**标题栏中央的状态提示**（`layout/StatusLine.svelte` + `state/status.svelte.ts`），不用 toast：图标 + 一行短文案，按语气分档自动消失（2.2s / 2.6s / 4s / 6s）。标题栏中央不再显示文件名（标签栏已有）。需要用户**决策**的事仍走原生 `message()` 对话框。`svelte-sonner` 依赖已移除。
 - 二进制安全：编码探测兜底会判定「是不是文本」，非图片二进制（exe/zip/db）标记为 `binary`、编辑器只读、Rust 侧拒绝写入。导航守卫默认拒绝一切外部导航，Markdown 外链交给系统浏览器。
 - 缩进参考线用 `ViewPlugin` + 两层背景渐变（`editor/indent-guides.ts`），只处理视口内的行。
+- 括号彩虹（`editor/rainbow-brackets.ts`）**默认关闭**：层级用 `StateField` 预计算每行行首深度并缓存，`ViewPlugin` 只读缓存生成装饰；文档超 20 万字符不启用；扫描时跳过字符串与注释。与缩进参考线默认值相反——判定标准是「是否争夺注意力」而非「是否有用」。
+- **撤销历史跨视图重建保留**：`EditorHandle.exportHistory()` + `CreateViewOptions.history`，状态层用 `pendingHistory` Map 中转。休眠唤醒与预览切换不再丢失 Ctrl+Z。
 - 日志统一走 `utils/log.ts`（带 scope、开发环境开关），**日志文案不进 i18n 字典**。
 - Rust 端按 `commands` / `core` / `model` 分层；路径规范化、编码转换、语言识别、磁盘 IO 均在 Rust 侧完成，写操作走 `spawn_blocking`，前端只传字符串。
 - 界面布局为标题栏 + 标签栏 + 编辑区，左侧栏默认折叠（Ctrl+B 展开）。
@@ -40,4 +42,6 @@ Verification:
 - 界面形状验收：标题栏状态提示在真实应用里实测（「✓ 已保存」绿色显示于标题栏中央，约 2.2s 后自动消失，标题栏恢复干净）；浏览器查找栏已关闭（Ctrl+F 不再弹 WebView2 的原生查找栏）。
 - 国际化验收：**实测把 `language` 设为 `en` 后整个界面切换为英文**（菜单、状态栏、快捷键提示全部生效，中文只剩代码注释）；菜单项英文文案不再折行。
 - 缩进参考线验收：用 CDP 读真实计算样式确认——4ch 缩进得到 `background-size: 28px` + `no-repeat`，8ch 缩进的行正确出现两条线（修复了「渐变铺满整行、每 2 个字符一条」的缺陷）。
+- 括号彩虹验收：临时 harness 验了两件事——纯层级算法（`(())` → `[0,1,1,0]`、`([{` → `[0,1,2]`、多余右括号不产生负深度、平衡表达式回到 0）与真实渲染（DOM 出现 10 个带颜色的 span）；实机截图确认嵌套括号颜色分层正确。
+- 撤销历史验收：临时 harness 驱动两个 `createEditorView` 实例——编辑 → 导出历史 → 销毁 → 带历史重建 → undo，`"hello world"` 正确回退到 `"hello"`；实机也在 Markdown 预览切换前后验证过（切预览 → 切回 → Ctrl+Z，内容回到原文而标签仍显示未保存标记）。
 - 平台：Windows 实测；macOS 预期可用但**未在真机验证**（README 已如实标注）。

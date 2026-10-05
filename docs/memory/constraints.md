@@ -1,5 +1,17 @@
 # Constraints
 
+## MC-CON-20261021-a1b2c3d4 — 判断「是否需要确认框」必须先验证可否撤销
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261021-c3d4e5f6
+Facet: workflow
+Evidence:
+- repo:src/lib/editor/extensions.ts
+
+Requirement:
+不要凭「这个操作影响面大」就给破坏性操作加确认框。先验证它能否一步撤销——**能撤销的操作加确认只是增加摩擦**。CodeMirror 的 `replaceAll` 就是一次 dispatch，实测 50 处替换后一次 Ctrl+Z 完全回到原文，因此**不加确认**。
+
 ## MC-CON-20261020-a1b2c3d4 — 声明 runes 的文件必须叫 .svelte.ts
 
 Status: active
