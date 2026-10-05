@@ -56,6 +56,7 @@ const darkGuideActiveColor = 'var(--indent-guide-active)';
 
 import { rainbowBrackets, rainbowBracketsTheme } from './rainbow-brackets';
 import { searchPhrases } from './search-i18n';
+import { sesameUiTheme } from './themes';
 
 /**
  * 需要用 Compartment 动态重配置的部分。
@@ -120,6 +121,8 @@ function baseExtensions(): Extension[] {
     highlightActiveLine(),
     highlightSelectionMatches(),
     highlightTrailingWhitespace(),
+    // Sesame 特有的编辑器样式：搜索面板布局、匹配括号、折叠占位符等
+    sesameUiTheme,
     // 官方搜索面板 + 中文文案：正则、大小写、整词、替换都已由它处理
     search({ top: true }),
     searchPhrases(),

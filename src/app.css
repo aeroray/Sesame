@@ -90,189 +90,80 @@
 }
 
 /*
- * 主题令牌。Tailwind v4 采用 CSS-first 配置，无需 tailwind.config.js。
+/*
+ * 主题令牌。
  *
- * 分两层：
- *   1. :root / .dark 定义实际色值（用 oklch，保证亮暗两套的感知亮度一致）
- *   2. @theme inline 把色值映射成 Tailwind 工具类（bg-*、text-*、border-*）
+ * ## 色值不在 CSS 里，而在 JS 里
  *
- * 其中 shadcn-svelte 组件引用的是 background/foreground/primary/muted 等
- * 标准名字，自有语义令牌是 surface/content 这一套，两者都在此定义。
+ * 全部令牌由 \`lib/theme/theme-tokens.ts\` 依据当前主题**推导**出来，
+ * 运行时写入 \`<html>\` 的内联样式。CSS 里只保留这份**兜底值**，
+ * 作用有两个：
+ *
+ * 1. 首屏在 JS 就绪前不闪白（默认主题是亮色，兜底值也用亮色）
+ * 2. 让下面 \`@theme inline\` 的映射始终有名字可引用
+ *
+ * 之所以不在 CSS 里为每套主题写一遍：界面有 30 多个令牌，
+ * 13 套主题就是 400 个数，无法维护，且必然出现「改了背景忘了改边框」。
+ * 推导方案只需每套主题声明 4 个基准色。
+ *
+ * 兜底值 = Sesame Light 主题推导结果的近似（见 theme-tokens.ts）。
  */
 :root {
-  /* ---- shadcn 组件期望的标准令牌 ---- */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.22 0.008 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.008 60);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.008 60);
-  --secondary: oklch(0.96 0.006 65);
-  --secondary-foreground: oklch(0.3 0.01 60);
-  --muted: oklch(0.96 0.004 65);
-  --muted-foreground: oklch(0.5 0.008 60);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.99 0.005 25);
-  --border: oklch(0.91 0.004 65);
-  --input: oklch(0.91 0.004 65);
-
-  /*
-   * 强调色一律**引用品牌色阶**，不再写死具体色值。
-   *
-   * 这样切换主题色时只改色阶本身，primary / ring / accent 会自动跟随——
-   * 早先它们各自硬编码了一份 oklch，换色时必须逐处同步，很容易漏。
-   */
-  --primary: var(--brand-600);
-  --primary-foreground: oklch(0.99 0.005 65);
-  --ring: var(--brand-500);
-  --accent: var(--brand-100);
-  --accent-foreground: var(--brand-800);
+  /* ---- shadcn 标准令牌 ---- */
+  --background: #ffffff;
+  --foreground: #2c2723;
+  --card: #ffffff;
+  --card-foreground: #2c2723;
+  --popover: #ffffff;
+  --popover-foreground: #2c2723;
+  --secondary: #f5f3f0;
+  --secondary-foreground: #2c2723;
+  --muted: #f5f3f0;
+  --muted-foreground: #6b6259;
+  --border: #e5e0da;
+  --input: #e5e0da;
+  --primary: #8a5a2b;
+  --primary-foreground: #ffffff;
+  --ring: #8a5a2b;
+  --accent: #f0e6db;
+  --accent-foreground: #5c3d1d;
+  --destructive: #c0392b;
+  --destructive-foreground: #ffffff;
 
   /* ---- 自有语义令牌：界面层级 ---- */
-  --surface: oklch(0.99 0.002 65);
-  --surface-raised: oklch(1 0 0);
-  --surface-sunken: oklch(0.96 0.003 65);
-  --border-subtle: oklch(0.91 0.004 65);
-  --border-strong: oklch(0.84 0.006 65);
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f7f5f2;
+  --border-subtle: #ece7e1;
+  --border-strong: #ddd6cd;
+  --indent-guide: #d8d2ca;
+  --indent-guide-active: #b3aaa0;
+  --content: #2c2723;
+  --content-muted: #6b6259;
+  --content-faint: #9a9086;
+
+  /* 匹配括号底纹用的强调色（见 editor/themes.ts） */
+  --match-bracket: #8a5a2b;
+
   /*
-   * 编辑器缩进参考线。
+   * 强调色色阶。
    *
-   * 单独一个令牌而不是复用 --border-strong：参考线画在**正文所在的行**上，
-   * 必须比界面边框更淡，才不抢代码的注意力。
-   * 透明度直接写进色值（而不是给元素设 opacity）——
-   * 后者会把该行的**文字**一起变淡，实测代码会明显发灰。
-   */
-  --indent-guide: oklch(0.84 0.006 65 / 0.55);
-  /*
-   * 光标所在块的参考线，略深一档以便一眼看出「我在哪一层」。
-   * 同样把透明度写进色值，不用元素 opacity（那会连带淡化文字）。
-   */
-  --indent-guide-active: oklch(0.72 0.008 65 / 0.75);
-  --content: oklch(0.22 0.008 60);
-  --content-muted: oklch(0.5 0.008 60);
-  --content-faint: oklch(0.65 0.006 60);
-}
-
-/*
- * ============================================================
- * 主题色（强调色）
- * ============================================================
- *
- * 每套主题色是一整条 `--brand-50` ~ `--brand-900` 色阶，
- * 通过 `<html data-accent="...">` 切换。默认（不设该属性）是靛蓝。
- *
- * 为什么用**色阶**而不是单个色值：界面里强调色有多个用法——
- * 选中态用 100、焦点描边用 500、按钮用 600、暗色下按钮用 400。
- * 只给一个色值就没法覆盖这些层次。
- *
- * 亮度阶梯对所有主题统一（0.97 / 0.94 / 0.88 / 0.80 / 0.72 /
- * 0.63 / 0.55 / 0.47 / 0.38 / 0.30），只变色相与彩度——
- * 这样换色时对比度关系不变，亮暗两套主题都仍然可读。
- */
-
-/* 靛蓝：干净、专业，作为默认 */
-:root {
-  --brand-50: oklch(0.97 0.014 264);
-  --brand-100: oklch(0.94 0.032 264);
-  --brand-200: oklch(0.88 0.065 264);
-  --brand-300: oklch(0.8 0.1 264);
-  --brand-400: oklch(0.72 0.13 264);
-  --brand-500: oklch(0.63 0.16 264);
-  --brand-600: oklch(0.55 0.16 264);
-  --brand-700: oklch(0.47 0.14 264);
-  --brand-800: oklch(0.38 0.11 264);
-  --brand-900: oklch(0.3 0.08 264);
-}
-
-/* 松绿：沉静、护眼 */
-:root[data-accent="pine"] {
-  --brand-50: oklch(0.97 0.016 162);
-  --brand-100: oklch(0.94 0.035 162);
-  --brand-200: oklch(0.88 0.065 162);
-  --brand-300: oklch(0.8 0.095 162);
-  --brand-400: oklch(0.72 0.12 162);
-  --brand-500: oklch(0.63 0.135 162);
-  --brand-600: oklch(0.55 0.13 162);
-  --brand-700: oklch(0.47 0.11 162);
-  --brand-800: oklch(0.38 0.085 162);
-  --brand-900: oklch(0.3 0.065 162);
-}
-
-/* 玫红：鲜明、有活力 */
-:root[data-accent="rose"] {
-  --brand-50: oklch(0.97 0.016 355);
-  --brand-100: oklch(0.94 0.04 355);
-  --brand-200: oklch(0.88 0.075 355);
-  --brand-300: oklch(0.8 0.11 355);
-  --brand-400: oklch(0.72 0.15 355);
-  --brand-500: oklch(0.64 0.18 355);
-  --brand-600: oklch(0.56 0.18 355);
-  --brand-700: oklch(0.48 0.16 355);
-  --brand-800: oklch(0.39 0.12 355);
-  --brand-900: oklch(0.31 0.09 355);
-}
-
-/*
- * 琥珀：暖色。
- *
- * 这是原来那套「芝麻暖褐」的改良版：色相从 55 移到 75 附近、
- * 彩度略提。原先色相 55 + 彩度 0.14 在 oklch 里读起来偏「土褐」，
- * 就是「脏脏的」的来源；移到金黄一侧后同样的暖调会干净很多。
- */
-:root[data-accent="amber"] {
-  --brand-50: oklch(0.97 0.02 78);
-  --brand-100: oklch(0.94 0.045 78);
-  --brand-200: oklch(0.89 0.08 78);
-  --brand-300: oklch(0.83 0.11 76);
-  --brand-400: oklch(0.76 0.135 75);
-  --brand-500: oklch(0.68 0.15 72);
-  --brand-600: oklch(0.59 0.14 70);
-  --brand-700: oklch(0.5 0.12 68);
-  --brand-800: oklch(0.41 0.095 66);
-  --brand-900: oklch(0.33 0.075 64);
-}
-
-.dark {
-  --background: oklch(0.19 0.006 60);
-  --foreground: oklch(0.93 0.004 65);
-  --card: oklch(0.23 0.007 60);
-  --card-foreground: oklch(0.93 0.004 65);
-  --popover: oklch(0.23 0.007 60);
-  --popover-foreground: oklch(0.93 0.004 65);
-  --secondary: oklch(0.29 0.007 60);
-  --secondary-foreground: oklch(0.9 0.005 65);
-  --muted: oklch(0.27 0.007 60);
-  --muted-foreground: oklch(0.68 0.007 65);
-  --destructive: oklch(0.65 0.18 25);
-  --destructive-foreground: oklch(0.16 0.02 25);
-  --border: oklch(0.29 0.007 60);
-  /* 输入类控件（开关、输入框）的底色必须明显亮于背景，
-     否则暗色下开关几乎看不见。这里取 oklch(0.42)，与 --surface-sunken(0.16) 拉开层次。 */
-  --input: oklch(0.42 0.008 60);
-
-  /*
-   * 暗色下的强调色同样引用品牌色阶。
+   * 由主题的强调色按固定比例推导（见 theme-tokens.ts）。
+   * 界面里强调色要分多个层次：选中底（100）、悬停（200）、焦点环（500）、
+   * 按钮（600）、暗色下的按钮（400）。
    *
-   * 但**取的档位与亮色不同**：亮色用 600 作主色，暗色要用更亮的 400，
-   * 否则深底上的按钮会糊成一片。ring 也要提亮到 500 才够醒目。
+   * 这里是 Sesame Light 的兜底值，运行时会被主题覆盖。
    */
-  --primary: var(--brand-400);
-  --primary-foreground: oklch(0.2 0.02 55);
-  --ring: var(--brand-500);
-  --accent: var(--brand-900);
-  --accent-foreground: var(--brand-100);
-
-  --surface: oklch(0.19 0.006 60);
-  --surface-raised: oklch(0.23 0.007 60);
-  --surface-sunken: oklch(0.16 0.005 60);
-  --border-subtle: oklch(0.29 0.007 60);
-  --border-strong: oklch(0.37 0.008 60);
-  /* 暗色下参考线要比亮色略微提亮，否则在深底上几乎看不见 */
-  --indent-guide: oklch(0.45 0.008 60 / 0.75);
-  --indent-guide-active: oklch(0.58 0.01 60 / 0.9);
-  --content: oklch(0.93 0.004 65);
-  --content-muted: oklch(0.68 0.007 65);
-  --content-faint: oklch(0.52 0.006 65);
+  --brand-50: #f8f2ec;
+  --brand-100: #efe2d4;
+  --brand-200: #e0c8ad;
+  --brand-300: #cfa87f;
+  --brand-400: #b98a55;
+  --brand-500: #8a5a2b;
+  --brand-600: #754d25;
+  --brand-700: #61401f;
+  --brand-800: #4e3419;
+  --brand-900: #3d2913;
 }
 
 @theme inline {
@@ -307,7 +198,10 @@
   --color-content-muted: var(--content-muted);
   --color-content-faint: var(--content-faint);
 
-  /* 品牌色阶：映射自 :root 的原始令牌，单一来源 */
+  /*
+   * 强调色色阶 → 工具类（bg-brand-* / text-brand-* / ring-brand-*）。
+   * 色值由主题推导，这里只做名字映射。
+   */
   --color-brand-50: var(--brand-50);
   --color-brand-100: var(--brand-100);
   --color-brand-200: var(--brand-200);

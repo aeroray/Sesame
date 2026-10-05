@@ -46,10 +46,6 @@ export const en = {
     label: 'Application menu',
     settings: 'Settings',
     shortcuts: 'Keyboard Shortcuts',
-    theme: 'Theme',
-    themeSystem: 'System',
-    themeLight: 'Light',
-    themeDark: 'Dark',
     language: 'Language',
     current: 'Current',
   },
@@ -141,7 +137,6 @@ export const en = {
 
     theme: 'Theme',
     themePlaceholder: 'Choose a theme',
-    accent: 'Accent color',
     language: 'Language',
 
     uiFont: 'Interface font',
@@ -174,14 +169,6 @@ export const en = {
     hibernateHint: 'Release memory for large files left idle',
     restoreSession: 'Restore last session',
     restoreSessionHint: 'Reopen your files on launch',
-  },
-
-  /** 强调色名称。 */
-  accent: {
-    indigo: 'Indigo',
-    pine: 'Pine',
-    rose: 'Rose',
-    amber: 'Amber',
   },
 
   /** 编辑器状态栏。 */

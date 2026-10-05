@@ -7,16 +7,17 @@
 
 import { load, type Store } from '@tauri-apps/plugin-store';
 import { applySystemLocale, resolveLocale, setLocale } from '$lib/i18n';
+import { applyTheme } from '$lib/state/theme.svelte';
 import type { Settings } from '$lib/state/types';
+import { DEFAULT_THEME } from '$lib/theme/palettes';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
 import { logError } from '$lib/utils/log';
 import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {
-  theme: 'system',
-  /** 强调色。默认靛蓝（见 app.css 的 data-accent 色阶）。 */
-  accent: 'indigo',
+  /** 主题（皮肤）。默认 Sesame Light，见 lib/theme/palettes.ts。 */
+  theme: DEFAULT_THEME,
   /** 界面语言。默认跟随系统——绝大多数用户该用这个。 */
   language: 'system',
   fontSize: 14,
@@ -64,9 +65,9 @@ export async function loadSettings(): Promise<void> {
     logError('settings', '读取设置失败，已使用默认值', err);
     Object.assign(settings, DEFAULTS);
   }
-  // 启动时把已保存的字体、强调色与语言应用到界面
+  // 启动时把已保存的字体、主题与语言应用到界面
   applyFontVariables();
-  applyAccent();
+  applyTheme(settings.theme);
   applyLanguage();
   loaded = true;
 }
@@ -114,30 +115,10 @@ export async function updateSetting<K extends keyof Settings>(
 ): Promise<void> {
   settings[key] = value;
   applyFontVariables();
-  applyAccent();
+  // 主题变化要重算全部界面令牌，因此这里无条件调用（内部很便宜）
+  applyTheme(settings.theme);
   applyLanguage();
   await persistSettings();
-}
-
-/**
- * 把强调色写到 `<html data-accent>`。
- *
- * 色阶本身定义在 app.css 里（`[data-accent='...']` 覆盖 `--brand-*`），
- * 这里只负责切换属性。之所以不用内联 style 写色值：
- * 那样色阶就得在 JS 里再维护一份，两处容易不同步。
- *
- * 默认值（indigo）不写属性——`:root` 本身就是它。
- */
-export function applyAccent(): void {
-  if (typeof document === 'undefined') return;
-
-  const root = document.documentElement;
-
-  if (settings.accent === 'indigo') {
-    root.removeAttribute('data-accent');
-  } else {
-    root.setAttribute('data-accent', settings.accent);
-  }
 }
 
 /**
@@ -168,7 +149,7 @@ function applyFontVariables(): void {
 export async function resetSettings(): Promise<void> {
   Object.assign(settings, DEFAULTS);
   applyFontVariables();
-  applyAccent();
+  applyTheme(settings.theme);
   applyLanguage();
   await persistSettings();
 }

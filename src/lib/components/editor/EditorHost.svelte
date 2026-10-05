@@ -8,7 +8,6 @@
  * - 休眠（sleep 变回 'none'）会重建视图，内容从保留的正文恢复。
  */
 
-import { mode } from 'mode-watcher';
 import type { Component } from 'svelte';
 import { scheduleAutoSave } from '$lib/actions/autosave';
 import { scheduleDraft } from '$lib/actions/draft';
@@ -16,7 +15,7 @@ import { reportError } from '$lib/actions/open-file';
 import { createEditorView, type EditorHandle } from '$lib/editor/create-view';
 import { getLanguageExtension } from '$lib/editor/languages';
 import { getProgress, loadNextChunk, programmaticAppend } from '$lib/editor/large-file.svelte';
-import { editorFontTheme, editorTheme } from '$lib/editor/themes';
+import { editorFontTheme } from '$lib/editor/themes';
 import { t } from '$lib/i18n';
 import { getPreviewText } from '$lib/state/layout.svelte';
 import { settings } from '$lib/state/settings.svelte';
@@ -35,6 +34,7 @@ import {
   updateScroll,
 } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { themeById } from '$lib/theme/palettes';
 import ImageViewer from './ImageViewer.svelte';
 
 interface Props {
@@ -57,7 +57,13 @@ let container = $state<HTMLDivElement | null>(null);
 let handle = $state<EditorHandle | null>(null);
 let ready = $state(false);
 
-const isDark = $derived(mode.current === 'dark');
+/**
+ * 当前主题的编辑器扩展。
+ *
+ * 主题同时决定背景、前景、行号与**语法高亮**，因此它是一整包扩展，
+ * 不能像早先那样只传一个 `dark: boolean` 再在内部选亮暗两套。
+ */
+const themeExtension = $derived(themeById(settings.theme).editor);
 
 /**
  * 懒加载的 Markdown 预览组件。
@@ -99,7 +105,7 @@ $effect(() => {
       parent: el,
       doc: peekTabContent(tab.id),
       language,
-      theme: editorTheme(isDark),
+      theme: themeExtension,
       font: editorFontTheme(settings.editorFont, settings.fontSize),
       showLineNumbers: settings.showLineNumbers,
       wordWrap: settings.wordWrap,
@@ -216,11 +222,16 @@ $effect(() => {
   };
 });
 
-// 主题跟随
+/*
+ * 主题跟随设置。
+ *
+ * 用 Compartment 重配置而不是重建视图，因此换主题不会丢撤销历史与光标。
+ * 整包替换（含语法高亮）——主题是一体的，不能只换背景。
+ */
 $effect(() => {
-  const dark = isDark;
+  const ext = themeExtension;
   if (handle && ready) {
-    handle.reconfigure({ theme: editorTheme(dark) });
+    handle.reconfigure({ theme: ext });
   }
 });
 

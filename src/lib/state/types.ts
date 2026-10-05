@@ -192,14 +192,6 @@ export interface Tab {
 }
 
 /**
- * 强调色标识。
- *
- * 每个值对应 app.css 里的一条 `--brand-*` 色阶；
- * `indigo` 是默认值，不写 `data-accent` 属性。
- */
-export type AccentId = 'indigo' | 'pine' | 'rose' | 'amber';
-
-/**
  * 界面语言。
  *
  * `system` 表示跟随系统语言——这是默认值，也是绝大多数用户该用的选项。
@@ -209,8 +201,18 @@ export type LanguageSetting = 'system' | 'zh-CN' | 'en';
 
 /** 应用设置。 */
 export interface Settings {
-  theme: 'light' | 'dark' | 'system';
-  accent: AccentId;
+  /**
+   * 主题（皮肤）标识。
+   *
+   * 一套主题同时决定**界面配色 + 编辑器配色 + 语法高亮**，
+   * 取代了早先「亮暗开关 + 强调色」两个独立控件——
+   * 那种组合会让界面与编辑器各说各话（详见 `lib/theme/palettes.ts`）。
+   *
+   * 类型放宽为 `string` 而不是 `ThemeId`：设置文件可能来自装了更多主题的
+   * 版本或被手改过，读取时由 `themeById()` 回落到默认值，
+   * 不在类型层面强制校验。
+   */
+  theme: string;
   /** 界面语言。默认跟随系统。 */
   language: LanguageSetting;
   fontSize: number;

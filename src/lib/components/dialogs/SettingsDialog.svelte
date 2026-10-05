@@ -3,7 +3,6 @@
  * 设置面板。
  */
 import { RotateCcw } from '@lucide/svelte';
-import { setMode } from 'mode-watcher';
 import { cancelAllAutoSave } from '$lib/actions/autosave';
 import FontPicker from '$lib/components/common/FontPicker.svelte';
 import { Button } from '$lib/components/ui/button';
@@ -27,8 +26,8 @@ import { Separator } from '$lib/components/ui/separator';
 import { Switch } from '$lib/components/ui/switch';
 import { type MessageKey, t } from '$lib/i18n';
 import { resetSettings, settings, updateSetting } from '$lib/state/settings.svelte';
-import type { AccentId, LanguageSetting } from '$lib/state/types';
-import { cn } from '$lib/utils/cn';
+import type { LanguageSetting } from '$lib/state/types';
+import { THEMES } from '$lib/theme/palettes';
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '$src/constants';
 
 interface Props {
@@ -41,34 +40,17 @@ let { open = $bindable(), onOpenChange }: Props = $props();
 /**
  * 主题选项。
  *
- * `label` 存的是**文案 key**而不是文案本身：文案在模块加载时求值一次就固定了，
- * 之后切换语言不会更新。渲染时再经 `t()` 解析，才能跟随语言变化。
+ * 主题是**完整配色方案**（界面 + 编辑器 + 语法高亮），不再拆成
+ * 「亮暗开关 + 强调色」两个控件。主题名是专有名词（Dracula 等），
+ * 因此直接取主题数据里的 `name`，不走 i18n 字典。
  */
-const themes: { value: 'system' | 'light' | 'dark'; label: MessageKey }[] = [
-  { value: 'system', label: 'menu.themeSystem' },
-  { value: 'light', label: 'menu.themeLight' },
-  { value: 'dark', label: 'menu.themeDark' },
-];
+const themeItems = THEMES.map((item) => ({ value: item.id, label: item.name }));
 
 /** 语言选项。`system` 表示跟随系统。 */
 const languages: { value: LanguageSetting; label: MessageKey }[] = [
   { value: 'system', label: 'settings.languageSystem' },
   { value: 'zh-CN', label: 'locale.zh-CN' },
   { value: 'en', label: 'locale.en' },
-];
-
-/**
- * 强调色选项。
- *
- * `color` 是用于展示的色块值，必须与 app.css 里对应色阶的 `--brand-500`
- * 保持一致。这是**唯一一处刻意的重复**：CSS 变量在 `[data-accent]` 作用域下，
- * 无法在读色块时动态取值，因此在这里写一份。改色阶时记得同步这里。
- */
-const ACCENTS: { id: AccentId; label: MessageKey; color: string }[] = [
-  { id: 'indigo', label: 'accent.indigo', color: 'oklch(0.63 0.16 264)' },
-  { id: 'pine', label: 'accent.pine', color: 'oklch(0.63 0.135 162)' },
-  { id: 'rose', label: 'accent.rose', color: 'oklch(0.64 0.18 355)' },
-  { id: 'amber', label: 'accent.amber', color: 'oklch(0.68 0.15 72)' },
 ];
 
 /** 字号选项。 */
@@ -105,13 +87,9 @@ const tabSizeItems = $derived(
   })),
 );
 
-/** 切换主题时同步给 mode-watcher。 */
-async function changeTheme(value: string) {
-  await updateSetting('theme', value as 'light' | 'dark' | 'system');
-  setMode(value as 'light' | 'dark' | 'system');
-}
-
-/** 切换界面语言。`applyLanguage()` 由 `updateSetting` 内部调用。 */
+/**
+ * 切换界面语言。`applyLanguage()` 由 `updateSetting` 内部调用。
+ */
 async function changeLanguage(value: string) {
   await updateSetting('language', value as LanguageSetting);
 }
@@ -129,7 +107,6 @@ async function changeAutoSave(value: boolean) {
 
 async function handleReset() {
   await resetSettings();
-  setMode(settings.theme);
 }
 </script>
 
@@ -141,21 +118,37 @@ async function handleReset() {
     </DialogHeader>
 
     <div class="flex flex-col gap-4 py-2">
-      <!-- 外观 -->
+      <!--
+        主题（皮肤）。
+        一套主题同时决定界面配色与编辑器配色（含语法高亮），
+        因此只有一个控件，不再拆成「亮暗 + 强调色」。
+      -->
       <div class="flex items-center justify-between gap-4">
         <Label for="setting-theme" class="text-sm font-normal">{t('settings.theme')}</Label>
         <Select
           type="single"
           value={settings.theme}
-          onValueChange={changeTheme}
-          items={themes.map((item) => ({ value: item.value, label: t(item.label) }))}
+          onValueChange={(value) => updateSetting('theme', value)}
+          items={themeItems}
         >
-          <SelectTrigger id="setting-theme" class="w-32">
+          <SelectTrigger id="setting-theme" class="w-44">
             <SelectValue placeholder={t('settings.themePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            {#each themes as item (item.value)}
-              <SelectItem value={item.value} label={t(item.label)}>{t(item.label)}</SelectItem>
+            {#each THEMES as item (item.id)}
+              <SelectItem value={item.id} label={item.name}>
+                <span class="flex items-center gap-2">
+                  <!-- 配色预览：左半背景、右半强调色 -->
+                  <span
+                    class="flex size-3.5 shrink-0 overflow-hidden rounded-sm ring-1 ring-border-subtle"
+                    aria-hidden="true"
+                  >
+                    <span class="h-full w-1/2" style="background-color: {item.bg}"></span>
+                    <span class="h-full w-1/2" style="background-color: {item.accent}"></span>
+                  </span>
+                  <span>{item.name}</span>
+                </span>
+              </SelectItem>
             {/each}
           </SelectContent>
         </Select>
@@ -170,7 +163,7 @@ async function handleReset() {
           onValueChange={changeLanguage}
           items={languages.map((item) => ({ value: item.value, label: t(item.label) }))}
         >
-          <SelectTrigger id="setting-language" class="w-32">
+          <SelectTrigger id="setting-language" class="w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -179,35 +172,6 @@ async function handleReset() {
             {/each}
           </SelectContent>
         </Select>
-      </div>
-
-      <!--
-        强调色：直接展示色块而不是下拉框。
-        选颜色是「看一眼就知道」的事，色块比文字列表直观得多，
-        而且四个选项一屏放得下，不需要折叠。
-      -->
-      <div class="flex items-center justify-between gap-4">
-        <Label class="text-sm font-normal">{t('settings.accent')}</Label>
-        <div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('settings.accent')}>
-          {#each ACCENTS as accent (accent.id)}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={settings.accent === accent.id}
-              aria-label={t(accent.label)}
-              title={t(accent.label)}
-              class={cn(
-                'size-5 rounded-full transition-transform hover:scale-110',
-                // 选中态用描边环表达，而不是勾选图标——色块本身就说明了一切
-                settings.accent === accent.id
-                  ? 'ring-2 ring-offset-2 ring-offset-background'
-                  : 'ring-1 ring-border-strong',
-              )}
-              style="background-color: {accent.color}; --tw-ring-color: {accent.color}"
-              onclick={() => updateSetting('accent', accent.id)}
-            ></button>
-          {/each}
-        </div>
       </div>
 
       <Separator />

@@ -43,10 +43,6 @@ export const zhCN: Messages = {
     label: '应用菜单',
     settings: '设置',
     shortcuts: '快捷键',
-    theme: '主题',
-    themeSystem: '跟随系统',
-    themeLight: '浅色',
-    themeDark: '深色',
     language: '语言',
     current: '当前',
   },
@@ -136,7 +132,6 @@ export const zhCN: Messages = {
 
     theme: '主题',
     themePlaceholder: '选择主题',
-    accent: '强调色',
     language: '语言',
 
     uiFont: '界面字体',
@@ -168,13 +163,6 @@ export const zhCN: Messages = {
     hibernateHint: '长时间未用的大文件释放内存',
     restoreSession: '恢复上次会话',
     restoreSessionHint: '启动时重新打开上次的文件',
-  },
-
-  accent: {
-    indigo: '靛蓝',
-    pine: '松绿',
-    rose: '玫红',
-    amber: '琥珀',
   },
 
   editor: {
