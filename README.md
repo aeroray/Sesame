@@ -10,7 +10,7 @@ Opens instantly, stays out of the way, and handles the files other editors choke
 huge logs, GBK-encoded configs, a stray PNG you just want to look at.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#install)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
 [![Binary size](https://img.shields.io/badge/binary-3.8%20MB-brightgreen.svg)](#why-it-stays-small)
 
@@ -43,21 +43,32 @@ file, or change three lines in it**, right now.
 | --- | --- |
 | **Syntax highlighting** | 18 languages via CodeMirror 6, loaded lazily — they cost nothing until you open one |
 | **Large files** | Files over 5 MB load in 1 MB chunks; saving streams the untouched tail back from disk instead of reading it into memory (writes capped at 256 MB) |
-| **Encodings** | Detected on open (BOM → strict UTF-8 → GBK, including UTF-16 via BOM) and written back exactly as found — no silent re-encoding |
+| **Encodings** | Detected on open (BOM → strict UTF-8 → GBK, including UTF-16 via BOM) and written back exactly as found. Detection isn't perfect — click the encoding in the status bar to reopen with a different one |
 | **Line endings** | LF, CRLF and CR preserved per file — no silent conversion |
 | **Safety net** | Atomic writes, external-modification detection, autosave, and always-on draft backup for untitled buffers |
-| **Multi-tab** | Drag to reorder, per-tab cursor and scroll position, session restore on relaunch |
+| **Multi-tab** | Drag to reorder, per-tab cursor and scroll position, session restore on relaunch, reopen a closed tab with `Ctrl+Shift+T` |
 | **Markdown preview** | Rendered and sanitized with DOMPurify; external links open in your browser, not inside the app |
 | **Image viewer** | Zoom, fit-to-window, 1:1, open in default app |
-| **Find & replace** | Regex, case-sensitive, whole-word and cross-line search, with replace — panel localized into Chinese |
+| **Find & replace** | Regex, case-sensitive, whole-word and cross-line search, with replace |
+| **Indent guides** | Faint vertical rules at each indent level; toggle in settings |
 | **Memory-friendly** | Tabs you haven't touched release their editor instances after a while, and restore instantly when you come back |
 | **Theming** | Light/dark/system, four accent colors, and separately configurable UI and editor fonts |
+| **Interface language** | English and Simplified Chinese, following your system language by default |
 
 ### Why it stays small
 
 The shipped binary is about **3.8 MB**. Sesame uses the operating system's own webview
-(WebView2, WKWebView, WebKitGTK) rather than bundling a browser engine — which is also
-why it starts as fast as it does.
+(WebView2 on Windows, WKWebView on macOS) rather than bundling a browser engine — which
+is also why it starts as fast as it does.
+
+### Platform support
+
+**Windows and macOS only.** Both are supported by the same codebase; the differences are
+handled in `src/lib/utils/platform.ts`.
+
+Linux is not a target. The window chrome, file associations and packaging formats differ
+across desktop environments there, and the maintenance cost outweighed the benefit for a
+project of this size.
 
 ## Install
 
@@ -73,6 +84,11 @@ why it starts as fast as it does.
 - Your platform's Tauri dependencies — see the
   [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/). On Windows
   this means the **C++ Build Tools** and **WebView2** (preinstalled on Windows 11).
+  On macOS you need Xcode Command Line Tools; WKWebView is part of the system.
+
+> **Windows is the tested platform.** The macOS build is expected to work — the only
+> platform-specific code is the title bar and the Cmd-key handling — but it has not been
+> verified on real hardware. If you build it on a Mac, please report what you find.
 
 **Build**
 
@@ -108,6 +124,8 @@ App-level:
 | --- | --- |
 | New tab / Open / Save / Save as | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` |
 | Close tab | `Ctrl+W` |
+| Reopen closed tab | `Ctrl+Shift+T` |
+| Copy file path | `Ctrl+Shift+C` |
 | Toggle sidebar | `Ctrl+B` |
 | Markdown preview | `Ctrl+Shift+M` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
@@ -127,6 +145,12 @@ In the editor:
 | Copy line up / down | `Shift+Alt+↑` / `Shift+Alt+↓` |
 
 Press **Ctrl+/** in the app for the same list.
+
+### Opening files from your file manager
+
+Sesame runs as a **single instance**: opening a second file hands it to the window that is
+already running rather than starting another copy. Two processes writing the same settings
+and session files would overwrite each other's state.
 
 ### Your edits are protected in three layers
 

@@ -10,7 +10,7 @@
 很大的日志、GBK 编码的配置文件、你只是想瞄一眼的图片。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#安装)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#安装)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
 [![Binary size](https://img.shields.io/badge/binary-3.8%20MB-brightgreen.svg)](#为什么这么小)
 
@@ -42,21 +42,31 @@
 | --- | --- |
 | **语法高亮** | 18 种语言，基于 CodeMirror 6，按需懒加载——没打开就不占体积 |
 | **大文件** | 超过 5 MB 按 1 MB 分块加载；保存时把未加载的尾部从磁盘流式拼回，不读进内存（单次写入上限 256 MB） |
-| **编码** | 打开时自动探测（BOM → 严格 UTF-8 → GBK，UTF-16 通过 BOM 识别），并按原样写回，不静默转码 |
+| **编码** | 打开时自动探测（BOM → 严格 UTF-8 → GBK，UTF-16 通过 BOM 识别），并按原样写回。探测不可能全对——点状态栏上的编码即可换个编码重新打开 |
 | **换行风格** | LF、CRLF、CR 逐个文件保留，不静默转换 |
 | **安全网** | 原子写入、外部修改检测、自动保存，以及始终开启的草稿备份（未命名标签也覆盖） |
-| **多标签** | 拖拽排序，每个标签独立记录光标与滚动位置，重启后恢复上次会话 |
+| **多标签** | 拖拽排序，每个标签独立记录光标与滚动位置，重启后恢复上次会话，`Ctrl+Shift+T` 重开刚关掉的标签 |
 | **Markdown 预览** | 用 DOMPurify 净化后渲染；外链交给系统浏览器打开，不会把应用界面顶掉 |
 | **图片查看** | 缩放、适应窗口、1:1、用默认程序打开 |
-| **查找替换** | 支持正则、区分大小写、整词、跨行，并可在面板内替换；面板已中文化 |
+| **查找替换** | 支持正则、区分大小写、整词、跨行，并可在面板内替换 |
+| **缩进参考线** | 每一级缩进处画一条淡竖线，可在设置里关闭 |
 | **省内存** | 长时间未看的标签会释放编辑器实例，切回来立刻重建 |
 | **主题** | 亮色 / 暗色 / 跟随系统，4 套强调色，界面字体与编辑器字体可分别设置 |
+| **界面语言** | 简体中文与英文，默认跟随系统语言 |
 
 ### 为什么这么小
 
 发行版二进制约 **3.8 MB**。Sesame 使用操作系统自带的 WebView
-（WebView2 / WKWebView / WebKitGTK），不打包浏览器内核——
+（Windows 上是 WebView2，macOS 上是 WKWebView），不打包浏览器内核——
 这也是它启动这么快的原因。
+
+### 支持平台
+
+**只支持 Windows 与 macOS**，两者共用同一份代码，差异集中在
+`src/lib/utils/platform.ts`。
+
+Linux 不作为目标平台：无边框窗口的红绿灯、文件关联、打包格式
+在每个 Linux 桌面环境上表现都不同，维护成本远超这个体量的项目所能承受。
 
 ## 安装
 
@@ -71,7 +81,12 @@
 - [Node.js](https://nodejs.org) 20 或更高，以及 [pnpm](https://pnpm.io)
 - 对应平台的 Tauri 依赖，见
   [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/)。Windows 上需要
-  **C++ 生成工具**与 **WebView2**（Windows 11 已预装）。
+  **C++ 生成工具**与 **WebView2**（Windows 11 已预装）；
+  macOS 上需要 Xcode Command Line Tools，WKWebView 由系统提供。
+
+> **实测平台是 Windows。** macOS 版本预期可用——平台相关代码只有标题栏
+> 与 Cmd 键处理两处——但尚未在真机上验证过。如果你在 Mac 上构建了，
+> 欢迎反馈结果。
 
 **构建**
 
@@ -107,6 +122,8 @@ pnpm tauri dev
 | --- | --- |
 | 新建 / 打开 / 保存 / 另存为 | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` |
 | 关闭标签 | `Ctrl+W` |
+| 重开刚关掉的标签 | `Ctrl+Shift+T` |
+| 复制文件路径 | `Ctrl+Shift+C` |
 | 切换侧边栏 | `Ctrl+B` |
 | Markdown 预览 | `Ctrl+Shift+M` |
 | 下一个 / 上一个标签 | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
@@ -126,6 +143,11 @@ pnpm tauri dev
 | 向上 / 向下复制当前行 | `Shift+Alt+↑` / `Shift+Alt+↓` |
 
 在应用里按 **Ctrl+/** 可以看到同一份列表。
+
+### 从文件管理器打开
+
+Sesame 是**单实例**的：打开第二个文件时，它会交给已在运行的窗口，
+而不是再启动一份。两个进程同时写同一份设置与会话文件会互相覆盖。
 
 ### 你的修改有三层保护
 

@@ -2,6 +2,96 @@
 
 Entries are newest first.
 
+## MC-DEC-20261020-a1b2c3d4 — 引入双语界面（简体中文 / 英文）
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-b2c3d4e5
+Facet: interface
+Evidence:
+- user-confirmed
+- repo:src/lib/i18n/index.ts
+- repo:src/lib/i18n/locale.svelte.ts
+- repo:src/lib/i18n/messages/en.ts
+
+Decision:
+界面支持简体中文与英文，默认跟随系统（`navigator.languages`，`zh` 开头归简体中文，其余归英文），用户可在设置里显式指定。**不引入 i18n 框架**：一个类型化字典 + `t()` 就够。英文那份是字典结构的唯一来源，中文那份标注为同一类型，漏译或多写 key 都会在 svelte-check 阶段报错。
+Reason:
+README 有双语而界面只有中文——英文用户读完 README、装好应用，看到的是全中文界面，这是当时最影响国际用户的问题。不引框架是因为只有两种语言、约 160 条文案，没有懒加载语言包/复数规则/日期本地化的需求，框架换不来什么。类型强制对齐比「运行时回退到英文」可靠：回退会让漏译悄无声息地溜进发布版。
+
+## MC-DEC-20261020-b2c3d4e5 — 语言状态必须放在 .svelte.ts
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-b2c3d4e5
+Facet: correctness
+Evidence:
+- repo:src/lib/i18n/locale.svelte.ts
+
+Decision:
+需要声明 runes 的模块，文件名必须以 `.svelte.ts` 结尾。纯函数与类型留在普通 `.ts`。
+Reason:
+`$state` 放在普通 `.ts` 里会在启动时抛 `rune_outside_svelte`，**整个应用白屏**，而 `svelte-check` 全绿查不出来——只有真跑起来才暴露。i18n 的语言状态踩过这一次（原在 `i18n/index.ts`）。
+
+## MC-DEC-20261020-c3d4e5f6 — 平台收敛为 Windows + macOS
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-c3d4e5f6
+Facet: architecture
+Evidence:
+- user-confirmed
+- repo:src/lib/utils/platform.ts
+
+Decision:
+只支持 Windows 与 macOS，平台判定集中在 `utils/platform.ts`（返回 `'windows' | 'macos'` 两值，不设 `unknown`）。不再声明或适配 Linux。
+Reason:
+用户明确「只打算支持 macOS 和 Windows，其他平台不管了」。无边框窗口的红绿灯、文件关联、打包格式在每个 Linux 桌面环境上表现都不同，维护成本远超收益。判定收敛成两值而非三值，是为了避免每个调用点都要处理第三种情况。
+
+## MC-DEC-20261020-d4e5f6a7 — 装上单实例与窗口状态插件
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-c3d4e5f6
+Facet: correctness
+Evidence:
+- repo:src-tauri/src/lib.rs
+- repo:src-tauri/Cargo.toml
+
+Decision:
+引入 `tauri-plugin-single-instance`（必须**第一个**注册）与 `tauri-plugin-window-state`。单实例收到第二个实例的参数后，只把文件路径 `emit` 给前端，由前端走与拖拽完全相同的流程。
+Reason:
+没有单实例时，双击第二个文件会启动第二个 Sesame，两个进程同时读写 `settings.json` / `session.json` 会互相覆盖——这是**数据问题**，不只是体验问题。必须第一个注册，否则其它插件会先初始化一遍（包括建窗口）再被丢弃。让前端处理文件打开是为了保证「命令行传入」与「拖拽」两条入口行为一致（去重、编码探测、最近文件都一致）。
+
+## MC-DEC-20261020-e5f6a7b8 — 新增手动指定编码
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-b2c3d4e5
+Facet: interface
+Evidence:
+- repo:src-tauri/src/core/encoding.rs
+- repo:src/lib/components/common/EncodingPicker.svelte
+
+Decision:
+新增 `decode_as`（跳过探测按指定编码解码）与 `list_encodings` 命令；状态栏的编码文字可点击，弹出编码列表。`decode_as` 返回的 label 经 `label_for` 规范化。
+Reason:
+实测 Big5、Shift_JIS、无 BOM 的 UTF-16LE 都会被误判成 GBK 并显示为乱码。GBK 的编解码可逆，所以**保存不会损坏文件**（已用测试固定这一结论），但用户看不到正确内容，必须给纠正入口。label 规范化是为了保证「指定编码打开 → 保存」这条链不会因 label 拼写不一致而退回 UTF-8、把文件按错误编码写回去。
+
+## MC-DEC-20261020-f6a7b8c9 — 缩进参考线用 ViewPlugin + 两层渐变
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-a1b2c3d4
+Facet: interface
+Evidence:
+- repo:src/lib/editor/indent-guides.ts
+
+Decision:
+用 `ViewPlugin` 而非 `StateField` + `updateListener` 实现；装饰为行装饰，宽度通过内联 CSS 变量（`--indent-width` / `--indent-step`）按行给出；样式用「外层 no-repeat + 内层 repeating-linear-gradient」两层结构。
+Reason:
+两个坑都只有真跑起来才暴露：(1) `updateListener` **不为初始状态触发**，视图刚创建时装饰是空的，参考线要等用户编辑或滚动才出现，表现为「功能没生效」——`ViewPlugin` 的构造函数在创建时就跑；(2) `background-repeat: repeat-x` 会让渐变在**整行**重复，而 `background-size` 只控制每条渐变的宽度，两者叠加导致竖线横跨整行、每 2 个字符一条，像稿纸——必须把重复分成两层。装饰数量与行数同阶而非「行数 × 层级」，且只处理视口内的行。
+
 ## MC-DEC-20261019-a1b2c3d4 — 用标题栏状态提示取代 toast
 
 Status: active

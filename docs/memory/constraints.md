@@ -1,5 +1,29 @@
 # Constraints
 
+## MC-CON-20261020-a1b2c3d4 — 声明 runes 的文件必须叫 .svelte.ts
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-b2c3d4e5
+Facet: correctness
+Evidence:
+- repo:src/lib/i18n/locale.svelte.ts
+
+Requirement:
+凡是要用 `$state` / `$derived` / `$effect` 的模块，文件名必须以 `.svelte.ts` 结尾；纯函数与类型放普通 `.ts`。**`svelte-check` 查不出这类错误**——它会在启动时抛 `rune_outside_svelte` 让整个应用白屏，只有真跑起来才暴露。
+
+## MC-CON-20261020-b2c3d4e5 — 界面文案一律走 i18n 字典
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-b2c3d4e5
+Facet: workflow
+Evidence:
+- repo:src/lib/i18n/messages/en.ts
+
+Requirement:
+不在组件里写中文字面量，一律用 `t('...')`。新增文案必须**同时**加进 `messages/en.ts` 与 `messages/zh-CN.ts`（漏一边会在 svelte-check 阶段报错）。**代码注释与 `console.*` 日志不进字典**——它们不是界面文案。**语言名永远用该语言自身书写**，不跟随界面语言翻译。
+
 ## MC-CON-20261018-a1b2c3d4 — 不得把有损解码的二进制内容当文本保存
 
 Status: active
