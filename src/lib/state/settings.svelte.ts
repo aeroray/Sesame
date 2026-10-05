@@ -9,12 +9,15 @@ import { load, type Store } from '@tauri-apps/plugin-store';
 import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
 import type { Settings } from '$lib/state/types';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
+import { applySystemLocale, setLocale, resolveLocale } from '$lib/i18n';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {
   theme: 'system',
   /** 强调色。默认靛蓝（见 app.css 的 data-accent 色阶）。 */
   accent: 'indigo',
+  /** 界面语言。默认跟随系统——绝大多数用户该用这个。 */
+  language: 'system',
   fontSize: 14,
   tabSize: 2,
   wordWrap: true,
@@ -56,10 +59,35 @@ export async function loadSettings(): Promise<void> {
     console.error('读取设置失败，已使用默认值', err);
     Object.assign(settings, DEFAULTS);
   }
-  // 启动时把已保存的字体与强调色应用到界面
+  // 启动时把已保存的字体、强调色与语言应用到界面
   applyFontVariables();
   applyAccent();
+  applyLanguage();
   loaded = true;
+}
+
+/**
+ * 把语言设置应用到 i18n 运行时。
+ *
+ * `system` 时重新探测系统语言，而不是沿用模块加载时那一次探测的结果——
+ * 用户可能在设置里从 `zh-CN` 改回「跟随系统」，
+ * 此时必须重新读一次 `navigator.languages` 才能回到正确语言。
+ *
+ * 持久化的值可能来自旧版本（没有该字段）或被手工改坏，
+ * 因此先经 `resolveLocale` 校验，认不出就退回跟随系统。
+ */
+export function applyLanguage(): void {
+  if (settings.language === 'system') {
+    applySystemLocale();
+    return;
+  }
+
+  const resolved = resolveLocale(settings.language);
+  if (resolved) {
+    setLocale(resolved);
+  } else {
+    applySystemLocale();
+  }
 }
 
 /** 持久化当前设置。 */
@@ -82,6 +110,7 @@ export async function updateSetting<K extends keyof Settings>(
   settings[key] = value;
   applyFontVariables();
   applyAccent();
+  applyLanguage();
   await persistSettings();
 }
 
@@ -135,5 +164,6 @@ export async function resetSettings(): Promise<void> {
   Object.assign(settings, DEFAULTS);
   applyFontVariables();
   applyAccent();
+  applyLanguage();
   await persistSettings();
 }

@@ -7,7 +7,8 @@
 
 import { open } from '@tauri-apps/plugin-dialog';
 import { notify } from '$lib/state/status.svelte';
-import { FILE_FILTERS, IMAGE_EXTENSIONS } from '$src/constants';
+import { fileFilters, IMAGE_EXTENSIONS } from '$src/constants';
+import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { addRecent } from '$lib/state/recents.svelte';
 import {
@@ -21,7 +22,7 @@ import { initProgress, loadNextChunk } from '$lib/editor/large-file.svelte';
 import { noteFileSize, touch } from '$lib/state/hibernation.svelte';
 import { scheduleSessionSave } from '$lib/state/session.svelte';
 /** 提示错误信息。 */
-export function reportError(err: unknown, fallback = '操作失败'): void {
+export function reportError(err: unknown, fallback = t('error.generic')): void {
   const message =
     typeof err === 'object' && err !== null && 'message' in err
       ? String((err as { message: unknown }).message)
@@ -69,14 +70,14 @@ export async function openPath(path: string): Promise<void> {
       // 大文件：只载入了首块，登记进度并立即拉第一块
       initProgress(tab.id, payload.meta.size, 0);
       await loadNextChunk(tab);
-      notify.info('文件较大，已切换为大文件模式');
+      notify.info(t('status.largeFileMode'));
     } else {
       initProgress(tab.id, payload.meta.size, payload.meta.size);
     }
 
     scheduleSessionSave();
   } catch (err) {
-    reportError(err, '无法打开文件');
+    reportError(err, t('error.openFailed'));
   }
 }
 
@@ -97,7 +98,7 @@ async function openImagePath(path: string): Promise<void> {
     await ensureImage(tab.id, meta.path);
     scheduleSessionSave();
   } catch (err) {
-    reportError(err, '无法打开图片');
+    reportError(err, t('error.openImageFailed'));
   }
 }
 
@@ -107,16 +108,13 @@ export async function openViaDialog(): Promise<void> {
     const selected = await open({
       multiple: false,
       directory: false,
-      filters: FILE_FILTERS.map((f) => ({
-        name: f.name,
-        extensions: [...f.extensions],
-      })),
+      filters: fileFilters(),
     });
 
     if (typeof selected === 'string') {
       await openPath(selected);
     }
   } catch (err) {
-    reportError(err, '打开文件失败');
+    reportError(err, t('error.openDialogFailed'));
   }
 }

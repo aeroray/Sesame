@@ -2,6 +2,8 @@
  * 全局常量。魔法数字集中在此，便于统一调整。
  */
 
+import { t } from '$lib/i18n';
+
 /** 分块读取的块大小。 */
 export const CHUNK_SIZE = 1024 * 1024;
 
@@ -53,20 +55,28 @@ export const IMAGE_EXTENSIONS = [
   'avif',
 ] as const;
 
-/** 支持打开的文件类型过滤（用于原生对话框）。 */
-export const FILE_FILTERS = [
-  {
-    name: '文本与代码',
-    extensions: [
-      'txt', 'log', 'md', 'markdown', 'json', 'jsonc', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
-      'html', 'htm', 'css', 'scss', 'less', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'svelte', 'vue',
-      'rs', 'go', 'py', 'java', 'c', 'h', 'cpp', 'hpp', 'sql', 'xml', 'svg', 'sh', 'bash', 'ps1',
-      'bat', 'cmd', 'csv', 'tsv',
-    ],
-  },
-  {
-    name: '图片',
-    extensions: [...IMAGE_EXTENSIONS],
-  },
-  { name: '全部文件', extensions: ['*'] },
-] as const;
+/**
+ * 支持打开的文件类型过滤（用于原生对话框）。
+ *
+ * 做成**函数**而不是常量数组：过滤名要跟随界面语言，
+ * 而常量在模块加载时求值一次就固定了，之后切换语言不会更新。
+ * 每次打开对话框时调用一次，取到的就是当前语言的名称。
+ */
+export function fileFilters(): { name: string; extensions: string[] }[] {
+  return [
+    {
+      name: t('fileFilter.textAndCode'),
+      extensions: [
+        'txt', 'log', 'md', 'markdown', 'json', 'jsonc', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
+        'html', 'htm', 'css', 'scss', 'less', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'svelte', 'vue',
+        'rs', 'go', 'py', 'java', 'c', 'h', 'cpp', 'hpp', 'sql', 'xml', 'svg', 'sh', 'bash', 'ps1',
+        'bat', 'cmd', 'csv', 'tsv',
+      ],
+    },
+    {
+      name: t('fileFilter.images'),
+      extensions: [...IMAGE_EXTENSIONS],
+    },
+    { name: t('fileFilter.allFiles'), extensions: ['*'] },
+  ];
+}

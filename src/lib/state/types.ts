@@ -199,10 +199,20 @@ export interface Tab {
  */
 export type AccentId = 'indigo' | 'pine' | 'rose' | 'amber';
 
+/**
+ * 界面语言。
+ *
+ * `system` 表示跟随系统语言——这是默认值，也是绝大多数用户该用的选项。
+ * 用户显式选过 `zh-CN` 或 `en` 之后就不再跟随系统。
+ */
+export type LanguageSetting = 'system' | 'zh-CN' | 'en';
+
 /** 应用设置。 */
 export interface Settings {
   theme: 'light' | 'dark' | 'system';
   accent: AccentId;
+  /** 界面语言。默认跟随系统。 */
+  language: LanguageSetting;
   fontSize: number;
   tabSize: number;
   wordWrap: boolean;

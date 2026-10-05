@@ -13,20 +13,11 @@ import { closeTab, closeOtherTabs, closeAllTabs, tabs } from '$lib/state/tabs.sv
 import { saveTab } from '$lib/actions/save-file';
 import { cancelAutoSave } from '$lib/actions/autosave';
 import { dropDraft } from '$lib/actions/draft';
+import { t } from '$lib/i18n';
 import type { Tab } from '$lib/state/types';
 
 /** 用户对「未保存的修改」的选择。 */
 type Choice = 'save' | 'discard' | 'cancel';
-
-/**
- * 确认框的三个按钮文案。
- *
- * 抽成常量是因为**判断返回值时必须比对同一份文案**——
- * 见下面 `askUnsaved` 的说明。
- */
-const BTN_SAVE = '保存';
-const BTN_DISCARD = '不保存';
-const BTN_CANCEL = '取消';
 
 /**
  * 弹出三选一确认框。
@@ -43,22 +34,33 @@ const BTN_CANCEL = '取消';
  * 早先这里判断 `answer === 'No'`，在 Windows 上永远不成立，
  * 于是「不保存」被当成「取消」——用户点了没有任何反应（实测确认）。
  * 正确做法是拿返回值与按钮文案本身比对。
+ *
+ * ## 多语言带来的新坑
+ *
+ * 按钮文案现在取自字典，因此**弹框与比对必须用同一时刻的同一份文案**。
+ * 若弹框前取一次、比对时再取一次，而用户在这期间切了语言，
+ * 比对就会失败，「不保存」又会被当成「取消」。
+ * 这里把三个文案先取进局部变量，两处共用，从根上避免。
  */
 async function askUnsaved(name: string): Promise<Choice> {
-  const answer = await message(`「${name}」有未保存的修改。`, {
-    title: '未保存的修改',
+  const btnSave = t('action.save');
+  const btnDiscard = t('action.discard');
+  const btnCancel = t('action.cancel');
+
+  const answer = await message(t('dialog.unsavedMessage', { name }), {
+    title: t('dialog.unsavedTitle'),
     kind: 'warning',
     buttons: {
-      yes: BTN_SAVE,
-      no: BTN_DISCARD,
-      cancel: BTN_CANCEL,
+      yes: btnSave,
+      no: btnDiscard,
+      cancel: btnCancel,
     },
   });
 
   // 自定义文案平台：返回值就是按钮文字
-  if (answer === BTN_SAVE) return 'save';
-  if (answer === BTN_DISCARD) return 'discard';
-  if (answer === BTN_CANCEL) return 'cancel';
+  if (answer === btnSave) return 'save';
+  if (answer === btnDiscard) return 'discard';
+  if (answer === btnCancel) return 'cancel';
 
   // 兜底：万一某平台返回标准结果名（未用自定义文案时才会出现）
   if (answer === 'Yes') return 'save';

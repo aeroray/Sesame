@@ -5,7 +5,7 @@
 import { save } from '@tauri-apps/plugin-dialog';
 import { message } from '@tauri-apps/plugin-dialog';
 import { notify } from '$lib/state/status.svelte';
-import { FILE_FILTERS } from '$src/constants';
+import { fileFilters } from '$src/constants';
 import * as ipc from '$lib/ipc/fs';
 import { addRecent } from '$lib/state/recents.svelte';
 import {
@@ -21,19 +21,8 @@ import {
 import { clearProgress, getProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { reportError } from '$lib/actions/open-file';
 import { dropDraft } from '$lib/actions/draft';
+import { t } from '$lib/i18n';
 import type { Tab } from '$lib/state/types';
-
-/**
- * 冲突对话框的三个按钮文案。
- *
- * 与 `close-tab.ts` 同理：用自定义按钮文案时，各平台返回的是**按钮文字本身**
- * 而不是 `Yes`/`No`/`Cancel`，因此必须拿返回值与同一份常量比对。
- */
-const BTN_OVERWRITE = '覆盖磁盘';
-const BTN_RELOAD = '加载磁盘';
-const BTN_SAVE_AS = '另存为';
-/** 保存失败对话框里的「稍后处理」。 */
-const BTN_CANCEL_SAVE = '稍后再说';
 
 /**
  * 取得标签页的当前正文。
@@ -93,13 +82,13 @@ export async function autoSaveTab(tab: Tab): Promise<boolean> {
 async function performSave(tab: Tab, opts: { silent: boolean }): Promise<boolean> {
   // 图片标签：明确告知不支持，而不是静默失败
   if (tab.kind !== 'text') {
-    if (!opts.silent) notify.error('图片不支持保存');
+    if (!opts.silent) notify.error(t('error.notWritable'));
     return false;
   }
 
   const content = currentText(tab);
   if (content === null) {
-    if (!opts.silent) notify.error('没有可保存的内容');
+    if (!opts.silent) notify.error(t('error.nothingToSave'));
     return false;
   }
 
@@ -147,10 +136,10 @@ async function writeToPath(
       markDirty(tab.id, false);
       // 内容已落到用户的文件上，草稿没有存在意义了
       void dropDraft(tab.id);
-      if (!opts.silent) notify.success('已保存');
+      if (!opts.silent) notify.success(t('status.saved'));
     } else if (!opts.silent) {
       // 期间有新编辑，保持脏状态并说明情况，避免用户误以为全部落盘
-      notify.info('已保存，但期间又有改动');
+      notify.info(t('status.savedWithNewEdits'));
     }
 
     /*
@@ -178,7 +167,7 @@ async function writeToPath(
     }
 
     // 自动保存失败时也要报错：静默失败会让用户以为改动已经落盘
-    reportError(err, '保存失败');
+    reportError(err, t('error.saveFailed'));
     return false;
   }
 }
@@ -201,24 +190,28 @@ async function handleWriteBlocked(tab: Tab, content: string, err: unknown): Prom
   const reason =
     typeof err === 'object' && err !== null && 'message' in err
       ? String((err as { message: unknown }).message)
-      : '无法写入该文件';
+      : t('error.writeBlocked');
 
-  const answer = await message(`${reason}\n\n要另存到其他位置吗？`, {
-    title: '保存失败',
+  // 与 askUnsaved 同理：弹框与比对必须用同一时刻的文案
+  const btnSaveAs = t('action.saveAs');
+  const btnLater = t('dialog.saveLater');
+
+  const answer = await message(t('dialog.saveFailedQuestion', { reason }), {
+    title: t('dialog.saveFailedTitle'),
     kind: 'error',
     buttons: {
-      ok: BTN_SAVE_AS,
-      cancel: BTN_CANCEL_SAVE,
+      ok: btnSaveAs,
+      cancel: btnLater,
     },
   });
 
-  if (answer === BTN_SAVE_AS) {
+  if (answer === btnSaveAs) {
     // 内容仍在编辑器里，另存为不会丢
     return saveTabAs(tab, content);
   }
 
   // 用户选择稍后处理：保持脏状态，改动仍在，不会静默丢失
-  notify.warning('未保存，修改仍在编辑器中');
+  notify.warning(t('status.unsavedStillInEditor'));
   return false;
 }
 
@@ -242,22 +235,27 @@ function isConflict(err: unknown): boolean {
 async function resolveConflict(tab: Tab, target: string, content: string): Promise<boolean> {
   const name = target.split('/').pop() ?? tab.name;
 
-  const answer = await message(`「${name}」已被其他程序修改。`, {
-    title: '文件已被外部修改',
+  // 三个按钮文案先取到局部变量，弹框与比对共用（见 askUnsaved 的说明）
+  const btnOverwrite = t('dialog.conflictOverwrite');
+  const btnReload = t('dialog.conflictReload');
+  const btnSaveAs = t('dialog.conflictSaveAs');
+
+  const answer = await message(t('dialog.conflictMessage', { name }), {
+    title: t('dialog.conflictTitle'),
     kind: 'warning',
     buttons: {
-      yes: BTN_OVERWRITE,
-      no: BTN_RELOAD,
-      cancel: BTN_SAVE_AS,
+      yes: btnOverwrite,
+      no: btnReload,
+      cancel: btnSaveAs,
     },
   });
 
   // 与 close-tab 同理：自定义按钮文案时，返回值是按钮文字本身
-  if (answer === BTN_OVERWRITE) {
+  if (answer === btnOverwrite) {
     return writeToPath(tab, target, content, { silent: false, force: true });
   }
 
-  if (answer === BTN_RELOAD) {
+  if (answer === btnReload) {
     return reloadFromDisk(tab, target);
   }
 
@@ -280,10 +278,10 @@ async function reloadFromDisk(tab: Tab, target: string): Promise<boolean> {
     renameTab(tab.id, payload.meta.path, payload.meta.name);
     markDirty(tab.id, false);
     void dropDraft(tab.id);
-    notify.info('已加载磁盘内容');
+    notify.info(t('status.loadedFromDisk'));
     return true;
   } catch (err) {
-    reportError(err, '重新加载失败');
+    reportError(err, t('error.reloadFailed'));
     return false;
   }
 }
@@ -291,24 +289,21 @@ async function reloadFromDisk(tab: Tab, target: string): Promise<boolean> {
 /** 另存为。 */
 export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
   if (tab.kind !== 'text') {
-    notify.error('图片不支持保存');
+    notify.error(t('error.notWritable'));
     return false;
   }
 
   // 同上：宁可拒绝，也不写出一个空文件
   const text = content ?? currentText(tab);
   if (text === null) {
-    notify.error('没有可保存的内容');
+    notify.error(t('error.nothingToSave'));
     return false;
   }
 
   try {
     const target = await save({
       defaultPath: tab.path ?? tab.name,
-      filters: FILE_FILTERS.map((f) => ({
-        name: f.name,
-        extensions: [...f.extensions],
-      })),
+      filters: fileFilters(),
     });
 
     if (!target) return false;
@@ -344,13 +339,13 @@ export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
     setTruncated(tab.id, false);
 
     if (truncated) {
-      notify.warning('已另存为，仅含已加载部分');
+      notify.warning(t('status.savedAsPartial'));
     } else {
-      notify.success('已保存');
+      notify.success(t('status.saved'));
     }
     return true;
   } catch (err) {
-    reportError(err, '另存为失败');
+    reportError(err, t('error.saveAsFailed'));
     return false;
   }
 }

@@ -1,0 +1,308 @@
+/**
+ * 英文文案。**这是字典结构的唯一来源**——
+ * 中文版必须满足同一份 `Messages` 类型，漏译或拼错 key 都会在编译期报错。
+ *
+ * ## 约定
+ *
+ * - key 用点分层级，按**功能域**分组，不按组件分。
+ *   同一个词（如「保存」）在多个组件里出现，只该有一条文案。
+ * - 占位符用 `{name}` 形式，由 `t()` 做插值。
+ * - 需要按数量变形的文案用 `{ one, other }`，由 `t()` 依据 `count` 选择。
+ *   中文没有单复数变化，两个值写一样即可——这是刻意的，
+ *   好过为中文单独开一套机制。
+ * - **日志与 `console` 消息不进字典**：它们是给开发者看的，
+ *   不该跟随界面语言变化，也不该占用翻译工作量。
+ */
+export const en = {
+  app: {
+    name: 'Sesame',
+    tagline: 'Lightweight text editor',
+  },
+
+  /** 通用动作词。多处复用，改一次即全局生效。 */
+  action: {
+    save: 'Save',
+    saveAs: 'Save As',
+    discard: 'Don’t Save',
+    cancel: 'Cancel',
+    close: 'Close',
+    confirm: 'OK',
+    reset: 'Restore Defaults',
+    copyPath: 'Copy file path',
+    revealInFolder: 'Show in folder',
+    reopenClosed: 'Reopen closed tab',
+  },
+
+  menu: {
+    label: 'Application menu',
+    settings: 'Settings',
+    shortcuts: 'Keyboard Shortcuts',
+    theme: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    language: 'Language',
+    current: 'Current',
+  },
+
+  tab: {
+    untitled: 'Untitled',
+    new: 'New tab',
+    newWithKey: 'New tab · Ctrl+N',
+    close: 'Close {name}',
+    closeDirty: 'Close {name} (unsaved)',
+    next: 'Next tab',
+    previous: 'Previous tab',
+  },
+
+  sidebar: {
+    open: 'Open files',
+    recent: 'Recent',
+    noOpenFiles: 'No files open',
+    noOtherRecents: 'No other recent files',
+    sleeping: 'Sleeping (reopening restores it)',
+    removeFromList: 'Remove {name} from list',
+  },
+
+  welcome: {
+    newFile: 'New file',
+    openFile: 'Open file',
+    recentHeader: 'Recently opened',
+    clear: 'Clear',
+    emptyTitle: 'No files opened yet',
+    emptyHint: 'Drop a file into the window, or press Ctrl+O',
+  },
+
+  /** 标题栏中央的操作反馈。力求短。 */
+  status: {
+    saved: 'Saved',
+    savedWithNewEdits: 'Saved, but edited again',
+    loadedFromDisk: 'Reloaded from disk',
+    savedAsPartial: 'Saved as — only the loaded part',
+    unsavedStillInEditor: 'Not saved; your edits are still here',
+    largeFileMode: 'Large file — switched to chunked mode',
+    restoredDrafts: {
+      one: 'Restored {count} unsaved file',
+      other: 'Restored {count} unsaved files',
+    },
+    restoredSession: {
+      one: 'Reopened {count} file from last session',
+      other: 'Reopened {count} files from last session',
+    },
+  },
+
+  /** 编辑器内命令的显示名（快捷键面板用）。 */
+  command: {
+    find: 'Find',
+    findNext: 'Find next',
+    selectAllMatches: 'Select all matches',
+    gotoLine: 'Go to line',
+    triggerCompletion: 'Trigger completion',
+    undo: 'Undo',
+    redo: 'Redo',
+    toggleComment: 'Toggle line comment',
+    indentLess: 'Decrease indent',
+    indentMore: 'Increase indent',
+    moveLine: 'Move line up / down',
+    copyLine: 'Copy line up / down',
+    selectAll: 'Select all',
+  },
+
+  shortcuts: {
+    title: 'Keyboard Shortcuts',
+    description: 'Editor commands match the conventions of mainstream editors.',
+    groupFile: 'File',
+    groupEdit: 'Edit',
+    groupView: 'View',
+  },
+
+  settings: {
+    title: 'Settings',
+    description: 'Changes are saved automatically.',
+
+    theme: 'Theme',
+    themePlaceholder: 'Choose a theme',
+    accent: 'Accent color',
+    language: 'Language',
+
+    uiFont: 'Interface font',
+    editorFont: 'Editor font',
+    followSystemFont: 'System default',
+
+    fontSize: 'Font size',
+    fontSizePlaceholder: 'Choose a size',
+    fontSizeValue: '{size} px',
+
+    tabSize: 'Tab width',
+    tabSizePlaceholder: 'Choose a width',
+    tabSizeValue: {
+      one: '{size} space',
+      other: '{size} spaces',
+    },
+
+    wordWrap: 'Word wrap',
+    showLineNumbers: 'Line numbers',
+
+    autoSave: 'Autosave',
+    autoSaveHint: 'Write to disk after you stop typing',
+    hibernate: 'Background hibernation',
+    hibernateHint: 'Release memory for large files left idle',
+    restoreSession: 'Restore last session',
+    restoreSessionHint: 'Reopen your files on launch',
+  },
+
+  /** 强调色名称。 */
+  accent: {
+    indigo: 'Indigo',
+    pine: 'Pine',
+    rose: 'Rose',
+    amber: 'Amber',
+  },
+
+  /** 编辑器状态栏。 */
+  editor: {
+    binary: 'Binary file · read-only',
+    lineColumn: 'Line {line}, Column {column}',
+    lineColumnTitle: 'Cursor position (line:column)',
+    encoding: 'Text encoding',
+    lineEnding: 'Line endings',
+    largeFileBadge: 'Large file',
+    image: 'Image',
+    ready: 'Ready',
+
+    preview: 'Preview Markdown',
+    backToEditor: 'Back to editing',
+
+    wordWrapOn: 'Word wrap: on',
+    wordWrapOff: 'Word wrap: off',
+    lineNumbersOn: 'Line numbers: on',
+    lineNumbersOff: 'Line numbers: off',
+
+    /** 大文件提示条。 */
+    largeFileTitle: 'Large file',
+    largeFileProgress: 'Loaded {loaded} of {total} ({percent}%)',
+    loadMore: 'Load more',
+    loadAll: 'Load everything',
+    /** 查找只覆盖已加载部分时的提醒。 */
+    searchPartial: 'Only the loaded part is searched — {remaining} not loaded yet',
+  },
+
+  image: {
+    zoomOut: 'Zoom out',
+    zoomIn: 'Zoom in',
+    fit: 'Fit to window',
+    fitShort: 'Fit',
+    actualSize: 'Actual size',
+    openExternal: 'Open in default app',
+  },
+
+  fontPicker: {
+    search: 'Search fonts',
+    loading: 'Reading system fonts…',
+    loadFailed: 'Could not read system fonts',
+    noMatch: 'No matching fonts',
+    monospace: 'Monospace',
+    moreResults: '{count} more — keep typing to narrow down',
+  },
+
+  encoding: {
+    /** 手动指定编码的入口。 */
+    change: 'Reopen with encoding…',
+    title: 'Reopen with encoding',
+    description: 'Content is re-read from disk. Unsaved changes in this tab will be lost.',
+    autoDetected: 'Auto-detected',
+    unsupported: 'This encoding is not supported',
+  },
+
+  lineEnding: {
+    change: 'Convert line endings…',
+    title: 'Line endings',
+    lf: 'LF (Unix)',
+    crlf: 'CRLF (Windows)',
+    cr: 'CR (legacy Mac)',
+  },
+
+  /** 需要用户**做决定**的原生对话框。 */
+  dialog: {
+    unsavedTitle: 'Unsaved changes',
+    unsavedMessage: '“{name}” has unsaved changes.',
+
+    conflictTitle: 'File changed on disk',
+    conflictMessage: '“{name}” was modified by another program.',
+    conflictOverwrite: 'Overwrite',
+    conflictReload: 'Reload from disk',
+    conflictSaveAs: 'Save As',
+
+    saveFailedTitle: 'Could not save',
+    saveFailedQuestion: '{reason}\n\nSave to a different location instead?',
+    saveLater: 'Later',
+  },
+
+  /** 操作失败提示（标题栏状态栏里的一行字）。 */
+  error: {
+    generic: 'Something went wrong',
+    openFailed: 'Could not open the file',
+    openImageFailed: 'Could not open the image',
+    openDialogFailed: 'Could not open the file dialog',
+    saveFailed: 'Could not save',
+    saveAsFailed: 'Could not save as',
+    reloadFailed: 'Could not reload',
+    loadFailed: 'Could not load',
+    readImageFailed: 'Could not read the image',
+    openExternallyFailed: 'Could not open with the default app',
+    writeBlocked: 'Could not write to this file',
+    notWritable: 'Image files cannot be saved',
+    nothingToSave: 'There is nothing to save',
+    unknown: 'An unknown error occurred',
+    linkOpenFailed: 'Could not open the link',
+    renderFailed: 'Could not render this document',
+  },
+
+  /** 相对时间（最近文件列表）。 */
+  time: {
+    justNow: 'Just now',
+    minutesAgo: {
+      one: '{count} minute ago',
+      other: '{count} minutes ago',
+    },
+    hoursAgo: {
+      one: '{count} hour ago',
+      other: '{count} hours ago',
+    },
+    daysAgo: {
+      one: '{count} day ago',
+      other: '{count} days ago',
+    },
+  },
+
+  /** 原生文件对话框里的类型过滤名。 */
+  fileFilter: {
+    textAndCode: 'Text and code',
+    images: 'Images',
+    allFiles: 'All files',
+  },
+
+  /** 折叠栏图标的提示。 */
+  fold: {
+    collapse: 'Fold this line',
+    expand: 'Unfold this line',
+  },
+
+  /** 语言自身的名称。永远用该语言书写，不翻译。 */
+  locale: {
+    'zh-CN': '简体中文',
+    en: 'English',
+  },
+};
+
+/**
+ * 字典类型。
+ *
+ * 用 `typeof en` 而不是手写 interface：改英文文案时类型自动跟着变，
+ * 中文版漏了哪条会立刻在 `svelte-check` 里报出来。
+ *
+ * **注意这里不能给 `en` 加 `as const`。** 那会把每个值收窄成字符串字面量
+ * （`'Save'` 而不是 `string`），于是中文版写 `'保存'` 就会因为
+ * 「类型不匹配」而编译失败——字典本身反而没法翻译了。
+ */
+export type Messages = typeof en;
