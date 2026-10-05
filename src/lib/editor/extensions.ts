@@ -36,6 +36,7 @@ import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirro
 import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { searchPhrases } from './search-i18n';
 import { foldMarkerDOM, foldGutterTheme, lineNumberGutterTheme } from './fold-gutter';
+import { indentGuides, indentGuideTheme } from './indent-guides';
 import {
   autocompletion,
   closeBrackets,
@@ -66,6 +67,8 @@ export interface EditorCompartments {
   wordWrap: Compartment;
   tabSize: Compartment;
   readOnly: Compartment;
+  /** 缩进参考线。单独一段，切换时不影响其他扩展。 */
+  indentGuides: Compartment;
 }
 
 export function createCompartments(): EditorCompartments {
@@ -77,6 +80,7 @@ export function createCompartments(): EditorCompartments {
     wordWrap: new Compartment(),
     tabSize: new Compartment(),
     readOnly: new Compartment(),
+    indentGuides: new Compartment(),
   };
 }
 
@@ -158,6 +162,16 @@ export function readOnlyExtension(readOnly: boolean): Extension {
   ];
 }
 
+/**
+ * 缩进参考线开关。
+ *
+ * 关闭时返回空数组，此时 `indentGuides()` 的字段与监听器都不注册——
+ * 不是「注册了但不画」，而是彻底不参与，省下每次滚动的重算开销。
+ */
+export function indentGuidesExtension(enabled: boolean): Extension {
+  return enabled ? [indentGuides(), indentGuideTheme] : [];
+}
+
 /** 组装完整扩展集。 */
 export function buildExtensions(
   compartments: EditorCompartments,
@@ -169,6 +183,7 @@ export function buildExtensions(
     wordWrap: boolean;
     tabSize: number;
     readOnly: boolean;
+    showIndentGuides: boolean;
   },
 ): Extension[] {
   return [
@@ -184,5 +199,6 @@ export function buildExtensions(
     compartments.wordWrap.of(wordWrapExtension(options.wordWrap)),
     compartments.tabSize.of(tabSizeExtension(options.tabSize)),
     compartments.readOnly.of(readOnlyExtension(options.readOnly)),
+    compartments.indentGuides.of(indentGuidesExtension(options.showIndentGuides)),
   ];
 }

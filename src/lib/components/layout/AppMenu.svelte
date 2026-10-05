@@ -17,6 +17,7 @@
   import { Button } from '$lib/components/ui/button';
   import { setMode } from 'mode-watcher';
   import { settings, updateSetting } from '$lib/state/settings.svelte';
+  import { t } from '$lib/i18n';
 
   interface Props {
     onOpenSettings: () => void;
@@ -40,7 +41,7 @@
         variant="ghost"
         size="icon"
         class="size-9 rounded-none text-content-muted hover:bg-surface hover:text-content"
-        aria-label="应用菜单"
+        aria-label={t('menu.label')}
       >
         <Menu class="size-4" />
       </Button>
@@ -50,19 +51,21 @@
   <DropdownMenuContent align="end" class="w-48">
     <DropdownMenuItem class="gap-2" onSelect={onOpenSettings}>
       <Settings class="size-3.5" />
-      设置
+      {t('menu.settings')}
       <span class="ml-auto text-[10px] text-content-faint">Ctrl+,</span>
     </DropdownMenuItem>
 
     <DropdownMenuItem class="gap-2" onSelect={onOpenShortcuts}>
       <Keyboard class="size-3.5" />
-      快捷键
+      {t('menu.shortcuts')}
       <span class="ml-auto text-[10px] text-content-faint">Ctrl+/</span>
     </DropdownMenuItem>
 
     <DropdownMenuSeparator />
 
-    <DropdownMenuLabel class="text-[11px] font-normal text-content-faint">主题</DropdownMenuLabel>
+    <DropdownMenuLabel class="text-[11px] font-normal text-content-faint"
+      >{t('menu.theme')}</DropdownMenuLabel
+    >
 
     <!--
       三个选项一律比对 settings.theme（用户的偏好），
@@ -72,25 +75,25 @@
     -->
     <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('light')}>
       <Sun class="size-3.5" />
-      浅色
+      {t('menu.themeLight')}
       {#if settings.theme === 'light'}
-        <span class="ml-auto text-[10px] text-brand-600">当前</span>
+        <span class="ml-auto text-[10px] text-brand-600">{t('menu.current')}</span>
       {/if}
     </DropdownMenuItem>
 
     <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('dark')}>
       <Moon class="size-3.5" />
-      深色
+      {t('menu.themeDark')}
       {#if settings.theme === 'dark'}
-        <span class="ml-auto text-[10px] text-brand-600">当前</span>
+        <span class="ml-auto text-[10px] text-brand-600">{t('menu.current')}</span>
       {/if}
     </DropdownMenuItem>
 
     <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('system')}>
       <Monitor class="size-3.5" />
-      跟随系统
+      {t('menu.themeSystem')}
       {#if settings.theme === 'system'}
-        <span class="ml-auto text-[10px] text-brand-600">当前</span>
+        <span class="ml-auto text-[10px] text-brand-600">{t('menu.current')}</span>
       {/if}
     </DropdownMenuItem>
 

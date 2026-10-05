@@ -84,9 +84,101 @@ fn replacement_count(text: &str) -> usize {
     text.matches('\u{FFFD}').count()
 }
 
+/// 把 `encoding_rs` 对象映射回**规范化的静态标签**。
+///
+/// `Encoding::name()` 返回的也是 `&'static str`，但大小写与拼写不一定与
+/// 本项目的标签一致（它给 `"Big5"`，本项目用 `"big5"`）。
+/// 统一走这张表，保证 `decode_as` 返回的 label 能被 `encoding_for` 认回来——
+/// 否则「用户指定 big5 打开 → 保存」这条链会因为 label 对不上而退回 UTF-8，
+/// 把文件按错误编码写回去。
+fn label_for(enc: &'static Encoding) -> &'static str {
+    if enc == encoding_rs::UTF_8 {
+        "utf-8"
+    } else if enc == encoding_rs::UTF_16LE {
+        "utf-16le"
+    } else if enc == encoding_rs::UTF_16BE {
+        "utf-16be"
+    } else if enc == encoding_rs::GBK {
+        "gbk"
+    } else if enc == encoding_rs::GB18030 {
+        "gb18030"
+    } else if enc == encoding_rs::BIG5 {
+        "big5"
+    } else if enc == encoding_rs::SHIFT_JIS {
+        "shift_jis"
+    } else if enc == encoding_rs::EUC_KR {
+        "euc-kr"
+    } else if enc == encoding_rs::WINDOWS_1252 {
+        "windows-1252"
+    } else {
+        // `encoding_for` 只可能返回上表里的编码；走到这里说明两张表不同步
+        "utf-8"
+    }
+}
+
+/// 所有可供用户手动选择的编码标签。
+///
+/// 顺序即界面展示顺序：UTF 系在前（最常用），其余按地区常见度排。
+/// 这份列表同时被前端的编码选择器使用（通过 `list_encodings` 命令），
+/// 避免两边各维护一份而漂移。
+pub const SELECTABLE_ENCODINGS: &[&str] = &[
+    "utf-8",
+    "utf-16le",
+    "utf-16be",
+    "gbk",
+    "gb18030",
+    "big5",
+    "shift_jis",
+    "euc-kr",
+    "windows-1252",
+];
+
+/// 按**指定**编码解码，跳过一切探测。
+///
+/// 用于「用户手动指定编码重新打开」：探测不可能全对，必须给一个纠正的出口。
+///
+/// 与 `decode` 的两点不同：
+/// 1. **完全跳过探测**，即使用户选的编码与内容不匹配也照办——用户是权威。
+/// 2. **保留 BOM 判定**：若内容带 BOM 且与用户所选一致，仍按 BOM 处理，
+///    否则会把 BOM 本身当成正文内容显示出来（一个不可见字符）。
+///
+/// 有损解码是刻意的：指定错编码时会出现替换字符，但**不会**因为
+/// 解码失败而让文件打不开。用户可以再换一个编码。
+pub fn decode_as(bytes: &[u8], label: &str) -> Decoded {
+    if bytes.is_empty() {
+        return Decoded {
+            text: String::new(),
+            label: "utf-8",
+            has_bom: false,
+        };
+    }
+
+    let enc = encoding_for(label);
+
+    // 内容带 BOM 且与所选编码一致时，剥掉 BOM 再解码
+    if let Some((bom_enc, bom_len)) = Encoding::for_bom(bytes) {
+        if bom_enc == enc {
+            let (cow, _, _) = enc.decode(&bytes[bom_len..]);
+            return Decoded {
+                text: cow.into_owned(),
+                label: label_of_bom(enc),
+                has_bom: true,
+            };
+        }
+    }
+
+    // 用户指定的编码与 BOM 不符（或没有 BOM）：按用户所选整体解码
+    let (cow, _, _) = enc.decode(bytes);
+    Decoded {
+        text: cow.into_owned(),
+        label: label_for(enc),
+        has_bom: false,
+    }
+}
+
 /// 探测并解码字节流。
 ///
-/// 顺序：BOM → 严格 UTF-8 → GBK（容错）→ 有损 UTF-8 兜底。
+/// 顺序：BOM → 严格 UTF-8 → GBK（容错）→ 有损 UTF-8 兜底 → 二进制判定。
 pub fn decode(bytes: &[u8]) -> Decoded {
     if bytes.is_empty() {
         return Decoded {
@@ -353,7 +445,7 @@ mod tests {
     #[test]
     fn misdetected_encoding_still_round_trips() {
         let cases: [(&str, Vec<u8>); 3] = [
-            ("Big5", vec![0xA4, 0xA4, 0xA4, 0xE5, 0xB4, 0xFA, 0xA6, 0x72]),
+            ("Big5", vec![0xA4, 0xA4, 0xA4, 0xE5, 0xB4, 0xFA, 0xB8, 0xD5]),
             ("Shift_JIS", vec![0x93, 0xFA, 0x96, 0x7B, 0x8C, 0xEA]),
             ("UTF-16LE 无 BOM", vec![0x2D, 0x4E, 0x87, 0x65]),
         ];
@@ -364,5 +456,69 @@ mod tests {
             let written = encode(&d.text, d.label, d.has_bom);
             assert_eq!(written, original, "{name} 误判后写回字节不一致，属于数据损坏");
         }
+    }
+
+    /// 手动指定编码能纠正误判，且**写回仍是原字节**。
+    ///
+    /// 这是「手动指定编码」功能的正确性基础：
+    /// 用正确编码解码 → 文本正确 → 按同一编码写回 → 字节与原文一致。
+    #[test]
+    fn manual_encoding_override_restores_correct_text() {
+        // Big5「中文測試」：A4A4=中 A4E5=文 B4FA=測 B8D5=試
+        let big5 = [0xA4, 0xA4, 0xA4, 0xE5, 0xB4, 0xFA, 0xB8, 0xD5];
+
+        // 自动探测会误判成 GBK
+        assert_eq!(decode(&big5).label, "gbk");
+
+        // 手动指定 big5 后文本正确
+        let fixed = decode_as(&big5, "big5");
+        assert_eq!(fixed.label, "big5");
+        assert_eq!(fixed.text, "中文測試");
+
+        // 按同一编码写回，字节与原文一致（不会损坏文件）
+        assert_eq!(encode(&fixed.text, fixed.label, fixed.has_bom), big5);
+    }
+
+    /// `decode_as` 返回的 label 必须能被 `encoding_for` 认回来。
+    ///
+    /// 否则「指定编码打开 → 保存」这条链会在保存时退回 UTF-8，
+    /// 把文件按错误编码写回去。
+    #[test]
+    fn decode_as_label_round_trips_through_encoding_for() {
+        for label in SELECTABLE_ENCODINGS {
+            let bytes = "test".as_bytes();
+            let d = decode_as(bytes, label);
+            // 认回来的编码必须与请求的是同一个
+            assert_eq!(
+                encoding_for(d.label),
+                encoding_for(label),
+                "label {label} 经 decode_as 后变成 {}，保存时会写错编码",
+                d.label
+            );
+        }
+    }
+
+    /// 指定编码时若内容带**匹配**的 BOM，应剥掉 BOM 而不是当成正文。
+    #[test]
+    fn decode_as_strips_matching_bom() {
+        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice("hi".as_bytes());
+
+        let d = decode_as(&bytes, "utf-8");
+        assert_eq!(d.text, "hi", "BOM 被当成了正文内容");
+        assert!(d.has_bom);
+    }
+
+    /// 指定编码时若内容带**不匹配**的 BOM，按用户所选整体解码。
+    #[test]
+    fn decode_as_ignores_mismatched_bom() {
+        // UTF-16LE BOM + 数据，但用户坚持按 utf-8 解
+        let mut bytes = vec![0xFF, 0xFE];
+        bytes.extend_from_slice(&[0x41, 0x00]);
+
+        let d = decode_as(&bytes, "utf-8");
+        // 不匹配时不去剥 BOM，因此会看到替换字符——这是用户自己选的
+        assert_eq!(d.label, "utf-8");
+        assert!(!d.has_bom);
     }
 }

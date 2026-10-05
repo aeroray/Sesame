@@ -14,6 +14,7 @@
   import { cn } from '$lib/utils/cn';
   import { fontList, ensureFonts, filterFonts } from '$lib/state/fonts.svelte';
   import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
+  import { t } from '$lib/i18n';
 
   interface Props {
     /** 当前值。空字符串表示「默认」。 */
@@ -102,11 +103,11 @@
         <!-- 首次枚举要扫描系统字体目录，可能几百毫秒，必须有加载态 -->
         <div class="flex items-center justify-center gap-2 py-6 text-xs text-content-faint">
           <Loader2 class="size-4 animate-spin" />
-          正在读取系统字体…
+          {t('fontPicker.loading')}
         </div>
       {:else if fontList.error}
         <div class="flex flex-col items-center gap-1 py-6 text-center">
-          <p class="text-xs text-content-muted">无法读取系统字体</p>
+          <p class="text-xs text-content-muted">{t('fontPicker.loadFailed')}</p>
           <p class="text-[11px] text-content-faint">{fontList.error}</p>
         </div>
       {:else}
@@ -117,7 +118,7 @@
           />
           <Input
             bind:value={query}
-            placeholder="搜索字体"
+            placeholder={t('fontPicker.search')}
             class="h-7 pl-7 text-xs"
             autocomplete="off"
           />
@@ -158,18 +159,20 @@
                 </span>
                 {#if preferMonospace && font.monospaced}
                   <span class="ml-auto shrink-0 rounded-xs bg-surface-sunken px-1 text-[10px] text-content-faint">
-                    等宽
+                    {t('fontPicker.monospace')}
                   </span>
                 {/if}
               </button>
             {/each}
 
             {#if results.length === 0}
-              <p class="px-2 py-4 text-center text-xs text-content-faint">没有匹配的字体</p>
+              <p class="px-2 py-4 text-center text-xs text-content-faint">
+                {t('fontPicker.noMatch')}
+              </p>
             {:else if truncated}
               <!-- 说明结果被截断，并给出下一步，而不是让用户以为「只有这些」 -->
               <p class="px-2 py-2 text-center text-[11px] text-content-faint">
-                还有 {filtered.length - RENDER_LIMIT} 个，继续输入以缩小范围
+                {t('fontPicker.moreResults', { count: filtered.length - RENDER_LIMIT })}
               </p>
             {/if}
           </div>

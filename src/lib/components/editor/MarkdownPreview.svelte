@@ -11,6 +11,7 @@
   import DOMPurify from 'dompurify';
   import { openUrl } from '@tauri-apps/plugin-opener';
   import { ScrollArea } from '$lib/components/ui/scroll-area';
+  import { t } from '$lib/i18n';
 
   interface Props {
     content: string;
@@ -37,7 +38,8 @@
       });
     } catch (err) {
       console.error('Markdown 渲染失败', err);
-      return '<p>无法渲染此文档</p>';
+      // 走 `t()` 而不是内联中文：这条兜底文案会真的显示在界面上
+      return `<p>${t('error.renderFailed')}</p>`;
     }
   });
 

@@ -21,6 +21,7 @@
   import { formatRelativeTime } from '$lib/utils/format';
   import { RECENT_DISPLAY_LIMIT } from '$src/constants';
   import { cn } from '$lib/utils/cn';
+  import { t } from '$lib/i18n';
 
   let { open }: { open: boolean } = $props();
 
@@ -52,14 +53,16 @@
         <section class="flex flex-col gap-1">
           <div class="flex items-center gap-1.5 px-1.5 py-1">
             <Layers class="size-3 text-content-faint" />
-            <span class="text-[11px] font-medium tracking-wide text-content-faint">已打开</span>
+            <span class="text-[11px] font-medium tracking-wide text-content-faint"
+              >{t('sidebar.open')}</span
+            >
             <span class="ml-auto text-[10px] tabular-nums text-content-faint">
               {tabs.items.length}
             </span>
           </div>
 
           {#if tabs.items.length === 0}
-            <p class="px-1.5 py-1 text-[11px] text-content-faint">暂无打开的文件</p>
+            <p class="px-1.5 py-1 text-[11px] text-content-faint">{t('sidebar.noOpenFiles')}</p>
           {:else}
             {#each tabs.items as tab (tab.id)}
               <div
@@ -88,13 +91,13 @@
                             <span
                               {...props}
                               class="shrink-0 text-[9px] text-content-faint"
-                              aria-label="已休眠"
+                              aria-label={t('sidebar.sleepingShort')}
                             >
                               <Moon class="size-3" />
                             </span>
                           {/snippet}
                         </TooltipTrigger>
-                        <TooltipContent side="right">已休眠（重新打开即恢复）</TooltipContent>
+                        <TooltipContent side="right">{t('sidebar.sleeping')}</TooltipContent>
                       </TooltipRoot>
                     </TooltipProvider>
                   {/if}
@@ -107,7 +110,7 @@
                     size="icon"
                     class="size-5 text-content-faint opacity-0 transition-opacity hover:text-content group-hover:opacity-100 focus-visible:opacity-100"
                     onclick={() => requestCloseTab(tab)}
-                    aria-label={`关闭 ${tab.name}`}
+                    aria-label={t('tab.close', { name: tab.name })}
                   >
                     <X class="size-3" />
                   </Button>
@@ -121,11 +124,13 @@
         <section class="flex flex-col gap-1">
           <div class="flex items-center gap-1.5 px-1.5 py-1">
             <Clock class="size-3 text-content-faint" />
-            <span class="text-[11px] font-medium tracking-wide text-content-faint">最近</span>
+            <span class="text-[11px] font-medium tracking-wide text-content-faint"
+              >{t('sidebar.recent')}</span
+            >
           </div>
 
           {#if otherRecents.length === 0}
-            <p class="px-1.5 py-1 text-[11px] text-content-faint">没有其它最近文件</p>
+            <p class="px-1.5 py-1 text-[11px] text-content-faint">{t('sidebar.noOtherRecents')}</p>
           {:else}
             {#each otherRecents as entry (entry.path)}
               <div
@@ -163,7 +168,7 @@
                         removeRecent(entry.path);
                       }
                     }}
-                    aria-label={`从列表移除 ${entry.name}`}
+                    aria-label={t('sidebar.removeFromList', { name: entry.name })}
                   >
                     <X class="size-3" />
                   </span>

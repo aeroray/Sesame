@@ -14,6 +14,7 @@
   import AppMenu from './AppMenu.svelte';
   import StatusLine from './StatusLine.svelte';
   import { toggleSidebar } from '$lib/state/layout.svelte';
+  import { t } from '$lib/i18n';
 
   interface Props {
     onOpenSettings: () => void;
@@ -58,7 +59,7 @@
   class="flex h-9 shrink-0 select-none items-center gap-1 border-b border-border-subtle bg-surface-sunken pl-1.5 pr-0"
   data-tauri-drag-region
 >
-  <Hint label="切换侧边栏 · Ctrl+B" onclick={toggleSidebar}>
+  <Hint label={t('sidebar.toggleWithKey')} onclick={toggleSidebar}>
     <PanelLeft class="size-4" />
   </Hint>
 
@@ -76,12 +77,12 @@
   <div class="flex shrink-0 items-center">
     <AppMenu {onOpenSettings} {onOpenShortcuts} />
 
-    <Hint label="最小化" class="size-9 rounded-none" onclick={() => appWindow.minimize()}>
+    <Hint label={t('window.minimize')} class="size-9 rounded-none" onclick={() => appWindow.minimize()}>
       <Minus class="size-3.5" />
     </Hint>
 
     <Hint
-      label={maximized ? '向下还原' : '最大化'}
+      label={maximized ? t('window.restore') : t('window.maximize')}
       class="size-9 rounded-none"
       onclick={() => appWindow.toggleMaximize()}
     >
@@ -89,7 +90,7 @@
     </Hint>
 
     <Hint
-      label="关闭窗口"
+      label={t('action.close')}
       class="size-9 rounded-none"
       danger
       onclick={() => appWindow.close()}

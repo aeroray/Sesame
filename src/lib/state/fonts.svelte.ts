@@ -6,6 +6,7 @@
  */
 
 import * as ipc from '$lib/ipc/fs';
+import { t } from '$lib/i18n';
 import type { FontFamily } from '$lib/state/types';
 
 /** 响应式状态。 */
@@ -40,7 +41,7 @@ export async function ensureFonts(): Promise<void> {
     fontList.loaded = true;
   } catch (err) {
     // 枚举失败不该让设置面板不可用：降级为「只有默认字体可选」
-    fontList.error = err instanceof Error ? err.message : '无法读取系统字体';
+    fontList.error = err instanceof Error ? err.message : t('fontPicker.loadFailed');
     fontList.all = [];
   } finally {
     fontList.loading = false;

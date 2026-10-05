@@ -61,11 +61,26 @@ fn fingerprint(path: &Path) -> AppResult<Fingerprint> {
 }
 
 /// 打开文件的同步实现。
-fn open_file_sync(resolved: PathBuf) -> AppResult<FilePayload> {
+///
+/// `forced` 是用户**手动指定**的编码。为 `None` 时按 BOM → UTF-8 → GBK 自动探测；
+/// 有值时完全跳过探测，直接按该编码解码。
+///
+/// 为什么需要手动指定：探测不可能全对。实测 Big5、Shift_JIS 与无 BOM 的
+/// UTF-16LE 都会被判成 GBK，显示为乱码。GBK 的编解码可逆，所以保存不会
+/// 损坏文件，但用户看不到正确内容——必须给一个纠正的出口。
+fn open_file_sync(resolved: PathBuf, forced: Option<String>) -> AppResult<FilePayload> {
     use std::io::Read;
 
     let slash = paths::to_slash(&resolved);
     let meta = read_meta(&resolved)?;
+
+    // 用户指定编码时跳过探测。用 BOM 与内容一致的方式解码。
+    let decode_with = |bytes: &[u8]| -> encoding::Decoded {
+        match forced.as_deref() {
+            Some(label) => encoding::decode_as(bytes, label),
+            None => encoding::decode(bytes),
+        }
+    };
 
     // 超大文件不内联读取，交给分块模式
     if meta.size > INLINE_READ_LIMIT {
@@ -82,7 +97,7 @@ fn open_file_sync(resolved: PathBuf) -> AppResult<FilePayload> {
             .and_then(|mut f| f.read(&mut head))
             .map_err(|e| AppError::from_io(&slash, e))?;
         head.truncate(read);
-        let probed = encoding::decode(&head);
+        let probed = decode_with(&head);
         let line_ending = encoding::detect_line_ending(&probed.text);
 
         return Ok(FilePayload {
@@ -97,7 +112,7 @@ fn open_file_sync(resolved: PathBuf) -> AppResult<FilePayload> {
     }
 
     let bytes = std::fs::read(&resolved).map_err(|e| AppError::from_io(&slash, e))?;
-    let decoded = encoding::decode(&bytes);
+    let decoded = decode_with(&bytes);
     let line_ending = encoding::detect_line_ending(&decoded.text);
 
     // 扩展名判定置信度低时，用内容特征补充
@@ -123,15 +138,22 @@ fn open_file_sync(resolved: PathBuf) -> AppResult<FilePayload> {
 }
 
 /// 打开文件：读取内容、探测语言与编码。
+///
+/// `encoding` 为用户**手动指定**的编码。为 `None` 时自动探测；
+/// 有值时跳过探测直接按它解码（用于纠正误判，见 `open_file_sync`）。
 #[tauri::command]
-pub async fn open_file(path: String, state: State<'_, AppState>) -> AppResult<FilePayload> {
+pub async fn open_file(
+    path: String,
+    encoding: Option<String>,
+    state: State<'_, AppState>,
+) -> AppResult<FilePayload> {
     let resolved = paths::normalize(&path, None)?;
     let slash = paths::to_slash(&resolved);
 
     let payload = blocking({
         let probe = resolved.clone();
         move || {
-            let payload = open_file_sync(resolved)?;
+            let payload = open_file_sync(resolved, encoding)?;
             // 连同指纹一起返回，作为本次编辑的「持久化基线」
             Ok((payload, fingerprint(&probe)?))
         }
@@ -150,6 +172,18 @@ pub async fn open_file(path: String, state: State<'_, AppState>) -> AppResult<Fi
     );
 
     Ok(payload)
+}
+
+/// 列出可供用户手动选择的编码。
+///
+/// 由后端提供而不是前端硬编码：真实可用的编码由 `encoding_for` 决定，
+/// 两边各写一份必然漂移。前端拿到的是能保证解码成功的标签。
+#[tauri::command]
+pub fn list_encodings() -> Vec<String> {
+    encoding::SELECTABLE_ENCODINGS
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 /// 保存文件的同步实现（内容即全文）。

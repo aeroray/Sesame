@@ -9,7 +9,13 @@
  */
 
 import { message } from '@tauri-apps/plugin-dialog';
-import { closeTab, closeOtherTabs, closeAllTabs, tabs } from '$lib/state/tabs.svelte';
+import {
+  closeTab,
+  closeOtherTabs,
+  closeAllTabs,
+  tabs,
+  tabDisplayName,
+} from '$lib/state/tabs.svelte';
 import { saveTab } from '$lib/actions/save-file';
 import { cancelAutoSave } from '$lib/actions/autosave';
 import { dropDraft } from '$lib/actions/draft';
@@ -83,7 +89,7 @@ export async function requestCloseTab(tab: Tab): Promise<boolean> {
     return true;
   }
 
-  const choice = await askUnsaved(tab.name);
+  const choice = await askUnsaved(tabDisplayName(tab));
 
   if (choice === 'cancel') return false;
 
@@ -110,7 +116,7 @@ export async function requestCloseOthers(tab: Tab): Promise<void> {
   const others = tabs.items.filter((t) => t.id !== tab.id && t.dirty);
 
   for (const other of others) {
-    const choice = await askUnsaved(other.name);
+    const choice = await askUnsaved(tabDisplayName(other));
     if (choice === 'cancel') return;
 
     if (choice === 'save') {
@@ -140,7 +146,7 @@ export async function requestCloseAll(): Promise<boolean> {
   const dirty = tabs.items.filter((t) => t.dirty);
 
   for (const tab of dirty) {
-    const choice = await askUnsaved(tab.name);
+    const choice = await askUnsaved(tabDisplayName(tab));
     if (choice === 'cancel') return false;
 
     if (choice === 'save') {

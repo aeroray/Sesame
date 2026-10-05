@@ -13,6 +13,7 @@
   import { newTab } from '$lib/actions/new-tab';
   import { formatRelativeTime, basename, dirname } from '$lib/utils/format';
   import { RECENT_DISPLAY_LIMIT } from '$src/constants';
+  import { t } from '$lib/i18n';
 
   /** 只展示前若干条，避免首屏过长。 */
   const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
@@ -28,18 +29,18 @@
         <span class="text-lg font-semibold text-brand-700 dark:text-brand-300">S</span>
       </div>
       <h1 class="text-base font-medium text-content">Sesame</h1>
-      <p class="text-xs text-content-faint">轻量文本编辑器</p>
+      <p class="text-xs text-content-faint">{t('app.tagline')}</p>
     </div>
 
     <!-- 主操作 -->
     <div class="flex justify-center gap-2">
       <Button variant="outline" size="sm" class="gap-1.5" onclick={newTab}>
         <FileText class="size-3.5" />
-        新建文件
+        {t('welcome.newFile')}
       </Button>
       <Button variant="outline" size="sm" class="gap-1.5" onclick={openViaDialog}>
         <FolderOpen class="size-3.5" />
-        打开文件
+        {t('welcome.openFile')}
       </Button>
     </div>
 
@@ -57,7 +58,9 @@
       -->
       <div class="flex items-center gap-1.5 pl-2 pr-5">
         <Clock class="size-3 shrink-0 text-content-faint" />
-        <span class="text-[11px] font-medium tracking-wide text-content-faint">最近打开</span>
+        <span class="text-[11px] font-medium tracking-wide text-content-faint"
+          >{t('welcome.recentHeader')}</span
+        >
         {#if visible.length > 0}
           <Button
             variant="ghost"
@@ -65,7 +68,7 @@
             class="-mr-1.5 ml-auto h-5 px-1.5 text-[11px] text-content-faint hover:text-content"
             onclick={clearRecents}
           >
-            清空
+            {t('welcome.clear')}
           </Button>
         {/if}
       </div>
@@ -74,8 +77,8 @@
         <div
           class="flex flex-col items-center gap-1.5 rounded-md border border-dashed border-border-strong px-4 py-8 text-center"
         >
-          <p class="text-xs text-content-faint">还没有打开过文件</p>
-          <p class="text-[11px] text-content-faint">把文件拖到窗口里，或按 Ctrl+O 选择</p>
+          <p class="text-xs text-content-faint">{t('welcome.emptyTitle')}</p>
+          <p class="text-[11px] text-content-faint">{t('welcome.emptyHint')}</p>
         </div>
       {:else}
         <ScrollArea class="max-h-64">
@@ -124,7 +127,7 @@
                         removeRecent(entry.path);
                       }
                     }}
-                    aria-label={`从列表移除 ${entry.name}`}
+                    aria-label={t('sidebar.removeFromList', { name: entry.name })}
                   >
                     <!-- 尺寸与侧栏保持一致（size-3），两处图标不该有大小差 -->
                     <X class="size-3" />

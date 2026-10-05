@@ -14,6 +14,8 @@ import type { LanguageId, LineEnding, Tab } from '$lib/state/types';
 import type { EditorHandle } from '$lib/editor/create-view';
 import { clearPreview } from '$lib/state/layout.svelte';
 import { releaseImage } from '$lib/state/images.svelte';
+import { rememberClosed } from '$lib/state/closed-tabs.svelte';
+import { t } from '$lib/i18n';
 
 /** 视图句柄表。故意不是响应式的。 */
 const views = new Map<string, EditorHandle>();
@@ -155,7 +157,9 @@ export function createBlankTab(): Tab {
   const tab: Tab = {
     id: newId(),
     path: null,
-    name: '未命名',
+    // 占位名。界面上一律用 `tabDisplayName()` 取展示名，
+    // 这样未命名标签能跟随语言切换，而这里存的值只作为文件名兜底。
+    name: 'Untitled',
     kind: 'text',
     language: 'plaintext',
     encoding: 'utf-8',
@@ -357,6 +361,24 @@ export function renameTab(id: string, path: string, name: string): void {
 }
 
 /**
+ * 标签页的**展示名**。
+ *
+ * 未命名标签（没有路径）显示本地化的「未命名」而不是 `tab.name`——
+ * 后者是创建时写入的固定字符串，切语言不会变。
+ *
+ * 之所以不在创建时就把翻译写进 `tab.name`：那个字段同时被用作
+ * 「另存为」对话框的默认文件名（`defaultPath: tab.path ?? tab.name`）。
+ * 若里面存的是中文「未命名」，英文用户另存新文件时文件名会是中文。
+ * 因此字段保持语言中立的占位值，展示时再翻译。
+ *
+ * 这个函数读 `locale.current`（经由 `t()`），因此在模板里调用它
+ * 会自动跟随语言切换。
+ */
+export function tabDisplayName(tab: Tab): string {
+  return tab.path === null ? t('tab.untitled') : tab.name;
+}
+
+/**
  * 设置「是否处于大文件模式」。
  *
  * 另存为之后需要置回 `false`：新文件里就是编辑器持有的全部内容，
@@ -402,6 +424,7 @@ export function closeTab(id: string): void {
   if (index === -1) return;
 
   const [removed] = tabs.items.splice(index, 1);
+  if (removed) rememberClosed(removed);
   teardown(id, removed?.path ?? null);
 
   if (tabs.activeId === id) {
@@ -417,15 +440,24 @@ export function closeOtherTabs(id: string): void {
   if (!keep) return;
 
   for (const tab of tabs.items) {
-    if (tab.id !== id) teardown(tab.id, tab.path);
+    if (tab.id !== id) {
+      rememberClosed(tab);
+      teardown(tab.id, tab.path);
+    }
   }
   tabs.items = [keep];
   tabs.activeId = id;
 }
 
-/** 关闭全部标签页。 */
+/**
+ * 关闭全部标签页。
+ *
+ * 会记入历史栈，因此「关闭全部」之后仍可用 Ctrl+Shift+T 逐个恢复——
+ * 这是用户最容易误触的操作，必须可撤销。
+ */
 export function closeAllTabs(): void {
   for (const tab of tabs.items) {
+    rememberClosed(tab);
     teardown(tab.id, tab.path);
   }
   tabs.items = [];

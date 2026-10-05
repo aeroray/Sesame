@@ -18,6 +18,12 @@ export const zhCN: Messages = {
     tagline: '轻量文本编辑器',
   },
 
+  window: {
+    minimize: '最小化',
+    maximize: '最大化',
+    restore: '向下还原',
+  },
+
   action: {
     save: '保存',
     saveAs: '另存为',
@@ -29,6 +35,8 @@ export const zhCN: Messages = {
     copyPath: '复制文件路径',
     revealInFolder: '在文件夹中显示',
     reopenClosed: '重新打开已关闭的标签',
+    done: '完成',
+    gotIt: '知道了',
   },
 
   menu: {
@@ -56,9 +64,11 @@ export const zhCN: Messages = {
   sidebar: {
     open: '已打开',
     recent: '最近',
+    toggleWithKey: '切换侧边栏 · Ctrl+B',
     noOpenFiles: '暂无打开的文件',
     noOtherRecents: '没有其它最近文件',
     sleeping: '已休眠（重新打开即恢复）',
+    sleepingShort: '已休眠',
     removeFromList: '从列表移除 {name}',
   },
 
@@ -78,6 +88,7 @@ export const zhCN: Messages = {
     savedAsPartial: '已另存为，仅含已加载部分',
     unsavedStillInEditor: '未保存，修改仍在编辑器中',
     largeFileMode: '文件较大，已切换为大文件模式',
+    noClosedTabs: '没有刚关闭的标签',
     restoredDrafts: {
       one: '已恢复 {count} 个未保存的文件',
       other: '已恢复 {count} 个未保存的文件',
@@ -89,6 +100,10 @@ export const zhCN: Messages = {
   },
 
   command: {
+    openFile: '打开文件',
+    closeTab: '关闭标签页',
+    toggleSidebar: '切换侧边栏',
+
     find: '查找',
     findNext: '下一个匹配',
     selectAllMatches: '选中全部匹配',
@@ -138,6 +153,9 @@ export const zhCN: Messages = {
 
     wordWrap: '自动换行',
     showLineNumbers: '显示行号',
+    showIndentGuides: '缩进参考线',
+
+    languageSystem: '跟随系统',
 
     autoSave: '自动保存',
     autoSaveHint: '停止输入后自动写入磁盘',
@@ -176,6 +194,8 @@ export const zhCN: Messages = {
     largeFileProgress: '已载入 {loaded} / {total}（{percent}%）',
     loadMore: '继续加载',
     loadAll: '全部加载',
+    loadingMore: '载入中',
+    loadingPreview: '正在加载预览…',
     searchPartial: '只搜索已加载的部分，还有 {remaining} 未加载',
   },
 
@@ -186,6 +206,8 @@ export const zhCN: Messages = {
     fitShort: '适应',
     actualSize: '原始尺寸',
     openExternal: '用默认程序打开',
+    loading: '正在读取图片…',
+    displayFailed: '无法显示此图片',
   },
 
   fontPicker: {
@@ -272,6 +294,30 @@ export const zhCN: Messages = {
   fold: {
     collapse: '折叠这一行',
     expand: '展开这一行',
+  },
+
+  language: {
+    plaintext: '纯文本',
+  },
+
+  search: {
+    find: '查找',
+    replace: '替换',
+    next: '下一个',
+    previous: '上一个',
+    selectAllMatches: '全选匹配',
+    replaceOne: '替换',
+    replaceAll: '全部替换',
+    close: '关闭',
+    go: '跳转',
+    matchCase: '区分大小写',
+    regexp: '正则表达式',
+    byWord: '整词匹配',
+    goToLine: '跳转到行',
+    currentMatch: '当前匹配',
+    onLine: '位于第',
+    replacedOnLine: '已替换第 $ 行的匹配',
+    replacedCount: '已替换 $ 处匹配',
   },
 
   locale: {

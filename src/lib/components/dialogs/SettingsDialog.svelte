@@ -28,7 +28,8 @@
   import { cn } from '$lib/utils/cn';
   import { setMode } from 'mode-watcher';
   import { FONT_SIZE_MIN, FONT_SIZE_MAX } from '$src/constants';
-  import type { AccentId } from '$lib/state/types';
+  import { t, type MessageKey } from '$lib/i18n';
+  import type { AccentId, LanguageSetting } from '$lib/state/types';
 
   interface Props {
     open: boolean;
@@ -37,12 +38,24 @@
 
   let { open = $bindable(), onOpenChange }: Props = $props();
 
-  /** 主题选项。 */
-  const themes = [
-    { value: 'system', label: '跟随系统' },
-    { value: 'light', label: '浅色' },
-    { value: 'dark', label: '深色' },
-  ] as const;
+  /**
+   * 主题选项。
+   *
+   * `label` 存的是**文案 key**而不是文案本身：文案在模块加载时求值一次就固定了，
+   * 之后切换语言不会更新。渲染时再经 `t()` 解析，才能跟随语言变化。
+   */
+  const themes: { value: 'system' | 'light' | 'dark'; label: MessageKey }[] = [
+    { value: 'system', label: 'menu.themeSystem' },
+    { value: 'light', label: 'menu.themeLight' },
+    { value: 'dark', label: 'menu.themeDark' },
+  ];
+
+  /** 语言选项。`system` 表示跟随系统。 */
+  const languages: { value: LanguageSetting; label: MessageKey }[] = [
+    { value: 'system', label: 'settings.languageSystem' },
+    { value: 'zh-CN', label: 'locale.zh-CN' },
+    { value: 'en', label: 'locale.en' },
+  ];
 
   /**
    * 强调色选项。
@@ -51,11 +64,11 @@
    * 保持一致。这是**唯一一处刻意的重复**：CSS 变量在 `[data-accent]` 作用域下，
    * 无法在读色块时动态取值，因此在这里写一份。改色阶时记得同步这里。
    */
-  const ACCENTS: { id: AccentId; label: string; color: string }[] = [
-    { id: 'indigo', label: '靛蓝', color: 'oklch(0.63 0.16 264)' },
-    { id: 'pine', label: '松绿', color: 'oklch(0.63 0.135 162)' },
-    { id: 'rose', label: '玫红', color: 'oklch(0.64 0.18 355)' },
-    { id: 'amber', label: '琥珀', color: 'oklch(0.68 0.15 72)' },
+  const ACCENTS: { id: AccentId; label: MessageKey; color: string }[] = [
+    { id: 'indigo', label: 'accent.indigo', color: 'oklch(0.63 0.16 264)' },
+    { id: 'pine', label: 'accent.pine', color: 'oklch(0.63 0.135 162)' },
+    { id: 'rose', label: 'accent.rose', color: 'oklch(0.64 0.18 355)' },
+    { id: 'amber', label: 'accent.amber', color: 'oklch(0.68 0.15 72)' },
   ];
 
   /** 字号选项。 */
@@ -72,22 +85,35 @@
    *
    * bits-ui 在菜单未打开时无法从 DOM 读取选项文字，
    * 只会回退到显示原始 value（于是出现 `system` 这种英文值）。
-   * 传入 items 后，关闭状态下也能显示中文标签。
+   * 传入 items 后，关闭状态下也能显示对应语言的标签。
+   *
+   * 用 `$derived` 而不是普通常量：`t()` 读的是响应式的当前语言，
+   * 放在 `$derived` 里才能在切换语言后重算；写成模块级常量会停在初始语言。
    */
-  const fontSizeItems = fontSizes.map((size) => ({
-    value: String(size),
-    label: `${size} px`,
-  }));
+  const fontSizeItems = $derived(
+    fontSizes.map((size) => ({
+      value: String(size),
+      label: t('settings.fontSizeValue', { size }),
+    })),
+  );
 
-  const tabSizeItems = tabSizes.map((size) => ({
-    value: String(size),
-    label: `${size} 空格`,
-  }));
+  const tabSizeItems = $derived(
+    tabSizes.map((size) => ({
+      value: String(size),
+      // 这条是复数文案，`t()` 依 `count` 选 one/other，因此两个都要传
+      label: t('settings.tabSizeValue', { size, count: size }),
+    })),
+  );
 
   /** 切换主题时同步给 mode-watcher。 */
   async function changeTheme(value: string) {
     await updateSetting('theme', value as 'light' | 'dark' | 'system');
     setMode(value as 'light' | 'dark' | 'system');
+  }
+
+  /** 切换界面语言。`applyLanguage()` 由 `updateSetting` 内部调用。 */
+  async function changeLanguage(value: string) {
+    await updateSetting('language', value as LanguageSetting);
   }
 
   /**
@@ -110,26 +136,46 @@
 <DialogRoot bind:open>
   <DialogContent class="max-w-md">
     <DialogHeader>
-      <DialogTitle>设置</DialogTitle>
-      <DialogDescription>这些设置会自动保存。</DialogDescription>
+      <DialogTitle>{t('settings.title')}</DialogTitle>
+      <DialogDescription>{t('settings.description')}</DialogDescription>
     </DialogHeader>
 
     <div class="flex flex-col gap-4 py-2">
       <!-- 外观 -->
       <div class="flex items-center justify-between gap-4">
-        <Label for="setting-theme" class="text-sm font-normal">主题</Label>
+        <Label for="setting-theme" class="text-sm font-normal">{t('settings.theme')}</Label>
         <Select
           type="single"
           value={settings.theme}
           onValueChange={changeTheme}
-          items={themes.map((t) => ({ value: t.value, label: t.label }))}
+          items={themes.map((item) => ({ value: item.value, label: t(item.label) }))}
         >
           <SelectTrigger id="setting-theme" class="w-32">
-            <SelectValue placeholder="选择主题" />
+            <SelectValue placeholder={t('settings.themePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            {#each themes as t (t.value)}
-              <SelectItem value={t.value} label={t.label}>{t.label}</SelectItem>
+            {#each themes as item (item.value)}
+              <SelectItem value={item.value} label={t(item.label)}>{t(item.label)}</SelectItem>
+            {/each}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <!-- 语言 -->
+      <div class="flex items-center justify-between gap-4">
+        <Label for="setting-language" class="text-sm font-normal">{t('settings.language')}</Label>
+        <Select
+          type="single"
+          value={settings.language}
+          onValueChange={changeLanguage}
+          items={languages.map((item) => ({ value: item.value, label: t(item.label) }))}
+        >
+          <SelectTrigger id="setting-language" class="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {#each languages as item (item.value)}
+              <SelectItem value={item.value} label={t(item.label)}>{t(item.label)}</SelectItem>
             {/each}
           </SelectContent>
         </Select>
@@ -141,15 +187,15 @@
         而且四个选项一屏放得下，不需要折叠。
       -->
       <div class="flex items-center justify-between gap-4">
-        <Label class="text-sm font-normal">强调色</Label>
-        <div class="flex items-center gap-1.5" role="radiogroup" aria-label="强调色">
+        <Label class="text-sm font-normal">{t('settings.accent')}</Label>
+        <div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('settings.accent')}>
           {#each ACCENTS as accent (accent.id)}
             <button
               type="button"
               role="radio"
               aria-checked={settings.accent === accent.id}
-              aria-label={accent.label}
-              title={accent.label}
+              aria-label={t(accent.label)}
+              title={t(accent.label)}
               class={cn(
                 'size-5 rounded-full transition-transform hover:scale-110',
                 // 选中态用描边环表达，而不是勾选图标——色块本身就说明了一切
@@ -168,19 +214,19 @@
 
       <!-- 外观 -->
       <div class="flex items-center justify-between gap-4">
-        <Label class="text-sm font-normal">界面字体</Label>
+        <Label class="text-sm font-normal">{t('settings.uiFont')}</Label>
         <FontPicker
           value={settings.uiFont}
-          defaultLabel="跟随系统默认"
+          defaultLabel={t('settings.followSystemFont')}
           onchange={(v) => updateSetting('uiFont', v)}
         />
       </div>
 
       <div class="flex items-center justify-between gap-4">
-        <Label class="text-sm font-normal">编辑器字体</Label>
+        <Label class="text-sm font-normal">{t('settings.editorFont')}</Label>
         <FontPicker
           value={settings.editorFont}
-          defaultLabel="跟随系统默认"
+          defaultLabel={t('settings.followSystemFont')}
           onchange={(v) => updateSetting('editorFont', v)}
           preferMonospace
         />
@@ -190,7 +236,7 @@
 
       <!-- 编辑器 -->
       <div class="flex items-center justify-between gap-4">
-        <Label for="setting-font-size" class="text-sm font-normal">字号</Label>
+        <Label for="setting-font-size" class="text-sm font-normal">{t('settings.fontSize')}</Label>
         <Select
           type="single"
           value={String(settings.fontSize)}
@@ -198,7 +244,7 @@
           items={fontSizeItems}
         >
           <SelectTrigger id="setting-font-size" class="w-32">
-            <SelectValue placeholder="选择字号" />
+            <SelectValue placeholder={t('settings.fontSizePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {#each fontSizeItems as item (item.value)}
@@ -209,7 +255,7 @@
       </div>
 
       <div class="flex items-center justify-between gap-4">
-        <Label for="setting-tab-size" class="text-sm font-normal">制表符宽度</Label>
+        <Label for="setting-tab-size" class="text-sm font-normal">{t('settings.tabSize')}</Label>
         <Select
           type="single"
           value={String(settings.tabSize)}
@@ -217,7 +263,7 @@
           items={tabSizeItems}
         >
           <SelectTrigger id="setting-tab-size" class="w-32">
-            <SelectValue placeholder="选择宽度" />
+            <SelectValue placeholder={t('settings.tabSizePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {#each tabSizeItems as item (item.value)}
@@ -234,7 +280,7 @@
       -->
 
       <div class="flex items-center justify-between gap-4">
-        <Label for="setting-wrap" class="text-sm font-normal">自动换行</Label>
+        <Label for="setting-wrap" class="text-sm font-normal">{t('settings.wordWrap')}</Label>
         <Switch
           id="setting-wrap"
           checked={settings.wordWrap}
@@ -243,11 +289,24 @@
       </div>
 
       <div class="flex items-center justify-between gap-4">
-        <Label for="setting-linenumbers" class="text-sm font-normal">显示行号</Label>
+        <Label for="setting-linenumbers" class="text-sm font-normal"
+          >{t('settings.showLineNumbers')}</Label
+        >
         <Switch
           id="setting-linenumbers"
           checked={settings.showLineNumbers}
           onCheckedChange={(v) => updateSetting('showLineNumbers', v)}
+        />
+      </div>
+
+      <div class="flex items-center justify-between gap-4">
+        <Label for="setting-indent-guides" class="text-sm font-normal"
+          >{t('settings.showIndentGuides')}</Label
+        >
+        <Switch
+          id="setting-indent-guides"
+          checked={settings.showIndentGuides}
+          onCheckedChange={(v) => updateSetting('showIndentGuides', v)}
         />
       </div>
 
@@ -256,8 +315,8 @@
       <!-- 行为 -->
       <div class="flex items-center justify-between gap-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="setting-autosave" class="text-sm font-normal">自动保存</Label>
-          <span class="text-[11px] text-content-faint">停止输入后自动写入磁盘</span>
+          <Label for="setting-autosave" class="text-sm font-normal">{t('settings.autoSave')}</Label>
+          <span class="text-[11px] text-content-faint">{t('settings.autoSaveHint')}</span>
         </div>
         <Switch
           id="setting-autosave"
@@ -268,8 +327,8 @@
 
       <div class="flex items-center justify-between gap-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="setting-hibernate" class="text-sm font-normal">后台休眠</Label>
-          <span class="text-[11px] text-content-faint">长时间未用的大文件释放内存</span>
+          <Label for="setting-hibernate" class="text-sm font-normal">{t('settings.hibernate')}</Label>
+          <span class="text-[11px] text-content-faint">{t('settings.hibernateHint')}</span>
         </div>
         <Switch
           id="setting-hibernate"
@@ -280,8 +339,10 @@
 
       <div class="flex items-center justify-between gap-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="setting-restore" class="text-sm font-normal">恢复上次会话</Label>
-          <span class="text-[11px] text-content-faint">启动时重新打开上次的文件</span>
+          <Label for="setting-restore" class="text-sm font-normal"
+            >{t('settings.restoreSession')}</Label
+          >
+          <span class="text-[11px] text-content-faint">{t('settings.restoreSessionHint')}</span>
         </div>
         <Switch
           id="setting-restore"
@@ -294,9 +355,9 @@
     <DialogFooter class="flex-row justify-between sm:justify-between">
       <Button variant="ghost" size="sm" class="gap-1.5 text-content-muted" onclick={handleReset}>
         <RotateCcw class="size-3.5" />
-        恢复默认
+        {t('action.reset')}
       </Button>
-      <Button size="sm" onclick={() => onOpenChange(false)}>完成</Button>
+      <Button size="sm" onclick={() => onOpenChange(false)}>{t('action.done')}</Button>
     </DialogFooter>
   </DialogContent>
 </DialogRoot>

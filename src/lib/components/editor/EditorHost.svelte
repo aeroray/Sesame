@@ -29,6 +29,7 @@
   import { scheduleDraft } from '$lib/actions/draft';
   import { clearSuccess } from '$lib/state/status.svelte';
   import { mode } from 'mode-watcher';
+  import { t } from '$lib/i18n';
   import type { Tab } from '$lib/state/types';
   import type { Component } from 'svelte';
   import ImageViewer from './ImageViewer.svelte';
@@ -100,6 +101,7 @@
         showLineNumbers: settings.showLineNumbers,
         wordWrap: settings.wordWrap,
         tabSize: settings.tabSize,
+        showIndentGuides: settings.showIndentGuides,
         /*
          * 二进制文件只读。
          *
@@ -167,7 +169,7 @@
       if (tab.truncated && !tab.dirty) {
         const p = getProgress(tab.id);
         if (p && !p.complete && p.loadedBytes === 0) {
-          loadNextChunk(tab).catch((err) => reportError(err, '加载失败'));
+          loadNextChunk(tab).catch((err) => reportError(err, t('error.loadFailed')));
         }
       }
     })();
@@ -229,6 +231,7 @@
       showLineNumbers: settings.showLineNumbers,
       wordWrap: settings.wordWrap,
       tabSize: settings.tabSize,
+      showIndentGuides: settings.showIndentGuides,
     });
   });
 
@@ -248,7 +251,7 @@
       <PreviewComponent content={getPreviewText(tab.id)} />
     {:else}
       <div class="flex h-full items-center justify-center text-xs text-content-faint">
-        正在加载预览…
+        {t('editor.loadingPreview')}
       </div>
     {/if}
   {:else}

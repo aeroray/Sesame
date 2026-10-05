@@ -11,6 +11,7 @@ import {
   buildExtensions,
   createCompartments,
   gutterExtension,
+  indentGuidesExtension,
   readOnlyExtension,
   tabSizeExtension,
   wordWrapExtension,
@@ -29,6 +30,8 @@ export interface CreateViewOptions {
   wordWrap: boolean;
   tabSize: number;
   readOnly: boolean;
+  /** 是否显示缩进参考线。 */
+  showIndentGuides: boolean;
   /**
    * 内容变化回调。
    *
@@ -47,7 +50,14 @@ export interface CreateViewOptions {
 export type ReconfigurableOptions = Partial<
   Pick<
     CreateViewOptions,
-    'language' | 'theme' | 'font' | 'showLineNumbers' | 'wordWrap' | 'tabSize' | 'readOnly'
+    | 'language'
+    | 'theme'
+    | 'font'
+    | 'showLineNumbers'
+    | 'wordWrap'
+    | 'tabSize'
+    | 'readOnly'
+    | 'showIndentGuides'
   >
 >;
 
@@ -122,6 +132,13 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
       }
       if (next.readOnly !== undefined) {
         effects.push(compartments.readOnly.reconfigure(readOnlyExtension(next.readOnly)));
+      }
+      if (next.showIndentGuides !== undefined) {
+        effects.push(
+          compartments.indentGuides.reconfigure(
+            indentGuidesExtension(next.showIndentGuides),
+          ),
+        );
       }
 
       if (effects.length > 0) {

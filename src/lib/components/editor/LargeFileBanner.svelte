@@ -8,6 +8,7 @@
   import { Loader2, FileWarning, ChevronsDown } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { formatBytes } from '$lib/utils/format';
+  import { t } from '$lib/i18n';
   import type { ChunkProgress } from '$lib/editor/large-file.svelte';
 
   interface Props {
@@ -32,7 +33,11 @@
   <FileWarning class="size-3.5 shrink-0" />
 
   <span class="shrink-0">
-    大文件模式：已载入 {formatBytes(progress.loadedBytes)} / {formatBytes(progress.totalBytes)}（{percent}%）
+    {t('editor.largeFileTitle')} · {t('editor.largeFileProgress', {
+      loaded: formatBytes(progress.loadedBytes),
+      total: formatBytes(progress.totalBytes),
+      percent,
+    })}
   </span>
 
   <!-- 进度条 -->
@@ -44,7 +49,7 @@
     {#if progress.loading}
       <span class="flex items-center gap-1 text-[11px] opacity-80">
         <Loader2 class="size-3 animate-spin" />
-        载入中
+        {t('editor.loadingMore')}
       </span>
     {:else}
       <Button
@@ -54,7 +59,7 @@
         onclick={onLoadMore}
       >
         <ChevronsDown class="size-3" />
-        继续加载
+        {t('editor.loadMore')}
       </Button>
       <Button
         variant="ghost"
@@ -62,7 +67,7 @@
         class="h-5 px-1.5 text-[11px] text-brand-900 hover:bg-brand-100 dark:text-brand-100 dark:hover:bg-brand-900/40"
         onclick={onLoadAll}
       >
-        全部加载
+        {t('editor.loadAll')}
       </Button>
     {/if}
   </div>

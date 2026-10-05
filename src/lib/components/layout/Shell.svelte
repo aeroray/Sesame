@@ -34,6 +34,7 @@
   import { saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
   import { flushAutoSave } from '$lib/actions/autosave';
   import { flushDrafts, clearAllDrafts } from '$lib/actions/draft';
+  import { t } from '$lib/i18n';
 
   let settingsOpen = $state(false);
   let shortcutsOpen = $state(false);
@@ -83,9 +84,9 @@
        * 但能解释「为什么一打开就多了个标签」——否则用户会困惑。
        */
       if (drafts > 0) {
-        notify.info(`已恢复 ${drafts} 个未保存的文件`);
+        notify.info(t('status.restoredDrafts', { count: drafts }));
       } else if (files > 0) {
-        notify.info(`已恢复上次的 ${files} 个文件`);
+        notify.info(t('status.restoredSession', { count: files }));
       }
     })();
   });
@@ -109,48 +110,73 @@
   /** 注册全局快捷键。 */
   $effect(() => {
     const unregister = registerHotkeys([
-      { keys: 'Ctrl+N', label: '新建标签页', group: '文件', handler: newTab },
-      { keys: 'Ctrl+O', label: '打开文件', group: '文件', handler: () => void openViaDialog() },
+      { keys: 'Ctrl+N', label: t('tab.new'), group: t('shortcuts.groupFile'), handler: newTab },
+      {
+        keys: 'Ctrl+O',
+        label: t('command.openFile'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void openViaDialog(),
+      },
       {
         keys: 'Ctrl+S',
-        label: '保存',
-        group: '文件',
+        label: t('action.save'),
+        group: t('shortcuts.groupFile'),
         handler: () => {
           if (active) void saveTab(active);
         },
       },
       {
         keys: 'Ctrl+Shift+S',
-        label: '另存为',
-        group: '文件',
+        label: t('action.saveAs'),
+        group: t('shortcuts.groupFile'),
         handler: () => {
           if (active) void saveTabAs(active);
         },
       },
-      { keys: 'Ctrl+W', label: '关闭标签页', group: '文件', handler: () => void requestCloseActive() },
-      { keys: 'Ctrl+B', label: '切换侧边栏', group: '视图', handler: toggleSidebar },
+      {
+        keys: 'Ctrl+W',
+        label: t('command.closeTab'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void requestCloseActive(),
+      },
+      {
+        keys: 'Ctrl+B',
+        label: t('command.toggleSidebar'),
+        group: t('shortcuts.groupView'),
+        handler: toggleSidebar,
+      },
       {
         // 用 Ctrl+Shift+M 而不是 Ctrl+Shift+V：后者是通行的「粘贴为纯文本」，
         // 占用它会破坏编辑器里最基本的粘贴习惯。
         keys: 'Ctrl+Shift+M',
-        label: 'Markdown 预览',
-        group: '视图',
+        label: t('editor.preview'),
+        group: t('shortcuts.groupView'),
         handler: () => {
           if (active && canPreview) requestTogglePreview(active);
         },
       },
-      { keys: 'Ctrl+,', label: '设置', group: '视图', handler: () => (settingsOpen = true) },
-      { keys: 'Ctrl+/', label: '快捷键', group: '视图', handler: () => (shortcutsOpen = true) },
+      {
+        keys: 'Ctrl+,',
+        label: t('menu.settings'),
+        group: t('shortcuts.groupView'),
+        handler: () => (settingsOpen = true),
+      },
+      {
+        keys: 'Ctrl+/',
+        label: t('menu.shortcuts'),
+        group: t('shortcuts.groupView'),
+        handler: () => (shortcutsOpen = true),
+      },
       {
         keys: 'Ctrl+Tab',
-        label: '下一个标签页',
-        group: '视图',
+        label: t('tab.next'),
+        group: t('shortcuts.groupView'),
         handler: () => cycleTab(1),
       },
       {
         keys: 'Ctrl+Shift+Tab',
-        label: '上一个标签页',
-        group: '视图',
+        label: t('tab.previous'),
+        group: t('shortcuts.groupView'),
         handler: () => cycleTab(-1),
       },
     ]);
@@ -294,8 +320,9 @@
       {#if showLargeBanner && active && chunkProgress}
         <LargeFileBanner
           progress={chunkProgress}
-          onLoadMore={() => void loadNextChunk(active).catch((e) => reportError(e, '加载失败'))}
-          onLoadAll={() => void loadAll(active).catch((e) => reportError(e, '加载失败'))}
+          onLoadMore={() =>
+            void loadNextChunk(active).catch((e) => reportError(e, t('error.loadFailed')))}
+          onLoadAll={() => void loadAll(active).catch((e) => reportError(e, t('error.loadFailed')))}
         />
       {/if}
 

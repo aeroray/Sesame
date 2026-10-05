@@ -12,6 +12,7 @@
   import { cn } from '$lib/utils/cn';
   import { LANGUAGE_LABELS } from '$lib/editor/languages';
   import type { Tab } from '$lib/state/types';
+  import { t } from '$lib/i18n';
 
   interface Props {
     tab: Tab;
@@ -125,7 +126,9 @@
   <button
     type="button"
     class="flex size-4 shrink-0 items-center justify-center rounded-xs text-content-faint transition-colors hover:bg-border-subtle hover:text-content"
-    aria-label={tab.dirty ? `关闭 ${tab.name}（未保存）` : `关闭 ${tab.name}`}
+    aria-label={tab.dirty
+      ? t('tab.closeDirty', { name: tab.name })
+      : t('tab.close', { name: tab.name })}
     onclick={(e) => {
       e.stopPropagation();
       onclose(tab);

@@ -9,10 +9,12 @@
  * 因此同时比对不受布局与 IME 影响的 `event.code`。
  */
 
+import type { MessageKey } from '$lib/i18n';
+
 export interface HotkeyBinding {
   /** 组合键描述，例如 `Ctrl+N`。 */
   keys: string;
-  /** 中文说明，用于快捷键面板。 */
+  /** 说明文案，用于快捷键面板。 */
   label: string;
   /** 分组，用于快捷键面板归类。 */
   group: string;
@@ -38,22 +40,25 @@ export interface HotkeyBinding {
  * - `@codemirror/search` 的 `searchKeymap`：Mod-f 查找、Mod-g 下一个匹配、
  *   Mod-Shift-l 选中全部匹配、Mod-Alt-g 跳转到行
  * - `@codemirror/autocomplete` 的 `completionKeymap`：Ctrl-Space 手动触发补全
+ *
+ * `label` 存的是**文案 key**（见 `i18n/messages` 的 `command.*`），
+ * 由快捷键面板在渲染时用 `t()` 解析——在这里求值会固定在模块加载时的语言。
  */
-export const EDITOR_HOTKEYS: { keys: string; label: string }[] = [
-  { keys: 'Ctrl+F', label: '查找' },
-  { keys: 'Ctrl+G', label: '下一个匹配' },
-  { keys: 'Ctrl+Shift+L', label: '选中全部匹配' },
-  { keys: 'Ctrl+Alt+G', label: '跳转到行' },
-  { keys: 'Ctrl+Space', label: '触发补全' },
-  { keys: 'Ctrl+Z', label: '撤销' },
+export const EDITOR_HOTKEYS: { keys: string; label: MessageKey }[] = [
+  { keys: 'Ctrl+F', label: 'command.find' },
+  { keys: 'Ctrl+G', label: 'command.findNext' },
+  { keys: 'Ctrl+Shift+L', label: 'command.selectAllMatches' },
+  { keys: 'Ctrl+Alt+G', label: 'command.gotoLine' },
+  { keys: 'Ctrl+Space', label: 'command.triggerCompletion' },
+  { keys: 'Ctrl+Z', label: 'command.undo' },
   // Windows 与 Linux 用 Ctrl+Y；macOS 的 Mod 即 Cmd，对应 Cmd+Shift+Z
-  { keys: 'Ctrl+Y', label: '重做' },
-  { keys: 'Ctrl+/', label: '切换行注释' },
-  { keys: 'Ctrl+[', label: '减少缩进' },
-  { keys: 'Ctrl+]', label: '增加缩进' },
-  { keys: 'Alt+↑ / Alt+↓', label: '上移 / 下移当前行' },
-  { keys: 'Shift+Alt+↑ / ↓', label: '向上 / 向下复制当前行' },
-  { keys: 'Ctrl+A', label: '全选' },
+  { keys: 'Ctrl+Y', label: 'command.redo' },
+  { keys: 'Ctrl+/', label: 'command.toggleComment' },
+  { keys: 'Ctrl+[', label: 'command.indentLess' },
+  { keys: 'Ctrl+]', label: 'command.indentMore' },
+  { keys: 'Alt+↑ / Alt+↓', label: 'command.moveLine' },
+  { keys: 'Shift+Alt+↑ / ↓', label: 'command.copyLine' },
+  { keys: 'Ctrl+A', label: 'command.selectAll' },
 ];
 
 /**

@@ -13,6 +13,7 @@
   import { Kbd } from '$lib/components/ui/kbd';
   import { Button } from '$lib/components/ui/button';
   import { formatKeys, EDITOR_HOTKEYS } from '$lib/utils/hotkeys';
+  import { t, type MessageKey } from '$lib/i18n';
 
   interface Props {
     open: boolean;
@@ -29,31 +30,35 @@
    * 而且这两份内容一处是「注册」一处是「展示」，耦合起来反而更难读。
    * 但**编辑器内建的那些已经抽到 `EDITOR_HOTKEYS`**——那份最容易写错，
    * 因为它的真实定义在 CodeMirror 里，不抽出来就无法集中核对。
+   *
+   * `title` 与 `label` 存的都是**文案 key**，渲染时才经 `t()` 解析：
+   * 在这里求值会固定在模块加载时的语言，切换语言后不会更新。
+   * `EDITOR_HOTKEYS` 的 `label` 同样已经是 key（见 `utils/hotkeys.ts`）。
    */
-  const groups = [
+  const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] }[] = [
     {
-      title: '文件',
+      title: 'shortcuts.groupFile',
       items: [
-        { keys: 'Ctrl+N', label: '新建标签页' },
-        { keys: 'Ctrl+O', label: '打开文件' },
-        { keys: 'Ctrl+S', label: '保存' },
-        { keys: 'Ctrl+Shift+S', label: '另存为' },
-        { keys: 'Ctrl+W', label: '关闭当前标签页' },
+        { keys: 'Ctrl+N', label: 'tab.new' },
+        { keys: 'Ctrl+O', label: 'command.openFile' },
+        { keys: 'Ctrl+S', label: 'action.save' },
+        { keys: 'Ctrl+Shift+S', label: 'action.saveAs' },
+        { keys: 'Ctrl+W', label: 'command.closeTab' },
       ],
     },
     {
-      title: '编辑',
+      title: 'shortcuts.groupEdit',
       items: EDITOR_HOTKEYS,
     },
     {
-      title: '视图',
+      title: 'shortcuts.groupView',
       items: [
-        { keys: 'Ctrl+B', label: '切换侧边栏' },
-        { keys: 'Ctrl+Shift+M', label: 'Markdown 预览' },
-        { keys: 'Ctrl+,', label: '打开设置' },
-        { keys: 'Ctrl+Tab', label: '下一个标签页' },
-        { keys: 'Ctrl+Shift+Tab', label: '上一个标签页' },
-        { keys: 'Ctrl+/', label: '显示快捷键' },
+        { keys: 'Ctrl+B', label: 'command.toggleSidebar' },
+        { keys: 'Ctrl+Shift+M', label: 'editor.preview' },
+        { keys: 'Ctrl+,', label: 'menu.settings' },
+        { keys: 'Ctrl+Tab', label: 'tab.next' },
+        { keys: 'Ctrl+Shift+Tab', label: 'tab.previous' },
+        { keys: 'Ctrl+/', label: 'menu.shortcuts' },
       ],
     },
   ];
@@ -62,17 +67,17 @@
 <DialogRoot bind:open>
   <DialogContent class="max-w-lg">
     <DialogHeader>
-      <DialogTitle>快捷键</DialogTitle>
-      <DialogDescription>编辑器内的操作与常见编辑器一致。</DialogDescription>
+      <DialogTitle>{t('shortcuts.title')}</DialogTitle>
+      <DialogDescription>{t('shortcuts.description')}</DialogDescription>
     </DialogHeader>
 
     <div class="flex max-h-[60vh] flex-col gap-4 overflow-y-auto py-2 pr-1">
       {#each groups as group (group.title)}
         <section class="flex flex-col gap-1.5">
-          <h3 class="text-[11px] font-medium tracking-wide text-content-faint">{group.title}</h3>
+          <h3 class="text-[11px] font-medium tracking-wide text-content-faint">{t(group.title)}</h3>
           {#each group.items as item (item.keys)}
             <div class="flex items-center justify-between gap-4 py-0.5">
-              <span class="text-sm text-content-muted">{item.label}</span>
+              <span class="text-sm text-content-muted">{t(item.label)}</span>
               <Kbd>{formatKeys(item.keys)}</Kbd>
             </div>
           {/each}
@@ -81,7 +86,7 @@
     </div>
 
     <DialogFooter>
-      <Button onclick={() => onOpenChange(false)}>知道了</Button>
+      <Button onclick={() => onOpenChange(false)}>{t('action.gotIt')}</Button>
     </DialogFooter>
   </DialogContent>
 </DialogRoot>

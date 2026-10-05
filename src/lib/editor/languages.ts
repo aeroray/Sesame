@@ -9,6 +9,7 @@
  */
 
 import type { Extension } from '@codemirror/state';
+import { t } from '$lib/i18n';
 import type { LanguageId } from '$lib/state/types';
 
 type Loader = () => Promise<Extension>;
@@ -132,7 +133,17 @@ export async function getLanguageExtension(language: LanguageId): Promise<Extens
   return extension;
 }
 
-/** 语言标识 → 状态栏显示名。 */
+/**
+ * 语言标识 → 状态栏显示名。
+ *
+ * 除「纯文本」外，其余都是语言自身的名字（Markdown、JSON、Rust……），
+ * 任何界面语言下写法都相同，因此直接写字面量、不进字典。
+ *
+ * 「纯文本」用 **getter** 而不是普通属性：普通属性在模块加载时求值一次
+ * 就固定了，之后切换语言不会更新；getter 在每次读取时（即渲染时）
+ * 才调 `t()`，读到的就是当前语言。这样调用方仍然写
+ * `LANGUAGE_LABELS[tab.language]`，不需要为响应式改动任何一处。
+ */
 export const LANGUAGE_LABELS: Record<LanguageId, string> = {
   markdown: 'Markdown',
   json: 'JSON',
@@ -152,5 +163,7 @@ export const LANGUAGE_LABELS: Record<LanguageId, string> = {
   sql: 'SQL',
   xml: 'XML',
   shell: 'Shell',
-  plaintext: '纯文本',
+  get plaintext() {
+    return t('language.plaintext');
+  },
 };

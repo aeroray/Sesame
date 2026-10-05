@@ -19,6 +19,13 @@ export const en = {
     tagline: 'Lightweight text editor',
   },
 
+  /** 自定义标题栏上的窗口控制按钮。 */
+  window: {
+    minimize: 'Minimize',
+    maximize: 'Maximize',
+    restore: 'Restore down',
+  },
+
   /** 通用动作词。多处复用，改一次即全局生效。 */
   action: {
     save: 'Save',
@@ -31,6 +38,8 @@ export const en = {
     copyPath: 'Copy file path',
     revealInFolder: 'Show in folder',
     reopenClosed: 'Reopen closed tab',
+    done: 'Done',
+    gotIt: 'Got it',
   },
 
   menu: {
@@ -58,9 +67,11 @@ export const en = {
   sidebar: {
     open: 'Open files',
     recent: 'Recent',
+    toggleWithKey: 'Toggle sidebar · Ctrl+B',
     noOpenFiles: 'No files open',
     noOtherRecents: 'No other recent files',
     sleeping: 'Sleeping (reopening restores it)',
+    sleepingShort: 'Sleeping',
     removeFromList: 'Remove {name} from list',
   },
 
@@ -81,6 +92,7 @@ export const en = {
     savedAsPartial: 'Saved as — only the loaded part',
     unsavedStillInEditor: 'Not saved; your edits are still here',
     largeFileMode: 'Large file — switched to chunked mode',
+    noClosedTabs: 'No recently closed tabs',
     restoredDrafts: {
       one: 'Restored {count} unsaved file',
       other: 'Restored {count} unsaved files',
@@ -93,6 +105,10 @@ export const en = {
 
   /** 编辑器内命令的显示名（快捷键面板用）。 */
   command: {
+    openFile: 'Open file',
+    closeTab: 'Close tab',
+    toggleSidebar: 'Toggle sidebar',
+
     find: 'Find',
     findNext: 'Find next',
     selectAllMatches: 'Select all matches',
@@ -142,6 +158,10 @@ export const en = {
 
     wordWrap: 'Word wrap',
     showLineNumbers: 'Line numbers',
+    showIndentGuides: 'Indent guides',
+
+    /** 语言选项里的「跟随系统」。 */
+    languageSystem: 'Follow system',
 
     autoSave: 'Autosave',
     autoSaveHint: 'Write to disk after you stop typing',
@@ -178,11 +198,16 @@ export const en = {
     lineNumbersOn: 'Line numbers: on',
     lineNumbersOff: 'Line numbers: off',
 
+    /** 懒加载的预览分块还没到位时的占位文案。 */
+    loadingPreview: 'Loading preview…',
+
     /** 大文件提示条。 */
     largeFileTitle: 'Large file',
     largeFileProgress: 'Loaded {loaded} of {total} ({percent}%)',
     loadMore: 'Load more',
     loadAll: 'Load everything',
+    /** 正在追加下一块。 */
+    loadingMore: 'Loading',
     /** 查找只覆盖已加载部分时的提醒。 */
     searchPartial: 'Only the loaded part is searched — {remaining} not loaded yet',
   },
@@ -194,6 +219,10 @@ export const en = {
     fitShort: 'Fit',
     actualSize: 'Actual size',
     openExternal: 'Open in default app',
+    /** 图片还没读完时的占位文案。 */
+    loading: 'Reading image…',
+    /** 图片数据拿到了但没法渲染（格式损坏等）。 */
+    displayFailed: 'Could not display this image',
   },
 
   fontPicker: {
@@ -286,6 +315,43 @@ export const en = {
   fold: {
     collapse: 'Fold this line',
     expand: 'Unfold this line',
+  },
+
+  /**
+   * 状态栏里的语言显示名。
+   *
+   * 只有「纯文本」需要翻译——其余都是语言自身的名字
+   * （Markdown、JSON、Rust……），任何界面语言下写法都相同。
+   */
+  language: {
+    plaintext: 'Plain text',
+  },
+
+  /**
+   * CodeMirror 内置搜索面板的文案。
+   *
+   * **键名（`Find`、`next`……）必须与 @codemirror/search 内部
+   * 调用 `phrase()` 时使用的英文字符串逐字一致**，改动键名会让面板回退成英文。
+   * 值里的 `$` 是 CodeMirror 自己的占位符，与 `t()` 的 `{name}` 互不干涉。
+   */
+  search: {
+    find: 'Find',
+    replace: 'Replace',
+    next: 'Next',
+    previous: 'Previous',
+    selectAllMatches: 'Select all',
+    replaceOne: 'Replace',
+    replaceAll: 'Replace all',
+    close: 'Close',
+    go: 'Go',
+    matchCase: 'Match case',
+    regexp: 'Regular expression',
+    byWord: 'Whole word',
+    goToLine: 'Go to line',
+    currentMatch: 'Current match',
+    onLine: 'on line',
+    replacedOnLine: 'replaced match on line $',
+    replacedCount: 'replaced $ matches',
   },
 
   /** 语言自身的名称。永远用该语言书写，不翻译。 */

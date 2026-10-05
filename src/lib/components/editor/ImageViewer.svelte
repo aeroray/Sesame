@@ -13,6 +13,7 @@
   import { ensureImage, getImage, isLoading } from '$lib/state/images.svelte';
   import { formatBytes } from '$lib/utils/format';
   import { reportError } from '$lib/actions/open-file';
+  import { t } from '$lib/i18n';
   import type { Tab } from '$lib/state/types';
 
   interface Props {
@@ -47,7 +48,7 @@
     const path = tab.path;
     if (!path) return;
     untrack(() => {
-      ensureImage(id, path).catch((err) => reportError(err, '无法读取图片'));
+      ensureImage(id, path).catch((err) => reportError(err, t('error.readImageFailed')));
     });
   });
 
@@ -78,7 +79,7 @@
     try {
       await openPath(tab.path);
     } catch (err) {
-      reportError(err, '无法用默认程序打开');
+      reportError(err, t('error.openExternallyFailed'));
     }
   }
 </script>
@@ -99,27 +100,34 @@
     {/if}
 
     <span class="ml-auto flex items-center gap-0.5">
-      <Hint label="缩小" side="top" class="size-6" onclick={() => zoomBy(1 / 1.25)}>
+      <Hint label={t('image.zoomOut')} side="top" class="size-6" onclick={() => zoomBy(1 / 1.25)}>
         <ZoomOut class="size-3.5" />
       </Hint>
 
       <span class="w-12 px-1 text-center tabular-nums">
-        {fit ? '适应' : `${Math.round(zoom * 100)}%`}
+        {fit ? t('image.fitShort') : `${Math.round(zoom * 100)}%`}
       </span>
 
-      <Hint label="放大" side="top" class="size-6" onclick={() => zoomBy(1.25)}>
+      <Hint label={t('image.zoomIn')} side="top" class="size-6" onclick={() => zoomBy(1.25)}>
         <ZoomIn class="size-3.5" />
       </Hint>
 
-      <Hint label="适应窗口" side="top" class="size-6" active={fit} toggle onclick={resetZoom}>
+      <Hint
+        label={t('image.fit')}
+        side="top"
+        class="size-6"
+        active={fit}
+        toggle
+        onclick={resetZoom}
+      >
         <Maximize class="size-3.5" />
       </Hint>
 
-      <Hint label="原始尺寸" side="top" class="size-6" onclick={actualSize}>
+      <Hint label={t('image.actualSize')} side="top" class="size-6" onclick={actualSize}>
         <Scan class="size-3.5" />
       </Hint>
 
-      <Hint label="用默认程序打开" side="top" class="size-6" onclick={openExternally}>
+      <Hint label={t('image.openExternal')} side="top" class="size-6" onclick={openExternally}>
         <ExternalLink class="size-3.5" />
       </Hint>
     </span>
@@ -130,7 +138,7 @@
     {#if loading && !payload}
       <div class="flex h-full items-center justify-center gap-2 text-xs text-content-faint">
         <Loader2 class="size-4 animate-spin" />
-        正在读取图片…
+        {t('image.loading')}
       </div>
     {:else if payload}
       <!--
@@ -169,7 +177,7 @@
     {:else}
       <div class="flex h-full flex-col items-center justify-center gap-2 text-content-faint">
         <ImageOff class="size-6" />
-        <p class="text-xs">无法显示此图片</p>
+        <p class="text-xs">{t('image.displayFailed')}</p>
       </div>
     {/if}
   </div>

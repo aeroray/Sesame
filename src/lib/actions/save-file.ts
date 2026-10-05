@@ -17,6 +17,7 @@ import {
   renameTab,
   replaceTabContent,
   setTruncated,
+  tabDisplayName,
 } from '$lib/state/tabs.svelte';
 import { clearProgress, getProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { reportError } from '$lib/actions/open-file';
@@ -302,7 +303,8 @@ export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
 
   try {
     const target = await save({
-      defaultPath: tab.path ?? tab.name,
+      // 未命名标签用本地化名称作为默认文件名，与用户看到的标签名一致
+      defaultPath: tab.path ?? tabDisplayName(tab),
       filters: fileFilters(),
     });
 

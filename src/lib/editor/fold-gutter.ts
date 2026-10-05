@@ -17,6 +17,7 @@
 
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { t } from '$lib/i18n';
 
 /** SVG 命名空间。 */
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -41,7 +42,7 @@ const CHEVRON_DOWN_PATH = 'm6 9 6 6 6-6';
 export function foldMarkerDOM(open: boolean): HTMLElement {
   const span = document.createElement('span');
   span.className = open ? 'cm-foldMarker cm-foldMarker-open' : 'cm-foldMarker cm-foldMarker-closed';
-  span.title = open ? '折叠这一行' : '展开这一行';
+  span.title = open ? t('fold.collapse') : t('fold.expand');
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');

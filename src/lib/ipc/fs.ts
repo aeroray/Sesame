@@ -6,6 +6,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { t } from '$lib/i18n';
 import type {
   AppError,
   Draft,
@@ -44,7 +45,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
     if (isAppError(raw)) throw raw;
     throw {
       code: 'io',
-      message: typeof raw === 'string' ? raw : '发生未知错误',
+      message: typeof raw === 'string' ? raw : t('error.unknown'),
     } satisfies AppError;
   }
 }

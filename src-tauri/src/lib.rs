@@ -130,6 +130,41 @@ fn disable_browser_hotkeys(window: &tauri::WebviewWindow) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        /*
+         * 单实例必须**第一个**注册。
+         *
+         * 它的作用是在检测到自己不是第一个实例时，把命令行参数转交给
+         * 已有实例、然后立刻退出本进程。若排在其它插件之后注册，
+         * 那些插件会先初始化一遍（包括建窗口），再被丢弃——
+         * 既浪费又可能留下半初始化状态。
+         */
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            /*
+             * 第二个实例带着要打开的文件路径来了。
+             *
+             * 这里不做「直接打开文件」——那是前端标签页系统的职责。
+             * 只把路径发给前端，由它走与「拖拽文件」完全相同的流程，
+             * 保证两条入口的行为一致（去重、编码探测、最近文件都一致）。
+             */
+            let files: Vec<String> = argv
+                .into_iter()
+                .skip(1)
+                .filter(|arg| !arg.starts_with('-'))
+                .collect();
+
+            // 把已有窗口带到前台，否则用户会以为程序没反应
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+
+            if !files.is_empty() {
+                use tauri::Emitter;
+                let _ = app.emit("open-files", files);
+            }
+        }))
+        // 记住窗口位置与大小，下次启动恢复
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -160,6 +195,7 @@ pub fn run() {
             commands::fs::read_chunk,
             commands::fs::close_file,
             commands::fs::take_startup_files,
+            commands::fs::list_encodings,
             commands::media::read_image,
             commands::fonts::list_fonts,
             commands::recent::recent_list,

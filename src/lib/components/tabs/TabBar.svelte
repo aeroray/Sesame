@@ -8,6 +8,7 @@
   import { activateTab, moveTab, tabs } from '$lib/state/tabs.svelte';
   import { requestCloseTab } from '$lib/actions/close-tab';
   import { newTab } from '$lib/actions/new-tab';
+  import { t } from '$lib/i18n';
 
   let scroller: HTMLDivElement;
 
@@ -94,7 +95,7 @@
   </div>
 
   <div class="flex shrink-0 items-center px-1">
-    <Hint label="新建标签页 · Ctrl+N" onclick={newTab}>
+    <Hint label={t('tab.newWithKey')} onclick={newTab}>
       <Plus class="size-4" />
     </Hint>
   </div>

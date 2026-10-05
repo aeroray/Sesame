@@ -22,6 +22,8 @@ const DEFAULTS: Settings = {
   tabSize: 2,
   wordWrap: true,
   showLineNumbers: true,
+  /** 缩进参考线。默认开启——它对阅读代码帮助大，且几乎不占视觉重量。 */
+  showIndentGuides: true,
   autoSave: false,
   hibernateEnabled: true,
   restoreSession: true,

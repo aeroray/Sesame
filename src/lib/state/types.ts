@@ -217,6 +217,8 @@ export interface Settings {
   tabSize: number;
   wordWrap: boolean;
   showLineNumbers: boolean;
+  /** 是否显示缩进参考线。对阅读嵌套较深的代码帮助很大。 */
+  showIndentGuides: boolean;
   autoSave: boolean;
   hibernateEnabled: boolean;
   /** 是否恢复上次会话的标签页。 */
