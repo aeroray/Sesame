@@ -134,6 +134,15 @@
   --surface-sunken: oklch(0.96 0.003 65);
   --border-subtle: oklch(0.91 0.004 65);
   --border-strong: oklch(0.84 0.006 65);
+  /*
+   * 编辑器缩进参考线。
+   *
+   * 单独一个令牌而不是复用 --border-strong：参考线画在**正文所在的行**上，
+   * 必须比界面边框更淡，才不抢代码的注意力。
+   * 透明度直接写进色值（而不是给元素设 opacity）——
+   * 后者会把该行的**文字**一起变淡，实测代码会明显发灰。
+   */
+  --indent-guide: oklch(0.84 0.006 65 / 0.55);
   --content: oklch(0.22 0.008 60);
   --content-muted: oklch(0.5 0.008 60);
   --content-faint: oklch(0.65 0.006 60);
@@ -253,6 +262,8 @@
   --surface-sunken: oklch(0.16 0.005 60);
   --border-subtle: oklch(0.29 0.007 60);
   --border-strong: oklch(0.37 0.008 60);
+  /* 暗色下参考线要比亮色略微提亮，否则在深底上几乎看不见 */
+  --indent-guide: oklch(0.45 0.008 60 / 0.75);
   --content: oklch(0.93 0.004 65);
   --content-muted: oklch(0.68 0.007 65);
   --content-faint: oklch(0.52 0.006 65);
