@@ -5,6 +5,7 @@
  * 布局按「紧凑优先」设计——侧边栏默认折叠，编辑区占据剩余全部空间。
  */
 
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { flushAutoSave } from '$lib/actions/autosave';
@@ -34,6 +35,7 @@ import { loadSettings, settings } from '$lib/state/settings.svelte';
 import { notify } from '$lib/state/status.svelte';
 import { activateTab, tabs } from '$lib/state/tabs.svelte';
 import { registerHotkeys } from '$lib/utils/hotkeys';
+import { logError } from '$lib/utils/log';
 import Sidebar from './Sidebar.svelte';
 import StatusBar from './StatusBar.svelte';
 import TitleBar from './TitleBar.svelte';
@@ -228,6 +230,42 @@ $effect(() => {
         unlisten = fn;
       }
     });
+
+  return () => {
+    disposed = true;
+    unlisten?.();
+  };
+});
+
+/**
+ * 第二个实例传来的文件路径。
+ *
+ * ## 这个监听器曾经完全不存在
+ *
+ * Rust 侧注册了 `tauri-plugin-single-instance`，在检测到已有实例时
+ * 会把文件路径 `emit("open-files", ...)` 给前端。但前端**从来没有
+ * 监听这个事件**——实测：开着 A 文件再双击 B 文件，进程数确实是 1
+ * （单实例生效了），可 B 文件根本不会打开，事件被丢进了虚空。
+ *
+ * 症状很隐蔽：用户看到的是「双击第二个文件没反应」，
+ * 而不是任何报错。
+ *
+ * 这里复用与拖拽完全相同的 `openPath`，保证两条入口的去重、
+ * 编码探测、最近文件记录行为一致。
+ */
+$effect(() => {
+  let unlisten: (() => void) | undefined;
+  let disposed = false;
+
+  listen<string[]>('open-files', (event) => {
+    const paths = event.payload ?? [];
+    for (const path of paths) void openPath(path);
+  })
+    .then((fn) => {
+      if (disposed) fn();
+      else unlisten = fn;
+    })
+    .catch((err) => logError('shell', '监听 open-files 失败', err));
 
   return () => {
     disposed = true;
