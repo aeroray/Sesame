@@ -1126,6 +1126,21 @@ loading = { ...loading, [id]: true };
 
 用 `untrack()` 把这类调用包起来，让 effect 只依赖真正该依赖的值。
 
+### 内部路径用正斜杠，展示给用户时必须换回原生分隔符
+
+Rust 侧统一用 `paths::to_slash()` 把路径转成正斜杠（`C:/Users/...`），
+这是**内部约定**：跨平台比较与去重都靠它。这个行为已被单测固定。
+
+但它**不适合直接交给用户**。实测按 `Ctrl+Shift+C` 复制出来的是
+`C:/Users/PC/AppData/Local/Temp/x.txt`——PowerShell 能识别，
+但 cmd.exe 的 `cd`、不少构建脚本、以及「运行」对话框都不认，
+用户看到正斜杠也会觉得「这不是 Windows 路径」。
+
+**规则：`tab.path` 是内部表示，不要直接用于展示或交给系统 Shell。**
+需要时经 `file-actions.ts` 的 `toDisplayPath()` 转换
+（Windows 换回 `\`，macOS 本来就是 `/`）。`copyPath` 与
+`revealInFolder` 都走这个转换。
+
 ### CSS transform 不改变布局盒尺寸
 
 `transform: scale()` **不参与布局**：父级 `overflow-auto` 的
