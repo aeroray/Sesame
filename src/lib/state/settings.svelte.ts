@@ -10,6 +10,7 @@ import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
 import type { Settings } from '$lib/state/types';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
 import { applySystemLocale, setLocale, resolveLocale } from '$lib/i18n';
+import { logError } from '$lib/utils/log';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {
@@ -58,7 +59,7 @@ export async function loadSettings(): Promise<void> {
     const stored = await store.get<Partial<Settings>>(SETTINGS_KEY);
     Object.assign(settings, merge(stored));
   } catch (err) {
-    console.error('读取设置失败，已使用默认值', err);
+    logError('settings', '读取设置失败，已使用默认值', err);
     Object.assign(settings, DEFAULTS);
   }
   // 启动时把已保存的字体、强调色与语言应用到界面
@@ -100,7 +101,7 @@ export async function persistSettings(): Promise<void> {
     await store.set(SETTINGS_KEY, { ...settings });
     await store.save();
   } catch (err) {
-    console.error('保存设置失败', err);
+    logError('settings', '保存设置失败', err);
   }
 }
 

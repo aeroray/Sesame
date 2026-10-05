@@ -25,6 +25,7 @@ import { en, type Messages } from './messages/en';
 import { zhCN } from './messages/zh-CN';
 import { locale } from './locale.svelte';
 import type { Locale } from './locale';
+import { logError } from '$lib/utils/log';
 
 /*
  * 把语言状态与解析工具**再导出**一次。
@@ -134,7 +135,7 @@ export function t(key: MessageKey, params?: MessageParams): string {
    * 属于开发期错误。返回 key 本身而不是空串，便于一眼定位。
    */
   if (import.meta.env.DEV) {
-    console.error(`[i18n] 文案形态异常: ${key}`);
+    logError('i18n', `文案形态异常: ${key}`, undefined);
   }
   return key;
 }

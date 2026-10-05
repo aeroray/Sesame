@@ -8,6 +8,7 @@
  */
 
 import * as ipc from '$lib/ipc/fs';
+import { logError } from '$lib/utils/log';
 
 /** 响应式状态。 */
 export const encodingList = $state<{
@@ -33,7 +34,7 @@ export async function ensureEncodings(): Promise<void> {
     encodingList.all = await ipc.listEncodings();
     encodingList.loaded = true;
   } catch (err) {
-    console.error('[encodings] 读取编码列表失败', err);
+    logError('encodings', '读取编码列表失败', err);
     // 失败时给出最小可用集合，至少让用户能选 UTF-8 纠正
     encodingList.all = ['utf-8'];
   } finally {

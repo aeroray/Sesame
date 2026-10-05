@@ -16,6 +16,7 @@ import { clearPreview } from '$lib/state/layout.svelte';
 import { releaseImage } from '$lib/state/images.svelte';
 import { rememberClosed } from '$lib/state/closed-tabs.svelte';
 import { t } from '$lib/i18n';
+import { logError } from '$lib/utils/log';
 
 /** 视图句柄表。故意不是响应式的。 */
 const views = new Map<string, EditorHandle>();
@@ -409,7 +410,7 @@ function teardown(id: string, path: string | null): void {
   // 清理后端的状态记录
   if (path) {
     ipc.closeFile(path).catch((err) => {
-      console.error('清理文件状态失败', err);
+      logError('tabs', '清理文件状态失败', err);
     });
   }
 }

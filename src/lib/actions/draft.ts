@@ -22,6 +22,7 @@
 import * as ipc from '$lib/ipc/fs';
 import { getView, tabs, hasTabContent, peekTabContent } from '$lib/state/tabs.svelte';
 import type { Draft, Tab } from '$lib/state/types';
+import { logError } from '$lib/utils/log';
 
 /** 草稿写入的防抖时长（毫秒）。 */
 const DRAFT_DEBOUNCE = 2000;
@@ -66,7 +67,7 @@ async function writeDraft(tab: Tab): Promise<void> {
     written.add(tab.id);
   } catch (err) {
     // 草稿是兜底手段，失败不该打断用户操作，静默记录
-    console.error('写入草稿失败', err);
+    logError('draft', '写入草稿失败', err);
   }
 }
 
@@ -115,7 +116,7 @@ export async function dropDraft(tabId: string): Promise<void> {
   try {
     await ipc.draftDelete(tabId);
   } catch (err) {
-    console.error('删除草稿失败', err);
+    logError('draft', '删除草稿失败', err);
   }
 }
 
@@ -149,7 +150,7 @@ export async function loadDrafts(): Promise<Draft[]> {
     for (const d of drafts) written.add(d.id);
     return drafts;
   } catch (err) {
-    console.error('读取草稿失败', err);
+    logError('draft', '读取草稿失败', err);
     return [];
   }
 }
@@ -162,6 +163,6 @@ export async function clearAllDrafts(): Promise<void> {
   try {
     await ipc.draftClear();
   } catch (err) {
-    console.error('清空草稿失败', err);
+    logError('draft', '清空草稿失败', err);
   }
 }

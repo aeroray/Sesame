@@ -12,6 +12,7 @@
   import { openUrl } from '@tauri-apps/plugin-opener';
   import { ScrollArea } from '$lib/components/ui/scroll-area';
   import { t } from '$lib/i18n';
+import { logError } from '$lib/utils/log';
 
   interface Props {
     content: string;
@@ -37,7 +38,7 @@
         FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
       });
     } catch (err) {
-      console.error('Markdown 渲染失败', err);
+      logError('MarkdownPreview', 'Markdown 渲染失败', err);
       // 走 `t()` 而不是内联中文：这条兜底文案会真的显示在界面上
       return `<p>${t('error.renderFailed')}</p>`;
     }
@@ -85,7 +86,7 @@
       if (!/^https?:\/\//i.test(href)) return;
 
       void openUrl(href).catch((err) => {
-        console.error('打开链接失败', err);
+        logError('MarkdownPreview', '打开链接失败', err);
       });
     };
 

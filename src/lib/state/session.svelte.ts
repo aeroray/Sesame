@@ -16,6 +16,7 @@ import * as ipc from '$lib/ipc/fs';
 import { settings } from '$lib/state/settings.svelte';
 import { tabs } from '$lib/state/tabs.svelte';
 import type { SessionSnapshot, SessionTab } from '$lib/state/types';
+import { logError } from '$lib/utils/log';
 
 /** 会话保存的防抖时长（毫秒）。 */
 const SAVE_DEBOUNCE = 800;
@@ -47,7 +48,7 @@ export async function saveSessionNow(): Promise<void> {
     await ipc.sessionSave(snapshot());
   } catch (err) {
     // 会话保存失败不该打扰用户，静默记录即可
-    console.error('保存会话失败', err);
+    logError('session', '保存会话失败', err);
   }
 }
 
@@ -67,7 +68,7 @@ export async function loadSnapshot(): Promise<SessionSnapshot> {
   try {
     return await ipc.sessionLoad();
   } catch (err) {
-    console.error('读取会话失败', err);
+    logError('session', '读取会话失败', err);
     return { tabs: [], activePath: null };
   }
 }
@@ -77,6 +78,6 @@ export async function clearSession(): Promise<void> {
   try {
     await ipc.sessionClear();
   } catch (err) {
-    console.error('清空会话失败', err);
+    logError('session', '清空会话失败', err);
   }
 }

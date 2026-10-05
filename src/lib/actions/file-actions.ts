@@ -10,6 +10,7 @@ import { activeTab } from '$lib/state/tabs.svelte';
 import { notify } from '$lib/state/status.svelte';
 import { t } from '$lib/i18n';
 import type { Tab } from '$lib/state/types';
+import { logError } from '$lib/utils/log';
 
 /**
  * 复制文本到剪贴板。
@@ -85,6 +86,6 @@ export async function revealInFolder(tab: Tab | null = activeTab()): Promise<voi
     await revealItemInDir(tab.path);
   } catch (err) {
     notify.error(t('error.revealFailed'));
-    console.error('[file-actions] 在文件夹中显示失败', err);
+    logError('file-actions', '在文件夹中显示失败', err);
   }
 }

@@ -11,6 +11,7 @@
 import type { Extension } from '@codemirror/state';
 import { t } from '$lib/i18n';
 import type { LanguageId } from '$lib/state/types';
+import { logError } from '$lib/utils/log';
 
 type Loader = () => Promise<Extension>;
 
@@ -125,7 +126,7 @@ export async function getLanguageExtension(language: LanguageId): Promise<Extens
   try {
     extension = await loader();
   } catch (err) {
-    console.error(`加载语言包失败：${language}`, err);
+    logError('languages', `加载语言包失败：${language}`, err);
     extension = [];
   }
 

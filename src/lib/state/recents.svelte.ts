@@ -6,6 +6,7 @@
 
 import * as ipc from '$lib/ipc/fs';
 import type { RecentEntry } from '$lib/state/types';
+import { logError } from '$lib/utils/log';
 
 /** 响应式最近文件列表。 */
 export const recents = $state<{ items: RecentEntry[]; loading: boolean }>({
@@ -31,7 +32,7 @@ export async function refreshRecents(): Promise<void> {
     if (seq !== requestSeq) return; // 已有更新的请求，丢弃本次结果
     recents.items = items;
   } catch (err) {
-    console.error('读取最近文件失败', err);
+    logError('recents', '读取最近文件失败', err);
     if (seq === requestSeq) recents.items = [];
   } finally {
     if (seq === requestSeq) recents.loading = false;
@@ -46,7 +47,7 @@ export async function addRecent(path: string): Promise<void> {
     if (seq !== requestSeq) return;
     recents.items = items;
   } catch (err) {
-    console.error('记录最近文件失败', err);
+    logError('recents', '记录最近文件失败', err);
   }
 }
 
@@ -58,7 +59,7 @@ export async function removeRecent(path: string): Promise<void> {
     if (seq !== requestSeq) return;
     recents.items = items;
   } catch (err) {
-    console.error('移除最近文件失败', err);
+    logError('recents', '移除最近文件失败', err);
   }
 }
 
@@ -70,6 +71,6 @@ export async function clearRecents(): Promise<void> {
     if (seq !== requestSeq) return;
     recents.items = items;
   } catch (err) {
-    console.error('清空最近文件失败', err);
+    logError('recents', '清空最近文件失败', err);
   }
 }
