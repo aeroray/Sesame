@@ -26,6 +26,7 @@ import { toggleSidebar } from '$lib/state/layout.svelte';
 import { IS_MAC } from '$lib/utils/platform';
 import AppMenu from './AppMenu.svelte';
 import StatusLine from './StatusLine.svelte';
+import ThemeMenu from './ThemeMenu.svelte';
 
 interface Props {
   onOpenSettings: () => void;
@@ -75,6 +76,10 @@ $effect(() => {
 <!--
   macOS 左侧要给红绿灯让位（位置由 trafficLightPosition 定为 x=12，
   按钮区宽约 70px），因此左内边距比 Windows 大得多。
+
+  左侧放两个按钮：侧栏开关 + 应用菜单（汉堡包）。
+  汉堡包从右侧移过来，是为了让「打开菜单」与「侧栏」这两个
+  「界面骨架」类操作都在左边，右侧只留窗口级操作（主题、最小化…）。
 -->
 <header
   class="flex h-9 shrink-0 select-none items-center gap-1 border-b border-border-subtle bg-surface-sunken pr-0 {IS_MAC
@@ -85,6 +90,8 @@ $effect(() => {
   <Hint label={t('sidebar.toggleWithKey')} onclick={toggleSidebar}>
     <PanelLeft class="size-4" />
   </Hint>
+
+  <AppMenu {onOpenSettings} {onOpenShortcuts} />
 
   <!--
     中央：状态提示。
@@ -98,7 +105,7 @@ $effect(() => {
   </div>
 
   <div class="flex shrink-0 items-center">
-    <AppMenu {onOpenSettings} {onOpenShortcuts} />
+    <ThemeMenu />
 
     <!--
       窗口按钮只在 Windows 自绘。

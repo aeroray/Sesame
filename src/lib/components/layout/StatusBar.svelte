@@ -84,8 +84,6 @@ const lineEndingLabel = $derived(
         {/if}
       {/if}
     {/if}
-  {:else}
-    <span class="px-1">{t('editor.ready')}</span>
   {/if}
 
   <span class="ml-auto flex items-center gap-0.5">

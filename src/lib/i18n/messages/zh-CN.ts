@@ -185,7 +185,6 @@ export const zhCN: Messages = {
     lineEnding: '换行风格',
     largeFileBadge: '大文件模式',
     image: '图片',
-    ready: '就绪',
 
     preview: '预览 Markdown',
     backToEditor: '返回编辑',

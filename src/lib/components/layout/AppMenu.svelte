@@ -5,32 +5,18 @@
  * 快捷键可能被输入法或系统占用，因此每个功能都必须有可点击的入口，
  * 不能只依赖快捷键。
  */
-import {
-  Copy,
-  FolderOpen,
-  Info,
-  Keyboard,
-  Menu,
-  Monitor,
-  Moon,
-  Settings,
-  Sun,
-  Undo2,
-} from '@lucide/svelte';
-import { setMode } from 'mode-watcher';
+import { Copy, FolderOpen, Info, Keyboard, Menu, Settings, Undo2 } from '@lucide/svelte';
 import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import { reopenClosedTab } from '$lib/actions/reopen-tab';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DropdownMenuContent,
   Item as DropdownMenuItem,
-  Label as DropdownMenuLabel,
   Root as DropdownMenuRoot,
   Separator as DropdownMenuSeparator,
   Trigger as DropdownMenuTrigger,
 } from '$lib/components/ui/dropdown-menu';
 import { t } from '$lib/i18n';
-import { settings, updateSetting } from '$lib/state/settings.svelte';
 import { activeTab } from '$lib/state/tabs.svelte';
 
 interface Props {
@@ -42,12 +28,6 @@ let { onOpenSettings, onOpenShortcuts }: Props = $props();
 
 /** 当前是否有带路径的文件——决定「复制路径」等项是否可用。 */
 const hasFile = $derived(activeTab()?.path != null);
-
-/** 切换主题并落盘。 */
-async function pickTheme(value: 'light' | 'dark' | 'system') {
-  await updateSetting('theme', value);
-  setMode(value);
-}
 </script>
 
 <DropdownMenuRoot>
@@ -115,41 +95,10 @@ async function pickTheme(value: 'light' | 'dark' | 'system') {
 
     <DropdownMenuSeparator />
 
-    <DropdownMenuLabel class="text-[11px] font-normal text-content-faint"
-      >{t('menu.theme')}</DropdownMenuLabel
-    >
-
     <!--
-      三个选项一律比对 settings.theme（用户的偏好），
-      不能拿 mode.current（已解析的实际主题）来判断——
-      系统为深色时，mode.current 与 settings.theme === 'system' 会同时成立，
-      导致「深色」和「跟随系统」都显示为当前。
+      主题三项**不在这里**——它们已独立成标题栏右侧的 `ThemeMenu`。
+      两处都放会让用户猜「哪个才是真的」，而单一入口更清楚。
     -->
-    <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('light')}>
-      <Sun class="size-3.5 shrink-0" />
-      <span class="truncate">{t('menu.themeLight')}</span>
-      {#if settings.theme === 'light'}
-        <span class="ml-auto shrink-0 text-[10px] text-brand-600">{t('menu.current')}</span>
-      {/if}
-    </DropdownMenuItem>
-
-    <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('dark')}>
-      <Moon class="size-3.5 shrink-0" />
-      <span class="truncate">{t('menu.themeDark')}</span>
-      {#if settings.theme === 'dark'}
-        <span class="ml-auto shrink-0 text-[10px] text-brand-600">{t('menu.current')}</span>
-      {/if}
-    </DropdownMenuItem>
-
-    <DropdownMenuItem class="gap-2" onSelect={() => pickTheme('system')}>
-      <Monitor class="size-3.5 shrink-0" />
-      <span class="truncate">{t('menu.themeSystem')}</span>
-      {#if settings.theme === 'system'}
-        <span class="ml-auto shrink-0 text-[10px] text-brand-600">{t('menu.current')}</span>
-      {/if}
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator />
 
     <DropdownMenuItem class="gap-2 text-content-faint" disabled>
       <Info class="size-3.5 shrink-0" />

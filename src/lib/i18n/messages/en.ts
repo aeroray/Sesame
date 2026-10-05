@@ -193,7 +193,6 @@ export const en = {
     lineEnding: 'Line endings',
     largeFileBadge: 'Large file',
     image: 'Image',
-    ready: 'Ready',
 
     preview: 'Preview Markdown',
     backToEditor: 'Back to editing',
