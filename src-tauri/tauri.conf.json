@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sesame",
+  "version": "0.1.0",
+  "identifier": "com.sesame.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sesame",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 720,
+        "minHeight": 480,
+        "center": true,
+        "resizable": true,
+        "decorations": false,
+        "transparent": false,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["txt", "log", "ini", "conf", "cfg"],
+        "name": "Text File",
+        "description": "纯文本文件",
+        "role": "Editor"
+      },
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown File",
+        "description": "Markdown 文档",
+        "role": "Editor"
+      },
+      {
+        "ext": ["json", "jsonc"],
+        "name": "JSON File",
+        "description": "JSON 数据文件",
+        "role": "Editor"
+      },
+      {
+        "ext": ["js", "mjs", "cjs", "ts", "tsx", "jsx"],
+        "name": "JavaScript File",
+        "description": "JavaScript 源文件",
+        "role": "Editor"
+      },
+      {
+        "ext": [
+          "py", "rs", "go", "java", "c", "h", "cpp", "hpp",
+          "css", "html", "xml", "yml", "yaml", "sql", "sh", "toml"
+        ],
+        "name": "Source Code File",
+        "description": "源代码文件",
+        "role": "Editor"
+      }
+    ]
+  }
+}

@@ -1,0 +1,420 @@
+@import 'tailwindcss';
+
+/* 深色模式由 mode-watcher 在 <html> 上切换 .dark 类驱动 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * 状态变体桥接。这是 shadcn-svelte 组件正常工作的前提，不能省略。
+ *
+ * bits-ui 在元素上写的是 `data-state="checked"` / `data-state="open"` 这类属性，
+ * 而组件类名用的是 `data-checked:`、`data-open:` 这种简写变体。
+ * Tailwind 本身不认识这些简写，必须在这里把两者对应起来——
+ * 少了这段，开关、选中态、展开态等全部会失去样式（开关会退化成一个暗色圆点）。
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-open]:not([data-open='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']),
+  &:where([data-closed]:not([data-closed='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']),
+  &:where([data-checked]:not([data-checked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state='unchecked']),
+  &:where([data-unchecked]:not([data-unchecked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state='active']),
+  &:where([data-active]:not([data-active='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled='true']),
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-highlighted {
+  &:where([data-highlighted]:not([data-highlighted='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected='true']) {
+    @slot;
+  }
+}
+
+@custom-variant data-placeholder {
+  &:where([data-placeholder]) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+@custom-variant data-inset {
+  &:where([data-inset]:not([data-inset='false'])) {
+    @slot;
+  }
+}
+
+/*
+ * 主题令牌。Tailwind v4 采用 CSS-first 配置，无需 tailwind.config.js。
+ *
+ * 分两层：
+ *   1. :root / .dark 定义实际色值（用 oklch，保证亮暗两套的感知亮度一致）
+ *   2. @theme inline 把色值映射成 Tailwind 工具类（bg-*、text-*、border-*）
+ *
+ * 其中 shadcn-svelte 组件引用的是 background/foreground/primary/muted 等
+ * 标准名字，自有语义令牌是 surface/content 这一套，两者都在此定义。
+ */
+:root {
+  /* ---- shadcn 组件期望的标准令牌 ---- */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.22 0.008 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.008 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.008 60);
+  --secondary: oklch(0.96 0.006 65);
+  --secondary-foreground: oklch(0.3 0.01 60);
+  --muted: oklch(0.96 0.004 65);
+  --muted-foreground: oklch(0.5 0.008 60);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.99 0.005 25);
+  --border: oklch(0.91 0.004 65);
+  --input: oklch(0.91 0.004 65);
+
+  /*
+   * 强调色一律**引用品牌色阶**，不再写死具体色值。
+   *
+   * 这样切换主题色时只改色阶本身，primary / ring / accent 会自动跟随——
+   * 早先它们各自硬编码了一份 oklch，换色时必须逐处同步，很容易漏。
+   */
+  --primary: var(--brand-600);
+  --primary-foreground: oklch(0.99 0.005 65);
+  --ring: var(--brand-500);
+  --accent: var(--brand-100);
+  --accent-foreground: var(--brand-800);
+
+  /* ---- 自有语义令牌：界面层级 ---- */
+  --surface: oklch(0.99 0.002 65);
+  --surface-raised: oklch(1 0 0);
+  --surface-sunken: oklch(0.96 0.003 65);
+  --border-subtle: oklch(0.91 0.004 65);
+  --border-strong: oklch(0.84 0.006 65);
+  --content: oklch(0.22 0.008 60);
+  --content-muted: oklch(0.5 0.008 60);
+  --content-faint: oklch(0.65 0.006 60);
+}
+
+/*
+ * ============================================================
+ * 主题色（强调色）
+ * ============================================================
+ *
+ * 每套主题色是一整条 `--brand-50` ~ `--brand-900` 色阶，
+ * 通过 `<html data-accent="...">` 切换。默认（不设该属性）是靛蓝。
+ *
+ * 为什么用**色阶**而不是单个色值：界面里强调色有多个用法——
+ * 选中态用 100、焦点描边用 500、按钮用 600、暗色下按钮用 400。
+ * 只给一个色值就没法覆盖这些层次。
+ *
+ * 亮度阶梯对所有主题统一（0.97 / 0.94 / 0.88 / 0.80 / 0.72 /
+ * 0.63 / 0.55 / 0.47 / 0.38 / 0.30），只变色相与彩度——
+ * 这样换色时对比度关系不变，亮暗两套主题都仍然可读。
+ */
+
+/* 靛蓝：干净、专业，作为默认 */
+:root {
+  --brand-50: oklch(0.97 0.014 264);
+  --brand-100: oklch(0.94 0.032 264);
+  --brand-200: oklch(0.88 0.065 264);
+  --brand-300: oklch(0.8 0.1 264);
+  --brand-400: oklch(0.72 0.13 264);
+  --brand-500: oklch(0.63 0.16 264);
+  --brand-600: oklch(0.55 0.16 264);
+  --brand-700: oklch(0.47 0.14 264);
+  --brand-800: oklch(0.38 0.11 264);
+  --brand-900: oklch(0.3 0.08 264);
+}
+
+/* 松绿：沉静、护眼 */
+:root[data-accent='pine'] {
+  --brand-50: oklch(0.97 0.016 162);
+  --brand-100: oklch(0.94 0.035 162);
+  --brand-200: oklch(0.88 0.065 162);
+  --brand-300: oklch(0.8 0.095 162);
+  --brand-400: oklch(0.72 0.12 162);
+  --brand-500: oklch(0.63 0.135 162);
+  --brand-600: oklch(0.55 0.13 162);
+  --brand-700: oklch(0.47 0.11 162);
+  --brand-800: oklch(0.38 0.085 162);
+  --brand-900: oklch(0.3 0.065 162);
+}
+
+/* 玫红：鲜明、有活力 */
+:root[data-accent='rose'] {
+  --brand-50: oklch(0.97 0.016 355);
+  --brand-100: oklch(0.94 0.04 355);
+  --brand-200: oklch(0.88 0.075 355);
+  --brand-300: oklch(0.8 0.11 355);
+  --brand-400: oklch(0.72 0.15 355);
+  --brand-500: oklch(0.64 0.18 355);
+  --brand-600: oklch(0.56 0.18 355);
+  --brand-700: oklch(0.48 0.16 355);
+  --brand-800: oklch(0.39 0.12 355);
+  --brand-900: oklch(0.31 0.09 355);
+}
+
+/*
+ * 琥珀：暖色。
+ *
+ * 这是原来那套「芝麻暖褐」的改良版：色相从 55 移到 75 附近、
+ * 彩度略提。原先色相 55 + 彩度 0.14 在 oklch 里读起来偏「土褐」，
+ * 就是「脏脏的」的来源；移到金黄一侧后同样的暖调会干净很多。
+ */
+:root[data-accent='amber'] {
+  --brand-50: oklch(0.97 0.02 78);
+  --brand-100: oklch(0.94 0.045 78);
+  --brand-200: oklch(0.89 0.08 78);
+  --brand-300: oklch(0.83 0.11 76);
+  --brand-400: oklch(0.76 0.135 75);
+  --brand-500: oklch(0.68 0.15 72);
+  --brand-600: oklch(0.59 0.14 70);
+  --brand-700: oklch(0.5 0.12 68);
+  --brand-800: oklch(0.41 0.095 66);
+  --brand-900: oklch(0.33 0.075 64);
+}
+
+.dark {
+  --background: oklch(0.19 0.006 60);
+  --foreground: oklch(0.93 0.004 65);
+  --card: oklch(0.23 0.007 60);
+  --card-foreground: oklch(0.93 0.004 65);
+  --popover: oklch(0.23 0.007 60);
+  --popover-foreground: oklch(0.93 0.004 65);
+  --secondary: oklch(0.29 0.007 60);
+  --secondary-foreground: oklch(0.9 0.005 65);
+  --muted: oklch(0.27 0.007 60);
+  --muted-foreground: oklch(0.68 0.007 65);
+  --destructive: oklch(0.65 0.18 25);
+  --destructive-foreground: oklch(0.16 0.02 25);
+  --border: oklch(0.29 0.007 60);
+  /* 输入类控件（开关、输入框）的底色必须明显亮于背景，
+     否则暗色下开关几乎看不见。这里取 oklch(0.42)，与 --surface-sunken(0.16) 拉开层次。 */
+  --input: oklch(0.42 0.008 60);
+
+  /*
+   * 暗色下的强调色同样引用品牌色阶。
+   *
+   * 但**取的档位与亮色不同**：亮色用 600 作主色，暗色要用更亮的 400，
+   * 否则深底上的按钮会糊成一片。ring 也要提亮到 500 才够醒目。
+   */
+  --primary: var(--brand-400);
+  --primary-foreground: oklch(0.2 0.02 55);
+  --ring: var(--brand-500);
+  --accent: var(--brand-900);
+  --accent-foreground: var(--brand-100);
+
+  --surface: oklch(0.19 0.006 60);
+  --surface-raised: oklch(0.23 0.007 60);
+  --surface-sunken: oklch(0.16 0.005 60);
+  --border-subtle: oklch(0.29 0.007 60);
+  --border-strong: oklch(0.37 0.008 60);
+  --content: oklch(0.93 0.004 65);
+  --content-muted: oklch(0.68 0.007 65);
+  --content-faint: oklch(0.52 0.006 65);
+}
+
+@theme inline {
+  /* shadcn 标准令牌 → 工具类 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 自有语义令牌 → 工具类 */
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-content: var(--content);
+  --color-content-muted: var(--content-muted);
+  --color-content-faint: var(--content-faint);
+
+  /* 品牌色阶：映射自 :root 的原始令牌，单一来源 */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  /* 圆角：桌面应用偏紧凑 */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+
+  /*
+   * 字体栈。
+   *
+   * 两处都必须带中文字体：等宽字体（Consolas / JetBrains Mono 等）
+   * 几乎都不含中文字形，只写等宽字体的话，浏览器会为中文单独兜底，
+   * 结果同一行里英文与中文是两种字体，字宽和风格都对不上。
+   * 把中文字体显式排进栈里，浏览器按字符查找，两种文字才协调。
+   */
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, 'Liberation Mono', 'Courier New',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Source Han Sans SC',
+    'Noto Sans CJK SC', 'WenQuanYi Micro Hei', monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--surface);
+    color: var(--content);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* 桌面应用不应有文本选择的网页感，正文区域单独开启 */
+    user-select: none;
+  }
+
+  #app {
+    height: 100%;
+  }
+
+  /*
+   * 可选中文本的区域。
+   *
+   * 编辑器正文要能选中（复制代码），但**行号与折叠栏不行**：
+   * 用户想复制代码时很容易把行号一起选进去，粘出来的内容混着数字。
+   * 行号是导航辅助，不是文档内容，因此这里排除 gutter。
+   */
+  input,
+  textarea,
+  [contenteditable='true'],
+  .selectable,
+  .cm-editor .cm-content {
+    user-select: text;
+  }
+
+  /* gutter 明确不可选中，且不要出现文本光标 */
+  .cm-editor .cm-gutters {
+    user-select: none;
+    cursor: default;
+  }
+
+  /* 滚动条：细、低对比，不抢视觉 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--content-faint);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* 焦点可见性：键盘可达性 */
+  :focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+  }
+
+  /* 减少动效偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

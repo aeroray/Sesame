@@ -1,0 +1,197 @@
+<div align="center">
+
+<img src="src-tauri/icons/128x128@2x.png" alt="Sesame" width="112" />
+
+# Sesame
+
+**轻量、快速的桌面文本编辑器与文件查看器。**
+
+打开即用，不打扰你，还能处理那些让别的编辑器卡住的文件——
+很大的日志、GBK 编码的配置文件、你只是想瞄一眼的图片。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#安装)
+[![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
+[![Binary size](https://img.shields.io/badge/binary-3.8%20MB-brightgreen.svg)](#为什么这么小)
+
+[English](README.md) · [简体中文](README.zh-CN.md)
+
+<img src="docs/assets/screenshot.png" alt="Sesame 打开一个 Rust 文件，带语法高亮" width="820" />
+
+</div>
+
+---
+
+## 为什么做 Sesame
+
+现在的文本编辑器基本只有两类：一类是连日志都打不开的小玩具，
+另一类是启动要等四秒的重型 IDE。Sesame 面向的是第三种情况——
+**你只是想看一眼某个文件，或者改它三行**，现在就要。
+
+- **打开得快。** 没有启动画面、不索引项目、不加载工作区。
+- **不会弄丢你的东西。** 每次保存都是原子的；未保存的内容持续备份，
+  崩溃或强杀进程都不会让你损失什么。
+- **不会毁掉你的文件。** 打开时是什么编码、什么换行、有没有 BOM，
+  写回去就是什么。二进制文件直接拒绝，而不是乱码写回。
+- **装不下的文件也能开。** 超过 5 MB 的文件按 1 MB 分块读取；保存时未加载的尾部
+  直接从磁盘流式拼回，不读进内存。单次写入上限为 256 MB。
+
+## 功能
+
+| | |
+| --- | --- |
+| **语法高亮** | 18 种语言，基于 CodeMirror 6，按需懒加载——没打开就不占体积 |
+| **大文件** | 超过 5 MB 按 1 MB 分块加载；保存时把未加载的尾部从磁盘流式拼回，不读进内存（单次写入上限 256 MB） |
+| **编码** | 打开时自动探测（BOM → 严格 UTF-8 → GBK，UTF-16 通过 BOM 识别），并按原样写回，不静默转码 |
+| **换行风格** | LF、CRLF、CR 逐个文件保留，不静默转换 |
+| **安全网** | 原子写入、外部修改检测、自动保存，以及始终开启的草稿备份（未命名标签也覆盖） |
+| **多标签** | 拖拽排序，每个标签独立记录光标与滚动位置，重启后恢复上次会话 |
+| **Markdown 预览** | 用 DOMPurify 净化后渲染；外链交给系统浏览器打开，不会把应用界面顶掉 |
+| **图片查看** | 缩放、适应窗口、1:1、用默认程序打开 |
+| **查找替换** | 支持正则、区分大小写、整词、跨行，并可在面板内替换；面板已中文化 |
+| **省内存** | 长时间未看的标签会释放编辑器实例，切回来立刻重建 |
+| **主题** | 亮色 / 暗色 / 跟随系统，4 套强调色，界面字体与编辑器字体可分别设置 |
+
+### 为什么这么小
+
+发行版二进制约 **3.8 MB**。Sesame 使用操作系统自带的 WebView
+（WebView2 / WKWebView / WebKitGTK），不打包浏览器内核——
+这也是它启动这么快的原因。
+
+## 安装
+
+> **当前是早期版本。** 0.1.0 功能完整，已在 Windows 上实测可用，
+> 但尚未发布预编译安装包。从源码构建需要几分钟。
+
+### 从源码构建
+
+**前置条件**
+
+- [Rust](https://rustup.rs) 1.90 或更高
+- [Node.js](https://nodejs.org) 20 或更高，以及 [pnpm](https://pnpm.io)
+- 对应平台的 Tauri 依赖，见
+  [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/)。Windows 上需要
+  **C++ 生成工具**与 **WebView2**（Windows 11 已预装）。
+
+**构建**
+
+```sh
+git clone https://github.com/OWNER/sesame.git
+cd sesame
+pnpm install
+pnpm tauri build
+```
+
+安装包生成在 `src-tauri/target/release/bundle/`。
+
+**开发模式运行**
+
+```sh
+pnpm tauri dev
+```
+
+## 使用
+
+打开文件有四种方式：
+
+- **Ctrl+O** —— 文件对话框
+- **拖拽**文件到窗口里
+- **命令行传入** —— `sesame notes.md`
+- **双击文件**（若安装时注册了关联）
+
+### 快捷键
+
+应用级：
+
+| 操作 | 快捷键 |
+| --- | --- |
+| 新建 / 打开 / 保存 / 另存为 | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` |
+| 关闭标签 | `Ctrl+W` |
+| 切换侧边栏 | `Ctrl+B` |
+| Markdown 预览 | `Ctrl+Shift+M` |
+| 下一个 / 上一个标签 | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+| 设置 / 快捷键 | `Ctrl+,` / `Ctrl+/` |
+
+编辑器内：
+
+| 操作 | 快捷键 |
+| --- | --- |
+| 查找 / 下一个匹配 | `Ctrl+F` / `Ctrl+G` |
+| 选中全部匹配 | `Ctrl+Shift+L` |
+| 跳转到行 | `Ctrl+Alt+G` |
+| 撤销 / 重做 | `Ctrl+Z` / `Ctrl+Y` |
+| 切换行注释 | `Ctrl+/` |
+| 增加 / 减少缩进 | `Ctrl+]` / `Ctrl+[` |
+| 上移 / 下移当前行 | `Alt+↑` / `Alt+↓` |
+| 向上 / 向下复制当前行 | `Shift+Alt+↑` / `Shift+Alt+↓` |
+
+在应用里按 **Ctrl+/** 可以看到同一份列表。
+
+### 你的修改有三层保护
+
+1. **主动保存**（`Ctrl+S`）—— 写回原文件。
+2. **自动保存**（可选）—— 有路径的标签在停顿后自动写回。
+3. **草稿备份**（始终开启）—— 未保存的正文写到应用数据目录，未命名标签同样覆盖，
+   下次启动静默还原。
+
+保存是原子的：内容先写到同目录的临时文件，落盘后再替换原文件。
+中途失败时保留的是完整旧版，而不是写了一半的残缺文件。
+
+如果文件在你打开之后被外部改过，Sesame 会提示并给出三个出口——
+**覆盖磁盘**、**加载磁盘**、**另存为**，不会静默丢掉别人的修改。
+
+## 配置
+
+设置存放在各平台的应用数据目录：
+
+| 平台 | 位置 |
+| --- | --- |
+| Windows | `%APPDATA%\com.sesame.app\` |
+| macOS | `~/Library/Application Support/com.sesame.app/` |
+| Linux | `~/.local/share/com.sesame.app/` |
+
+`settings.json` 存偏好设置；`recent.json`、`session.json` 与 `drafts/` 分开存放，
+因此「清空最近文件」不会波及你的会话与未保存内容。
+
+## 技术栈
+
+| 层 | 选型 |
+| --- | --- |
+| 外壳 | [Tauri 2](https://tauri.app)（Rust） |
+| 界面 | [Svelte 5](https://svelte.dev)（runes）——不用 SvelteKit，无 SSR、无路由 |
+| 构建 | [Vite](https://vite.dev) |
+| 样式 | [Tailwind CSS v4](https://tailwindcss.com)（CSS-first 配置） |
+| 组件 | [shadcn-svelte](https://shadcn-svelte.com) + [bits-ui](https://bits-ui.com) |
+| 编辑器 | [CodeMirror 6](https://codemirror.net) |
+| Markdown | [marked](https://marked.js.org) + [DOMPurify](https://github.com/cure53/DOMPurify) |
+
+所有文件读写、编码转换、语言识别与路径规范化都在 Rust 侧完成，
+前端只通过 IPC 传字符串。
+
+## 开发
+
+```sh
+pnpm install        # 安装依赖
+pnpm tauri dev      # 带热重载运行
+pnpm check          # 类型检查（svelte-check）
+pnpm lint           # 代码检查与格式检查（Biome）
+cargo test --lib    # 运行 Rust 单测，需在 src-tauri/ 目录下
+```
+
+项目文档在 [`docs/`](docs/)：
+
+- [`docs/design/design.md`](docs/design/design.md) —— 外观的唯一权威来源，
+  改界面前先读这份。
+- [`docs/memory/`](docs/memory/) —— 架构决策、约束与项目概要。
+
+## 参与贡献
+
+欢迎提 Issue 和 PR。提 PR 前请：
+
+1. 跑一遍 `pnpm check`、`pnpm lint`、`cargo test --lib`，三项都应是干净的。
+2. 若改动涉及外观，先读 `docs/design/design.md` 并遵循它。
+3. 界面文案保持简洁的中文；代码注释也用中文，与现有代码保持一致。
+
+## 许可证
+
+[MIT](LICENSE) © Sesame contributors

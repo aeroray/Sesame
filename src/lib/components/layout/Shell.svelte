@@ -1,0 +1,321 @@
+<script lang="ts">
+  /**
+   * 应用骨架：标题栏 + 标签栏 + 侧边栏 + 编辑区 + 状态栏。
+   *
+   * 布局按「紧凑优先」设计——侧边栏默认折叠，编辑区占据剩余全部空间。
+   */
+  import { getCurrentWindow } from '@tauri-apps/api/window';
+  import TitleBar from './TitleBar.svelte';
+  import StatusBar from './StatusBar.svelte';
+  import Sidebar from './Sidebar.svelte';
+  import TabBar from '$lib/components/tabs/TabBar.svelte';
+  import EditorHost from '$lib/components/editor/EditorHost.svelte';
+  import WelcomePage from '$lib/components/welcome/WelcomePage.svelte';
+  import SettingsDialog from '$lib/components/dialogs/SettingsDialog.svelte';
+  import ShortcutsDialog from '$lib/components/dialogs/ShortcutsDialog.svelte';
+  import { layout, toggleSidebar, isPreviewing } from '$lib/state/layout.svelte';
+  import { requestTogglePreview } from '$lib/actions/preview';
+  import { tabs, activateTab } from '$lib/state/tabs.svelte';
+  import { settings } from '$lib/state/settings.svelte';
+  import { loadSettings } from '$lib/state/settings.svelte';
+  import { refreshRecents } from '$lib/state/recents.svelte';
+  import { newTab } from '$lib/actions/new-tab';
+  import { openViaDialog, openPath, reportError } from '$lib/actions/open-file';
+  import { requestCloseActive, requestCloseAll } from '$lib/actions/close-tab';
+  import { saveTab, saveTabAs } from '$lib/actions/save-file';
+  import { registerHotkeys } from '$lib/utils/hotkeys';
+  import { getCurrentWebview } from '@tauri-apps/api/webview';
+  import { notify } from '$lib/state/status.svelte';
+  import * as ipc from '$lib/ipc/fs';
+  import LargeFileBanner from '$lib/components/editor/LargeFileBanner.svelte';
+  import { getProgress, loadAll, loadNextChunk } from '$lib/editor/large-file.svelte';
+  import { startHibernationLoop } from '$lib/state/hibernation.svelte';
+  import { restoreAll } from '$lib/actions/restore-all';
+  import { saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
+  import { flushAutoSave } from '$lib/actions/autosave';
+  import { flushDrafts, clearAllDrafts } from '$lib/actions/draft';
+
+  let settingsOpen = $state(false);
+  let shortcutsOpen = $state(false);
+
+  /** 当前激活的标签页。 */
+  const active = $derived(tabs.items.find((t) => t.id === tabs.activeId) ?? null);
+
+  /** 当前标签页的大文件加载进度（不是大文件时为 undefined）。 */
+  const chunkProgress = $derived(active ? getProgress(active.id) : undefined);
+
+  /** 是否显示大文件提示条：有进度且尚未加载完。 */
+  const showLargeBanner = $derived(
+    active !== null && active.truncated && chunkProgress !== undefined && !chunkProgress.complete,
+  );
+
+  /** 当前标签页能否预览（仅 Markdown）。 */
+  const canPreview = $derived(active?.language === 'markdown');
+
+  /** 启动：加载设置 → 还原草稿与会话 → 打开命令行文件 → 刷新最近文件。 */
+  $effect(() => {
+    (async () => {
+      await loadSettings();
+      await refreshRecents();
+
+      /*
+       * 先还原草稿，再还原会话。
+       *
+       * `restoreAll` 内部已经按这个顺序做完两件事，**不要在这里再调一次
+       * `restoreSession`**——那会把所有文件打开两遍。
+       *
+       * 草稿排在前是因为它是「上次没保存的正文」，最可能被用户以为已经丢了。
+       * 草稿恢复成带脏标记的标签，用户想丢弃就关掉它，不需要额外的确认框。
+       */
+      const { drafts, files } = await restoreAll();
+
+      // 命令行传入的文件优先于会话恢复
+      const startup = await ipc.takeStartupFiles().catch(() => [] as string[]);
+
+      if (startup.length > 0) {
+        for (const path of startup) await openPath(path);
+      }
+
+      /*
+       * 只在确实恢复了内容时提示一句。
+       *
+       * 用 toast 而不是模态框：它不打断操作、几秒后自动消失，
+       * 但能解释「为什么一打开就多了个标签」——否则用户会困惑。
+       */
+      if (drafts > 0) {
+        notify.info(`已恢复 ${drafts} 个未保存的文件`);
+      } else if (files > 0) {
+        notify.info(`已恢复上次的 ${files} 个文件`);
+      }
+    })();
+  });
+
+  /** 启动休眠巡检；关闭时停止。 */
+  $effect(() => {
+    const stop = startHibernationLoop();
+    return stop;
+  });
+
+  /** 窄窗口（< 760px）自动折叠侧边栏，避免挤压编辑区。 */
+  $effect(() => {
+    const onResize = () => {
+      if (window.innerWidth < 760) layout.sidebarOpen = false;
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  });
+
+  /** 注册全局快捷键。 */
+  $effect(() => {
+    const unregister = registerHotkeys([
+      { keys: 'Ctrl+N', label: '新建标签页', group: '文件', handler: newTab },
+      { keys: 'Ctrl+O', label: '打开文件', group: '文件', handler: () => void openViaDialog() },
+      {
+        keys: 'Ctrl+S',
+        label: '保存',
+        group: '文件',
+        handler: () => {
+          if (active) void saveTab(active);
+        },
+      },
+      {
+        keys: 'Ctrl+Shift+S',
+        label: '另存为',
+        group: '文件',
+        handler: () => {
+          if (active) void saveTabAs(active);
+        },
+      },
+      { keys: 'Ctrl+W', label: '关闭标签页', group: '文件', handler: () => void requestCloseActive() },
+      { keys: 'Ctrl+B', label: '切换侧边栏', group: '视图', handler: toggleSidebar },
+      {
+        // 用 Ctrl+Shift+M 而不是 Ctrl+Shift+V：后者是通行的「粘贴为纯文本」，
+        // 占用它会破坏编辑器里最基本的粘贴习惯。
+        keys: 'Ctrl+Shift+M',
+        label: 'Markdown 预览',
+        group: '视图',
+        handler: () => {
+          if (active && canPreview) requestTogglePreview(active);
+        },
+      },
+      { keys: 'Ctrl+,', label: '设置', group: '视图', handler: () => (settingsOpen = true) },
+      { keys: 'Ctrl+/', label: '快捷键', group: '视图', handler: () => (shortcutsOpen = true) },
+      {
+        keys: 'Ctrl+Tab',
+        label: '下一个标签页',
+        group: '视图',
+        handler: () => cycleTab(1),
+      },
+      {
+        keys: 'Ctrl+Shift+Tab',
+        label: '上一个标签页',
+        group: '视图',
+        handler: () => cycleTab(-1),
+      },
+    ]);
+    return unregister;
+  });
+
+  /** 在标签之间循环切换。 */
+  function cycleTab(step: number) {
+    if (tabs.items.length < 2 || !tabs.activeId) return;
+    const index = tabs.items.findIndex((t) => t.id === tabs.activeId);
+    const next = (index + step + tabs.items.length) % tabs.items.length;
+    const target = tabs.items[next];
+    if (target) activateTab(target.id);
+  }
+
+  /** 拖拽文件到窗口即打开。 */
+  $effect(() => {
+    let unlisten: (() => void) | undefined;
+    // 组件可能在 promise 决议前就被销毁；此时监听器还没注册完，
+    // 若不记录状态，等它注册好就再也没人注销了（监听器泄漏）。
+    let disposed = false;
+
+    getCurrentWebview()
+      .onDragDropEvent((event) => {
+        if (event.payload.type !== 'drop') return;
+        const paths = event.payload.paths ?? [];
+        if (paths.length === 0) return;
+        // 并行打开：拖入多个大文件时不必串行等待
+        for (const path of paths) void openPath(path);
+      })
+      .then((fn) => {
+        if (disposed) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  });
+
+  /** 同步窗口标题，任务栏能看出当前文件。 */
+  $effect(() => {
+    const name = active?.name ?? 'Sesame';
+    const dirty = active?.dirty ? ' •' : '';
+    getCurrentWindow()
+      .setTitle(`${name}${dirty} — Sesame`)
+      .catch(() => {});
+  });
+
+  /**
+   * 拦截窗口关闭。
+   *
+   * 规则（按用户约定）：
+   * - **开启了自动保存**：先把待写的内容冲刷落盘，然后直接关闭，不打扰用户。
+   * - **未开启自动保存**：只要还有任何一个标签未保存，就弹出确认流程；
+   *   全部已保存时同样直接关闭。
+   *
+   * **无论走哪条分支，关闭前都必须先冲刷草稿**：
+   * 自动保存只处理有路径的标签，未命名标签的内容只能靠草稿保住。
+   * 早先漏了这一步，导致「新建 → 输入 → 关窗口」静默丢内容（实测确认）。
+   *
+   * 必须用 Tauri 的 `onCloseRequested`——浏览器层的 `beforeunload` 在 Tauri v2
+   * 里不会弹出确认界面，`preventDefault()` 拦不住关闭，窗口会直接销毁，
+   * 未保存的改动随之丢失（实测过）。
+   */
+  $effect(() => {
+    let unlisten: (() => void) | undefined;
+    let closing = false;
+
+    getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        // 已经在关闭流程里就放行，避免递归
+        if (closing) return;
+
+        // 无论如何都要拦截一次：需要时间写完自动保存、草稿与会话，再主动销毁窗口
+        event.preventDefault();
+        closing = true;
+
+        // 先把草稿冲刷到磁盘。这一步不依赖自动保存开关——
+        // 它是未命名标签唯一的保命手段，也是崩溃/误关的兜底。
+        await flushDrafts();
+
+        if (settings.autoSave) {
+          // 自动保存开启：把防抖中的写入立刻落盘，不必再问用户
+          await flushAutoSave();
+        } else if (tabs.items.some((t) => t.dirty)) {
+          // 未开自动保存且有未保存内容：走确认流程
+          const closed = await requestCloseAll();
+          // 用户取消或保存失败时中止关闭
+          if (!closed) {
+            closing = false;
+            return;
+          }
+          /*
+           * 用户已逐个处理完所有标签，草稿没有存在意义了。
+           * 若不清理，下次启动会把刚处理过的内容又恢复一遍，
+           * 造成「明明保存过却还提示有未保存内容」的困惑。
+           */
+          await clearAllDrafts();
+        }
+
+        await saveSessionNow();
+        await getCurrentWindow().destroy();
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
+    return () => unlisten?.();
+  });
+
+  /**
+   * 标签集合变化时防抖保存会话。
+   *
+   * 依赖 `tabs.items.length` 与激活项而不是整个数组：
+   * 后者的每个字段变化（光标、滚动）都会触发，写盘过于频繁。
+   */
+  $effect(() => {
+    const count = tabs.items.length;
+    const activeId = tabs.activeId;
+    void count;
+    void activeId;
+    scheduleSessionSave();
+  });
+</script>
+
+<div class="flex h-full flex-col overflow-hidden bg-surface text-content">
+  <TitleBar onOpenSettings={() => (settingsOpen = true)} onOpenShortcuts={() => (shortcutsOpen = true)} />
+
+  <div class="flex min-h-0 flex-1">
+    <Sidebar open={layout.sidebarOpen} />
+
+    <main class="flex min-w-0 flex-1 flex-col">
+      <TabBar />
+
+      <!-- 大文件提示条：仅当有未加载完的分块时出现 -->
+      {#if showLargeBanner && active && chunkProgress}
+        <LargeFileBanner
+          progress={chunkProgress}
+          onLoadMore={() => void loadNextChunk(active).catch((e) => reportError(e, '加载失败'))}
+          onLoadAll={() => void loadAll(active).catch((e) => reportError(e, '加载失败'))}
+        />
+      {/if}
+
+      <div class="relative min-h-0 flex-1">
+        {#if tabs.items.length === 0}
+          <WelcomePage />
+        {:else}
+          <!-- 每个标签页保留自己的编辑器实例，切换时只切换可见性 -->
+          {#each tabs.items as tab (tab.id)}
+            <div class="absolute inset-0" class:hidden={tab.id !== tabs.activeId}>
+              <EditorHost {tab} active={tab.id === tabs.activeId} preview={isPreviewing(tab.id)} />
+            </div>
+          {/each}
+        {/if}
+      </div>
+
+      <StatusBar />
+    </main>
+  </div>
+</div>
+
+<SettingsDialog bind:open={settingsOpen} onOpenChange={(v) => (settingsOpen = v)} />
+<ShortcutsDialog bind:open={shortcutsOpen} onOpenChange={(v) => (shortcutsOpen = v)} />

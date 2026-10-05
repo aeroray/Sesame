@@ -1,0 +1,31 @@
+# 统一换行风格，避免 Windows / macOS 协作时产生整文件 diff。
+#
+# 默认：入库一律 LF，检出时按平台自动转换（Windows 得到 CRLF）。
+# 例外：下面显式声明为 binary 的文件不做任何转换。
+* text=auto eol=lf
+
+# Windows 专用脚本必须是 CRLF，否则 cmd.exe 可能无法正确解析
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制文件：禁止换行转换与 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+
+# 锁文件在 diff 里噪音很大，折叠显示
+pnpm-lock.yaml -diff linguist-generated
+Cargo.lock -diff linguist-generated
+
+# 语言统计：不要把生成物算进代码量
+/dist linguist-generated
+/src-tauri/gen linguist-generated

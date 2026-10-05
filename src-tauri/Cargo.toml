@@ -1,0 +1,57 @@
+[package]
+name = "sesame"
+version = "0.1.0"
+description = "Sesame —— 轻量文本编辑器与文件查看器"
+authors = ["Sesame"]
+edition = "2021"
+# Tauri 2 官方插件当前要求 Rust >= 1.90
+rust-version = "1.90"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "sesame_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+encoding_rs = "0.8"
+base64 = "0.22"
+# 枚举系统已安装字体。纯 Rust 实现（含 fontconfig 解析），
+# 不需要链接系统库，也不引入平台特定代码。
+fontdb = "0.24"
+
+# 关闭 WebView2 的浏览器快捷键（Ctrl+F 查找栏、Ctrl+P 打印等）。
+# 这两个 crate 已经是 wry 的间接依赖，这里显式声明以便直接调用其接口；
+# 版本必须与 Cargo.lock 中 wry 使用的一致，否则类型不兼容。
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows = { version = "0.62", features = ["Win32_Foundation"] }
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
+incremental = false
+
+[lints.rust]
+# MSVC 在生成 cdylib 时会打印「正在创建库 …dll.lib 和对象 …dll.exp」，
+# 这是链接器的正常输出，不是问题。crate-type 里的 cdylib 是 Tauri 移动端
+# 构建所需，桌面开发时它只会让每次 `tauri dev` 都刷一条无意义的警告，
+# 因此在这里显式关闭该 lint。
+linker_messages = "allow"
