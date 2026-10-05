@@ -36,14 +36,44 @@ const lightUi = EditorView.theme(
     '.cm-selectionMatch': {
       backgroundColor: 'oklch(0.88 0.06 62 / 0.4)',
     },
+    /*
+     * 行号区与正文同底色，且不画右侧分隔线。
+     *
+     * 早先是略深的底色 + 一条 1px 右边框，想把「行号」与「正文」分开。
+     * 实测那样反而割裂：编辑器左半边被切成两块色，参考线又紧贴着
+     * 那条边框，看起来像线「贴到了边界上」。
+     * 现在的做法是靠**留白**区分——行号本身比正文小 1px 且颜色更淡，
+     * 已经足够形成层级，不需要再加线条和色块。
+     *
+     * 底色必须与 `.cm-editor` 的 backgroundColor 完全一致，
+     * 否则滚动到边缘时能看出接缝。
+     */
     '.cm-gutters': {
-      backgroundColor: 'oklch(0.99 0.002 65)',
+      backgroundColor: 'oklch(1 0 0)',
       color: 'oklch(0.65 0.006 60)',
       border: 'none',
-      borderRight: '1px solid oklch(0.91 0.004 65)',
+      /*
+       * 必须显式清掉 `borderRightWidth`。
+       *
+       * CodeMirror 的默认主题是在 `&light .cm-gutters` 里用
+       * `&.cm-gutters-before { borderRightWidth: 1px }` 加这条线的，
+       * 它的选择器比这里的 `.cm-gutters` **更具体**，
+       * 只写 `border: none` 覆盖不掉——分隔线依然会出现（实测如此）。
+       */
+      '&.cm-gutters-before': { borderRightWidth: '0px' },
+      '&.cm-gutters-after': { borderLeftWidth: '0px' },
     },
+    /*
+     * 当前行高亮。
+     *
+     * 行号区必须与正文用**完全相同**的底色，否则高亮横带会在
+     * 行号与正文的交界处断开、露出一个色块接缝。
+     * 早先这里用的是偏暖的 `oklch(0.94 0.032 65 / 0.6)`，
+     * 与正文的 `oklch(0.96 0.003 65 / 0.7)` 色相不同（chroma 差 10 倍），
+     * 把行号区底色改成与正文一致之后，这个差异就会直接暴露出来。
+     */
     '.cm-activeLineGutter': {
-      backgroundColor: 'oklch(0.94 0.032 65 / 0.6)',
+      backgroundColor: 'oklch(0.96 0.003 65 / 0.7)',
       color: 'oklch(0.22 0.008 60)',
     },
     '.cm-foldPlaceholder': {
@@ -237,14 +267,21 @@ const darkUi = EditorView.theme(
     '.cm-selectionMatch': {
       backgroundColor: 'oklch(0.47 0.11 50 / 0.35)',
     },
+    /*
+     * 行号区与正文同底色、无右分隔线（理由见亮色主题的说明）。
+     * 这里必须与 `&.backgroundColor` 一致：oklch(0.19 0.006 60)。
+     */
     '.cm-gutters': {
       backgroundColor: 'oklch(0.19 0.006 60)',
       color: 'oklch(0.52 0.006 65)',
       border: 'none',
-      borderRight: '1px solid oklch(0.29 0.007 60)',
+      // 同亮色主题：默认那条分隔线来自更具体的选择器，必须显式清掉
+      '&.cm-gutters-before': { borderRightWidth: '0px' },
+      '&.cm-gutters-after': { borderLeftWidth: '0px' },
     },
+    // 与正文 `.cm-activeLine` 同色，保证高亮横带跨行号连续（理由见亮色主题）
     '.cm-activeLineGutter': {
-      backgroundColor: 'oklch(0.23 0.007 60)',
+      backgroundColor: 'oklch(0.23 0.007 60 / 0.6)',
       color: 'oklch(0.93 0.004 65)',
     },
     '.cm-foldPlaceholder': {

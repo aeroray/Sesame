@@ -202,9 +202,8 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
       /*
        * 参考线只依赖开关本身。
        *
-       * 缩进宽度变化**不需要**重配这一段：竖线间距来自每行内联的
-       * `--indent-step`，而 `tabSize` 变化会让 `EditorState.tabSize`
-       * 改变，`guidePlugin.update` 检测到之后自己重算装饰。
+       * 缩进宽度变化**不需要**重配这一段：`@replit/codemirror-indentation-markers`
+       * 内部会在 `update` 里比对 `getIndentUnit(state)`，发现变化就自己重算。
        * 因此这里只判断 `showIndentGuides`。
        */
       if (next.showIndentGuides !== undefined) {

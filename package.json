@@ -42,6 +42,7 @@
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.5",
     "@lucide/svelte": "^1.51.0",
+    "@replit/codemirror-indentation-markers": "^6.5.3",
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
     "@tauri-apps/plugin-opener": "^2.7.0",

@@ -37,8 +37,23 @@ import {
   lineNumbers,
   rectangularSelection,
 } from '@codemirror/view';
+import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { foldGutterTheme, foldMarkerDOM, lineNumberGutterTheme } from './fold-gutter';
-import { indentGuides, indentGuideTheme } from './indent-guides';
+
+/*
+ * 参考线颜色直接引用 app.css 的主题令牌，而不是写死色值。
+ *
+ * 库会把它们赋给 `--indent-marker-bg-color`，再在渐变里用
+ * `var(--indent-marker-bg-color)` 取值。CSS 变量可以层层引用，
+ * 因此这里写 `var(--indent-guide)` 也能正确解析——
+ * 好处是亮/暗主题切换时线色跟着 `:root` / `.dark` 自动变，
+ * 不需要在 JS 里重复维护两套色值。
+ */
+const lightGuideColor = 'var(--indent-guide)';
+const darkGuideColor = 'var(--indent-guide)';
+const lightGuideActiveColor = 'var(--indent-guide-active)';
+const darkGuideActiveColor = 'var(--indent-guide-active)';
+
 import { rainbowBrackets, rainbowBracketsTheme } from './rainbow-brackets';
 import { searchPhrases } from './search-i18n';
 
@@ -162,15 +177,51 @@ export function readOnlyExtension(readOnly: boolean): Extension {
 /**
  * 缩进参考线开关。
  *
- * 关闭时返回空数组，此时 `indentGuides()` 的字段与监听器都不注册——
- * 不是「注册了但不画」，而是彻底不参与，省下每次滚动的重算开销。
+ * ## 为什么用社区的 `@replit/codemirror-indentation-markers`
  *
- * 主题**不接收 `tabSize`**：竖线间距由每行内联的 `--indent-step` 给出
- * （见 `indent-guides.ts` 的 `guideDecoration`），因此改缩进宽度时
- * 只需重算装饰，不必重建主题。
+ * 这个功能我自己实现过三版，每版都被实测打回（竖线断开、贴着行号边框、
+ * 与文字错位、正文被 `opacity` 一起淡化）。核心难点有两个，
+ * 都不是「画几条线」那么简单：
+ *
+ * 1. **渲染层**：我原来给 `.cm-line` 加背景渐变。但 `.cm-line` 自身
+ *    还要承载选中高亮、当前行底色，两者叠在一起会互相干扰；
+ *    而且背景从 padding 盒还是 content 盒起算，直接决定线会不会
+ *    偏到行号边框上。社区实现改用**绝对定位的 `::before` 伪元素**
+ *    （`z-index: -1`、`left: 2px`），把「画线」与「行的底色」彻底分开。
+ * 2. **层级推断**：空行该继承哪一级缩进，是个真正的启发式问题。
+ *    我的做法是「沿用上一行」，但块首/块尾的空行会因此画错——
+ *    社区实现会**同时向前后找最近的非空行**，再按它们的层级关系
+ *    决定（见其 `IndentationMap`）。这套启发式与 Ace / Monaco 同源。
+ *
+ * 结论：这种「有公认实现、且细节比看起来多得多」的功能，直接用成熟库
+ * 比自己写更可靠。133 KB、MIT、peer 依赖与我们完全一致。
+ *
+ * 关闭时返回空数组，扩展完全不注册。
+ * 颜色通过 `colors` 传入我们的主题令牌，保证与整体配色一致。
  */
 export function indentGuidesExtension(enabled: boolean): Extension {
-  return enabled ? [indentGuides(), indentGuideTheme()] : [];
+  if (!enabled) return [];
+  return indentationMarkers({
+    // 用主题令牌而不是库的默认色值，避免与我们的配色脱节
+    colors: {
+      light: lightGuideColor,
+      dark: darkGuideColor,
+      activeLight: lightGuideActiveColor,
+      activeDark: darkGuideActiveColor,
+    },
+    // 当前光标所在的块用略深的颜色标示，帮助定位
+    highlightActiveBlock: true,
+    /*
+     * `codeOnly` 而不是默认的 `fullScope`。
+     *
+     * 两者都实测过：`fullScope` 会把参考线画到**作用域结束**，
+     * 于是一个对象字面量之后的空区域里会垂下几条没有内容的竖线——
+     * 实测截图里线一直延伸到编辑器底部，像没画完。
+     * `codeOnly` 让线止于该作用域**最后一个非空行**，视觉上干净得多。
+     */
+    markerType: 'codeOnly',
+    thickness: 1,
+  });
 }
 
 /**

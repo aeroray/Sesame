@@ -143,6 +143,11 @@
    * 后者会把该行的**文字**一起变淡，实测代码会明显发灰。
    */
   --indent-guide: oklch(0.84 0.006 65 / 0.55);
+  /*
+   * 光标所在块的参考线，略深一档以便一眼看出「我在哪一层」。
+   * 同样把透明度写进色值，不用元素 opacity（那会连带淡化文字）。
+   */
+  --indent-guide-active: oklch(0.72 0.008 65 / 0.75);
   --content: oklch(0.22 0.008 60);
   --content-muted: oklch(0.5 0.008 60);
   --content-faint: oklch(0.65 0.006 60);
@@ -264,6 +269,7 @@
   --border-strong: oklch(0.37 0.008 60);
   /* 暗色下参考线要比亮色略微提亮，否则在深底上几乎看不见 */
   --indent-guide: oklch(0.45 0.008 60 / 0.75);
+  --indent-guide-active: oklch(0.58 0.01 60 / 0.9);
   --content: oklch(0.93 0.004 65);
   --content-muted: oklch(0.68 0.007 65);
   --content-faint: oklch(0.52 0.006 65);
