@@ -104,6 +104,7 @@
         wordWrap: settings.wordWrap,
         tabSize: settings.tabSize,
         showIndentGuides: settings.showIndentGuides,
+        rainbowBrackets: settings.rainbowBrackets,
         /*
          * 恢复撤销历史。
          *
@@ -244,6 +245,7 @@
       wordWrap: settings.wordWrap,
       tabSize: settings.tabSize,
       showIndentGuides: settings.showIndentGuides,
+      rainbowBrackets: settings.rainbowBrackets,
     });
   });
 

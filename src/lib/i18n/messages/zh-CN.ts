@@ -157,6 +157,8 @@ export const zhCN: Messages = {
     wordWrap: '自动换行',
     showLineNumbers: '显示行号',
     showIndentGuides: '缩进参考线',
+    rainbowBrackets: '括号彩虹',
+    rainbowBracketsHint: '按嵌套层级给括号上色',
 
     languageSystem: '跟随系统',
 

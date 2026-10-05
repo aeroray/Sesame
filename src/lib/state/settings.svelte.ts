@@ -25,6 +25,8 @@ const DEFAULTS: Settings = {
   showLineNumbers: true,
   /** 缩进参考线。默认开启——它对阅读代码帮助大，且几乎不占视觉重量。 */
   showIndentGuides: true,
+  /** 括号彩虹。默认关闭——它是主动吸引注意力的装饰。 */
+  rainbowBrackets: false,
   autoSave: false,
   hibernateEnabled: true,
   restoreSession: true,

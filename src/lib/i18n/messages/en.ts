@@ -162,6 +162,8 @@ export const en = {
     wordWrap: 'Word wrap',
     showLineNumbers: 'Line numbers',
     showIndentGuides: 'Indent guides',
+    rainbowBrackets: 'Rainbow brackets',
+    rainbowBracketsHint: 'Color brackets by nesting depth',
 
     /** 语言选项里的「跟随系统」。 */
     languageSystem: 'Follow system',

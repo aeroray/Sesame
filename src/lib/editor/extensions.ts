@@ -37,6 +37,7 @@ import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/sea
 import { searchPhrases } from './search-i18n';
 import { foldMarkerDOM, foldGutterTheme, lineNumberGutterTheme } from './fold-gutter';
 import { indentGuides, indentGuideTheme } from './indent-guides';
+import { rainbowBrackets, rainbowBracketsTheme } from './rainbow-brackets';
 import {
   autocompletion,
   closeBrackets,
@@ -69,6 +70,8 @@ export interface EditorCompartments {
   readOnly: Compartment;
   /** 缩进参考线。单独一段，切换时不影响其他扩展。 */
   indentGuides: Compartment;
+  /** 括号彩虹。单独一段，默认关闭。 */
+  rainbowBrackets: Compartment;
 }
 
 export function createCompartments(): EditorCompartments {
@@ -81,6 +84,7 @@ export function createCompartments(): EditorCompartments {
     tabSize: new Compartment(),
     readOnly: new Compartment(),
     indentGuides: new Compartment(),
+    rainbowBrackets: new Compartment(),
   };
 }
 
@@ -162,17 +166,20 @@ export function readOnlyExtension(readOnly: boolean): Extension {
   ];
 }
 
-/**
- * 缩进参考线开关。
- *
- * 关闭时返回空数组，此时 `indentGuides()` 的字段与监听器都不注册——
- * 不是「注册了但不画」，而是彻底不参与，省下每次滚动的重算开销。
- *
- * `tabSize` 必须传进来：竖线间距等于一个缩进宽度，写死会让
- * 用户改成 4 空格时线还停在 2 空格的位置。
- */
+/** 缩进参考线开关。 */
 export function indentGuidesExtension(enabled: boolean, tabSize: number): Extension {
   return enabled ? [indentGuides(), indentGuideTheme(tabSize)] : [];
+}
+
+/**
+ * 括号彩虹开关。
+ *
+ * 默认关闭（见 `rainbow-brackets.ts` 的说明）：它是主动吸引注意力的
+ * 装饰，与「安静」的定位有张力。关闭时连 `depthField` 都不注册，
+ * 因此不会为预计算付出任何成本。
+ */
+export function rainbowBracketsExtension(enabled: boolean): Extension {
+  return enabled ? [rainbowBrackets(), rainbowBracketsTheme] : [];
 }
 
 /** 组装完整扩展集。 */
@@ -187,6 +194,7 @@ export function buildExtensions(
     tabSize: number;
     readOnly: boolean;
     showIndentGuides: boolean;
+    rainbowBrackets: boolean;
   },
 ): Extension[] {
   return [
@@ -205,5 +213,6 @@ export function buildExtensions(
     compartments.indentGuides.of(
       indentGuidesExtension(options.showIndentGuides, options.tabSize),
     ),
+    compartments.rainbowBrackets.of(rainbowBracketsExtension(options.rainbowBrackets)),
   ];
 }

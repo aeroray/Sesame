@@ -310,6 +310,20 @@
         />
       </div>
 
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="setting-rainbow" class="text-sm font-normal"
+            >{t('settings.rainbowBrackets')}</Label
+          >
+          <span class="text-[11px] text-content-faint">{t('settings.rainbowBracketsHint')}</span>
+        </div>
+        <Switch
+          id="setting-rainbow"
+          checked={settings.rainbowBrackets}
+          onCheckedChange={(v) => updateSetting('rainbowBrackets', v)}
+        />
+      </div>
+
       <Separator />
 
       <!-- 行为 -->

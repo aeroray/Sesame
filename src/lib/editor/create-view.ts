@@ -14,6 +14,7 @@ import {
   createCompartments,
   gutterExtension,
   indentGuidesExtension,
+  rainbowBracketsExtension,
   readOnlyExtension,
   tabSizeExtension,
   wordWrapExtension,
@@ -34,6 +35,8 @@ export interface CreateViewOptions {
   readOnly: boolean;
   /** 是否显示缩进参考线。 */
   showIndentGuides: boolean;
+  /** 是否启用括号彩虹。默认关闭。 */
+  rainbowBrackets: boolean;
   /**
    * 要恢复的撤销历史（`exportHistory()` 的返回值）。
    *
@@ -67,6 +70,7 @@ export type ReconfigurableOptions = Partial<
     | 'tabSize'
     | 'readOnly'
     | 'showIndentGuides'
+    | 'rainbowBrackets'
   >
 >;
 
@@ -200,6 +204,13 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
         effects.push(
           compartments.indentGuides.reconfigure(
             indentGuidesExtension(merged.showIndentGuides, merged.tabSize),
+          ),
+        );
+      }
+      if (next.rainbowBrackets !== undefined) {
+        effects.push(
+          compartments.rainbowBrackets.reconfigure(
+            rainbowBracketsExtension(next.rainbowBrackets),
           ),
         );
       }

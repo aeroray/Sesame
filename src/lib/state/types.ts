@@ -219,6 +219,13 @@ export interface Settings {
   showLineNumbers: boolean;
   /** 是否显示缩进参考线。对阅读嵌套较深的代码帮助很大。 */
   showIndentGuides: boolean;
+  /**
+   * 是否启用括号彩虹（按嵌套层级给括号上不同颜色）。
+   *
+   * **默认关闭**：它是主动吸引注意力的装饰，与「安静」的定位有张力。
+   * 需要的人打开即可。
+   */
+  rainbowBrackets: boolean;
   autoSave: boolean;
   hibernateEnabled: boolean;
   /** 是否恢复上次会话的标签页。 */
