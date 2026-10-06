@@ -184,7 +184,7 @@ export const en = {
   /** 编辑器状态栏。 */
   editor: {
     binary: 'Binary file · read-only',
-    lineColumn: 'Line {line}, Column {column}',
+    lineColumn: 'Line {line} · Col {column}',
     lineColumnTitle: 'Cursor position (line:column)',
     encoding: 'Text encoding',
     lineEnding: 'Line endings',

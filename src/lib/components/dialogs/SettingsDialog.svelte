@@ -151,20 +151,38 @@ async function handleReset() {
     中间区吸收剩余空间；`minmax(0,1fr)` 里的 `0` 很关键，
     不写的话 grid 子项的最小高度是内容高度，`overflow` 会失效。
   -->
-  <DialogContent class="sm:max-w-3xl max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]">
+  <!--
+    宽度：必须用 `sm:` 前缀。`dialog-content` 默认带 `sm:max-w-sm`，
+    而 `sm:` 变体在 CSS 里排在无前缀规则之后，只写 `max-w-3xl` 会被它覆盖。
+
+    高度：用**固定值** `h-[34rem]` 而不是 `max-h-*`。
+    用 max-h 时对话框高度会随内容增减——切到「外观」有 13 套主题的
+    预览列表就高，切到「通用」只有一项就矮，每切一次整个窗口跳一下
+    （用户反馈的「抖动」）。固定高度后内容多少都不影响外框。
+
+    配合 `grid-rows-[auto_minmax(0,1fr)_auto]`：头部与底部按内容高度，
+    中间区吸收剩余空间并自己滚动。`minmax(0,1fr)` 里的 `0` 很关键，
+    不写的话 grid 子项最小高度是内容高度，`overflow` 会失效。
+
+    `h-[34rem]` 约 544px：在 700px 高的窗口里留有充足边距，
+    又能同时容纳主题列表与底部按钮。
+  -->
+  <DialogContent
+    class="sm:max-w-3xl h-[34rem] max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]"
+  >
     <DialogHeader>
       <DialogTitle>{t('settings.title')}</DialogTitle>
       <DialogDescription>{t('settings.description')}</DialogDescription>
     </DialogHeader>
 
     <!-- 左分类 / 右内容 -->
-    <div class="flex min-h-0 gap-4">
+    <div class="flex min-h-0 min-w-0 gap-4">
       <!--
         分类栏。`role="tablist"` + `aria-selected` 是手写的：
         这里没用 Tabs 组件（见文件头说明），可访问性属性得自己补。
       -->
       <div
-        class="flex w-36 shrink-0 flex-col gap-0.5 border-r border-border-subtle pr-2"
+        class="flex w-36 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-subtle pr-2"
         role="tablist"
         aria-orientation="vertical"
         aria-label={t('settings.title')}
@@ -189,8 +207,15 @@ async function handleReset() {
         {/each}
       </div>
 
-      <!-- 内容区。只滚动这里，头部与底部固定。 -->
-      <div class="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pr-1">
+      <!--
+        内容区。只滚动这里，头部与底部固定。
+
+        **必须同时写 `overflow-x-hidden`**：`overflow-y-auto` 只隐含
+        「x 方向 visible」，而 visible 与 auto 混用时浏览器会把 x 也算成
+        auto，于是内容稍微超宽就冒出横向滚动条（用户反馈过）。
+        显式禁掉 x 方向才干净。
+      -->
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden pr-1">
         {#if tab === 'appearance'}
           <!-- 主题 -->
           <div class="flex flex-col gap-2">
@@ -201,7 +226,7 @@ async function handleReset() {
               「Dracula 和 Monokai 差在哪」。
             -->
             <div
-              class="flex max-h-64 flex-col gap-0.5 overflow-y-auto rounded-lg border border-border-subtle p-1"
+              class="flex max-h-64 flex-col gap-0.5 overflow-y-auto overflow-x-hidden rounded-lg border border-border-subtle p-1"
               role="radiogroup"
               aria-label={t('settings.theme')}
             >

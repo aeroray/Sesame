@@ -182,7 +182,7 @@ export const zhCN: Messages = {
 
   editor: {
     binary: '二进制文件 · 不可编辑保存',
-    lineColumn: '行 {line}，列 {column}',
+    lineColumn: '行 {line} · 列 {column}',
     lineColumnTitle: '光标位置（行:列）',
     encoding: '文本编码',
     lineEnding: '换行风格',

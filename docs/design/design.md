@@ -141,18 +141,54 @@ Dracula 和 Monokai 都是深紫调，光看色块几乎分不出来。
 所以一直没暴露问题；加了 13 套主题的预览列表之后，内容高度超过窗口，
 底部的「恢复默认」与「完成」按钮被切在窗口外（**实测如此，用户够不到**）。
 
-修法：
+修法（三条缺一不可）：
 
 ```svelte
-<DialogContent class="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]">
+<DialogContent
+  class="sm:max-w-3xl h-[34rem] max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto]"
+>
   <DialogHeader />
-  <div class="min-h-0 overflow-y-auto">…</div>   <!-- 只有中间区滚动 -->
+  <div class="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">…</div>
   <DialogFooter />
 </DialogContent>
 ```
 
-`minmax(0, 1fr)` 里的 **`0` 是关键**：不写的话 grid 子项的最小高度是
-内容高度，滚动区会被内容撑开、`overflow` 失效。
+1. **高度用固定值 `h-[34rem]`，不能用 `max-h-*`。**
+   用 `max-h` 时对话框高度会随内容增减：切到「外观」（13 套主题）就高，
+   切到「通用」（只有一项）就矮，**每切一次整个窗口跳一下**。
+   固定高度后内容多少都不影响外框。实测两页高度差为 **0 px**。
+2. **`minmax(0, 1fr)` 里的 `0`。** 不写的话 grid 子项的最小高度是
+   内容高度，滚动区会被内容撑开、`overflow` 失效。
+3. **必须同时写 `overflow-x-hidden`。** `overflow-y: auto` 只隐含
+   「x 方向 visible」，而 visible 与 auto 混用时浏览器会把 x 也算成 auto，
+   于是内容稍微超宽就冒出横向滚动条。滚动容器自身还要 `min-w-0`，
+   否则 flex 子项的最小宽度是内容宽度，同样撑破容器。
+
+#### 宽度覆盖要带 `sm:` 前缀
+
+`dialog-content` 的默认类里带 `sm:max-w-sm`，而 **`sm:` 变体的规则在 CSS 里
+排在无前缀规则之后**，因此只写 `max-w-3xl` 会被它覆盖——实测对话框仍被压在
+24rem，左侧分类栏把右侧内容挤得只剩一点，「界面字体」被压成竖排。
+写 `sm:max-w-3xl` 才能在同一层级覆盖。
+
+#### 行号区的分隔线：主题包会漏设，必须自己兜底
+
+CodeMirror 默认主题用 `&light .cm-gutters` /
+`&.cm-gutters-before { borderRightWidth: 1px }` 给行号区加一条竖线，
+选择器比裸 `.cm-gutters` **更具体**，只写 `border: none` 盖不掉。
+
+主题包对这条线的处理**不一致**（实测逐个读过源码）：
+
+| 设了 `gutterBorder: transparent` | 没设（会露出默认竖线） |
+| --- | --- |
+| Dracula、Monokai、Solarized、One Dark、VS Code、Tokyo Night | **Nord、GitHub** |
+
+这正好解释「某些主题下才会出现一条线」。因此这条抑制必须放在
+`sesameUiTheme`（`baseTheme`，与主题无关）里统一兜底。
+
+> 该规则在改用主题包时丢过一次——它原本写在被删掉的
+> `lightUi` / `darkUi` 里，没有一起搬过来。**凡是「与主题无关」的编辑器样式，
+> 都应放在 `baseTheme` 而不是某个具体主题里**，这样迁移时不会漏。
 
 #### 主题内的每个装饰都必须跟随主题
 

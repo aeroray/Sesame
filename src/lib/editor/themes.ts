@@ -32,6 +32,24 @@ import { CJK_FALLBACK, quoteFont } from '$lib/utils/fonts';
  */
 export const sesameUiTheme: Extension = EditorView.baseTheme({
   /*
+   * 行号区不画右侧分隔线。
+   *
+   * CodeMirror 默认主题是在 `&light .cm-gutters` / `&dark .cm-gutters` 里
+   * 用 `&.cm-gutters-before { borderRightWidth: 1px }` 加这条线的，
+   * 选择器比裸 `.cm-gutters` **更具体**，所以只写 `border: none` 盖不掉，
+   * 必须显式写 `&.cm-gutters-before { borderRightWidth: 0 }`。
+   *
+   * 这条规则在改用主题包时丢过一次（当时它写在被删掉的 `lightUi`/`darkUi`
+   * 里，没有一起搬过来），结果每个主题下都冒出一条竖线。
+   * 现在放在 `baseTheme` 里——与主题无关，所以任何主题都不该有它。
+   */
+  '.cm-gutters': {
+    border: 'none',
+    '&.cm-gutters-before': { borderRightWidth: '0px' },
+    '&.cm-gutters-after': { borderLeftWidth: '0px' },
+  },
+
+  /*
    * 匹配括号的高亮。
    *
    * 默认用**主题强调色**。早先这里写死 `oklch(0.88 0.06 62 / 0.5)`
