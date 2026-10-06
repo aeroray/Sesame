@@ -85,9 +85,18 @@ const lineEndingLabel = $derived(
           {t('editor.lineNumber', { line: tab.cursorLine })}
         </span>
         {@render separator()}
-        <span class="px-1 tabular-nums">{t('editor.columnNumber', { column: tab.cursorColumn })}</span>
+        <span class="px-1 tabular-nums" title={t('editor.lineColumnTitle')}>
+          {t('editor.columnNumber', { column: tab.cursorColumn })}
+        </span>
         {@render separator()}
-        <span class="px-1">{LANGUAGE_LABELS[tab.language]}</span>
+        <!--
+          语言项也给出提示。
+
+          早先这里没有 `title`，鼠标悬停上去什么也不显示；
+          而旁边的「行」有提示、编码与换行也有，显得**不一致**。
+          补上之后状态栏每一项都有说明。
+        -->
+        <span class="px-1" title={t('editor.language')}>{LANGUAGE_LABELS[tab.language]}</span>
         {@render separator()}
         <!--
           编码可点击：探测不可能全对，用户需要一个纠正误判的入口。

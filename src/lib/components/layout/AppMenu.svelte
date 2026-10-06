@@ -18,6 +18,7 @@ import {
 } from '$lib/components/ui/dropdown-menu';
 import { t } from '$lib/i18n';
 import { activeTab } from '$lib/state/tabs.svelte';
+import { formatKeys } from '$lib/utils/hotkeys';
 
 interface Props {
   onOpenSettings: () => void;
@@ -46,16 +47,22 @@ const hasFile = $derived(activeTab()?.path != null);
   </DropdownMenuTrigger>
 
   <DropdownMenuContent align="end" class="w-60">
+    <!--
+      快捷键提示必须走 `formatKeys()`，不能写死 "Ctrl+"。
+      macOS 上实际按键是 Cmd，`formatKeys` 会把它转成 `⌘`；
+      写死会让 macOS 用户看到「Ctrl+,」而按 ⌘ 才有效——提示与事实不符。
+      （这个文件早先就是硬编码的，改掉。）
+    -->
     <DropdownMenuItem class="gap-2" onSelect={onOpenSettings}>
       <Settings class="size-3.5 shrink-0" />
       <span class="truncate">{t('menu.settings')}</span>
-      <span class="ml-auto shrink-0 text-[10px] text-content-faint">Ctrl+,</span>
+      <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+,')}</span>
     </DropdownMenuItem>
 
     <DropdownMenuItem class="gap-2" onSelect={onOpenShortcuts}>
       <Keyboard class="size-3.5 shrink-0" />
       <span class="truncate">{t('menu.shortcuts')}</span>
-      <span class="ml-auto shrink-0 text-[10px] text-content-faint">Ctrl+/</span>
+      <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+/')}</span>
     </DropdownMenuItem>
 
     <DropdownMenuSeparator />
@@ -90,7 +97,7 @@ const hasFile = $derived(activeTab()?.path != null);
     <DropdownMenuItem class="gap-2" onSelect={() => void reopenClosedTab()}>
       <Undo2 class="size-3.5 shrink-0" />
       <span class="truncate">{t('action.reopenClosed')}</span>
-      <span class="ml-auto shrink-0 text-[10px] text-content-faint">Ctrl+Shift+T</span>
+      <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+Shift+T')}</span>
     </DropdownMenuItem>
 
     <DropdownMenuSeparator />

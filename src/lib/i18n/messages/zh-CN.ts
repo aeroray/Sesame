@@ -192,6 +192,8 @@ export const zhCN: Messages = {
     lineNumber: '行 {line}',
     columnNumber: '列 {column}',
     lineColumnTitle: '光标位置（行 · 列）',
+    /** 状态栏语言项的提示。 */
+    language: '文件语言',
     encoding: '文本编码',
     lineEnding: '换行风格',
     largeFileBadge: '大文件模式',
@@ -235,7 +237,15 @@ export const zhCN: Messages = {
   },
 
   encoding: {
-    change: '以指定编码重新打开…',
+    /*
+     * 状态栏编码项的悬停提示。
+     *
+     * 早先这里写的是「以指定编码重新打开…」，但点击后**先弹出编码选择器**，
+     * 用户还要再选一次。提示描述的是「点完之后发生的那件最终的事」，
+     * 而不是「点击这个动作会带来什么」——两者不一致会让人以为点错了。
+     * 改成「选择编码」：既准确，也没有承诺「立刻重开」。
+     */
+    change: '选择文本编码…',
     title: '以指定编码重新打开',
     description: '将从磁盘重新读取内容，本标签未保存的修改会丢失。',
     autoDetected: '自动探测',

@@ -191,6 +191,8 @@ export const en = {
     lineNumber: 'Line {line}',
     columnNumber: 'Col {column}',
     lineColumnTitle: 'Cursor position (line · column)',
+    /** 状态栏语言项的提示。 */
+    language: 'File language',
     encoding: 'Text encoding',
     lineEnding: 'Line endings',
     largeFileBadge: 'Large file',

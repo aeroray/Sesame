@@ -9,7 +9,7 @@
  * 用户按 Ctrl+F 搜一个词、没搜到，会以为文件里确实没有，
  * 而实际上那部分内容还没加载进来。
  */
-import { ChevronsDown, FileWarning, Loader2, SearchX } from '@lucide/svelte';
+import { ChevronsDown, FileWarning, Loader2, Plus, SearchX } from '@lucide/svelte';
 import { Button } from '$lib/components/ui/button';
 import type { ChunkProgress } from '$lib/editor/large-file.svelte';
 import { t } from '$lib/i18n';
@@ -60,13 +60,21 @@ const remaining = $derived(Math.max(0, progress.totalBytes - progress.loadedByte
           {t('editor.loadingMore')}
         </span>
       {:else}
+        <!--
+          「继续加载」用 `Plus`：它的语义是「再加一块」，
+          与「分块加载、每次追加一段」的机制直接对应。
+
+          早先用 `ChevronsDown`（双下箭头），那更像「滚到最底部」，
+          容易被理解成跳转而不是加载。
+          「全部加载」则保留 `ChevronsDown`——一次到底，语义正合适。
+        -->
         <Button
           variant="ghost"
           size="sm"
           class="h-5 px-1.5 text-[11px] text-brand-900 hover:bg-brand-100 dark:text-brand-100 dark:hover:bg-brand-900/40"
           onclick={onLoadMore}
         >
-          <ChevronsDown class="size-3" />
+          <Plus class="size-3" />
           {t('editor.loadMore')}
         </Button>
         <Button
@@ -75,6 +83,7 @@ const remaining = $derived(Math.max(0, progress.totalBytes - progress.loadedByte
           class="h-5 px-1.5 text-[11px] text-brand-900 hover:bg-brand-100 dark:text-brand-100 dark:hover:bg-brand-900/40"
           onclick={onLoadAll}
         >
+          <ChevronsDown class="size-3" />
           {t('editor.loadAll')}
         </Button>
       {/if}

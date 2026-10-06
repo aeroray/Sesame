@@ -45,6 +45,13 @@ const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] 
       { keys: 'Ctrl+S', label: 'action.save' },
       { keys: 'Ctrl+Shift+S', label: 'action.saveAs' },
       { keys: 'Ctrl+W', label: 'command.closeTab' },
+      /*
+       * 这两条**已注册但早先没列出来**（Shell.svelte 里有绑定，
+       * 这里漏了）。快捷键面板是用户查「有没有这个功能」的地方，
+       * 漏列等于让人以为没有。
+       */
+      { keys: 'Ctrl+Shift+T', label: 'action.reopenClosed' },
+      { keys: 'Ctrl+Shift+C', label: 'action.copyPath' },
     ],
   },
   {
