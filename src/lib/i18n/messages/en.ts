@@ -140,6 +140,13 @@ export const en = {
     /* 主题分组的标题。主题名是专有名词，不翻译；这两个词是分组标签。 */
     themeLight: 'Light',
     themeDark: 'Dark',
+
+    /* 设置面板的分类标签。 */
+    groupAppearance: 'Appearance',
+    groupEditor: 'Editor',
+    groupFiles: 'Files & Saving',
+    groupSystem: 'General',
+
     language: 'Language',
 
     uiFont: 'Interface font',

@@ -135,6 +135,18 @@ export const zhCN: Messages = {
     /* 主题分组的标题。主题名是专有名词，不翻译；这两个词是分组标签。 */
     themeLight: '浅色',
     themeDark: '深色',
+
+    /*
+     * 设置面板的分类标签。
+     *
+     * 用 Tab 而不是一路平铺：设置项已有十几条，平铺会让「找某一项」
+     * 变成通读全文。分类后每屏只呈现一类，找起来快得多。
+     */
+    groupAppearance: '外观',
+    groupEditor: '编辑器',
+    groupFiles: '文件与保存',
+    groupSystem: '通用',
+
     language: '语言',
 
     uiFont: '界面字体',

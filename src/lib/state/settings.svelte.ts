@@ -26,9 +26,21 @@ const DEFAULTS: Settings = {
   showLineNumbers: true,
   /** 缩进参考线。默认开启——它对阅读代码帮助大，且几乎不占视觉重量。 */
   showIndentGuides: true,
-  /** 括号彩虹。默认关闭——它是主动吸引注意力的装饰。 */
-  rainbowBrackets: false,
-  autoSave: false,
+  /**
+   * 括号彩虹。**默认开启**（按用户要求）。
+   *
+   * 早先默认关闭，理由是「它是主动吸引注意力的装饰，与安静的定位有张力」。
+   * 用户明确要求默认开启，因此改掉；设置项仍在，不喜欢的人可以关掉。
+   */
+  rainbowBrackets: true,
+  /**
+   * 自动保存。**默认开启**（按用户要求）。
+   *
+   * 默认关掉的理由是「不该在用户没要求时写磁盘」。但忘记保存而丢改动
+   * 是更糟的结果，用户也明确要求默认开启。
+   * 它是防抖写入且只对有路径的标签生效，因此风险有限。
+   */
+  autoSave: true,
   hibernateEnabled: true,
   restoreSession: true,
   // 空字符串 = 跟随系统默认：界面用 --font-sans，编辑器用 --font-mono
