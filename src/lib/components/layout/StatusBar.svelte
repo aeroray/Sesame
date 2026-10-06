@@ -40,6 +40,17 @@ const lineEndingLabel = $derived(
 );
 </script>
 
+<!--
+  状态栏各项之间的分隔符。
+  抽成 snippet 是为了**保证全栏只有一种分隔符**——早先行列那一项
+  把 `·` 写进了文案（跟着正文色），其余分隔符是独立的元素
+  （`text-border-strong`，更淡），同一行里出现两种颜色，
+  看起来就像「不是同一种分隔符」。
+-->
+{#snippet separator()}
+  <span class="shrink-0 text-border-strong">·</span>
+{/snippet}
+
 <footer
   class="flex h-6 shrink-0 select-none items-center gap-1 border-t border-border-subtle bg-surface-sunken px-2 text-[11px] text-content-muted"
 >
@@ -60,12 +71,24 @@ const lineEndingLabel = $derived(
         -->
         <span class="px-1">{t('editor.binary')}</span>
       {:else}
+        <!--
+          行列用「行 N · 列 M」的写法，其中 `·` 与各项之间的分隔符
+          **是同一个东西**——因此它不写进文案，而是作为一个独立的
+          `{#snippet separator()}` 渲染。
+
+          早先把 `·` 写进了 `lineColumn` 文案里，于是同一行里出现两种
+          分隔符：文案内那个跟着正文色（`text-content-muted`），
+          项之间那个是 `text-border-strong`（更淡）。
+          两者颜色不同，用户一眼就看出「这两个不是同一种分隔符」。
+        -->
         <span class="px-1 tabular-nums" title={t('editor.lineColumnTitle')}>
-          {t('editor.lineColumn', { line: tab.cursorLine, column: tab.cursorColumn })}
+          {t('editor.lineNumber', { line: tab.cursorLine })}
         </span>
-        <span class="text-border-strong">·</span>
+        {@render separator()}
+        <span class="px-1 tabular-nums">{t('editor.columnNumber', { column: tab.cursorColumn })}</span>
+        {@render separator()}
         <span class="px-1">{LANGUAGE_LABELS[tab.language]}</span>
-        <span class="text-border-strong">·</span>
+        {@render separator()}
         <!--
           编码可点击：探测不可能全对，用户需要一个纠正误判的入口。
           未命名标签没有磁盘文件可重读，因此只在有路径时可交互。
@@ -75,11 +98,11 @@ const lineEndingLabel = $derived(
         {:else}
           <span class="px-1" title={t('editor.encoding')}>{encodingLabel}</span>
         {/if}
-        <span class="text-border-strong">·</span>
+        {@render separator()}
         <span class="px-1" title={t('editor.lineEnding')}>{lineEndingLabel}</span>
 
         {#if tab.truncated}
-          <span class="text-border-strong">·</span>
+          {@render separator()}
           <Badge variant="secondary" class="h-4 px-1.5 text-[10px]">{t('editor.largeFileBadge')}</Badge>
         {/if}
       {/if}

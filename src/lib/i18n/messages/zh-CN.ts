@@ -182,8 +182,16 @@ export const zhCN: Messages = {
 
   editor: {
     binary: '二进制文件 · 不可编辑保存',
-    lineColumn: '行 {line} · 列 {column}',
-    lineColumnTitle: '光标位置（行:列）',
+    /*
+     * 行列拆成两条文案，中间的分隔符由 StatusBar 统一渲染。
+     *
+     * 早先是一条 `行 {line} · 列 {column}`，把分隔符写死在文案里，
+     * 结果它与同一行其他分隔符的颜色不同（前者跟正文色、
+     * 后者是更淡的 border-strong）。拆开后全栏只有一种分隔符。
+     */
+    lineNumber: '行 {line}',
+    columnNumber: '列 {column}',
+    lineColumnTitle: '光标位置（行 · 列）',
     encoding: '文本编码',
     lineEnding: '换行风格',
     largeFileBadge: '大文件模式',

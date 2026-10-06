@@ -184,8 +184,13 @@ export const en = {
   /** 编辑器状态栏。 */
   editor: {
     binary: 'Binary file · read-only',
-    lineColumn: 'Line {line} · Col {column}',
-    lineColumnTitle: 'Cursor position (line:column)',
+    /*
+     * 行列拆成两条文案，中间的分隔符由 StatusBar 统一渲染
+     * （理由见 zh-CN.ts 的同名条目）。
+     */
+    lineNumber: 'Line {line}',
+    columnNumber: 'Col {column}',
+    lineColumnTitle: 'Cursor position (line · column)',
     encoding: 'Text encoding',
     lineEnding: 'Line endings',
     largeFileBadge: 'Large file',
