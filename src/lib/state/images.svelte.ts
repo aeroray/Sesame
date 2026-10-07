@@ -13,6 +13,22 @@ import type { ImagePayload } from '$lib/state/types';
 /** 标签 id → 图片负载。 */
 let images = $state.raw<Record<string, ImagePayload>>({});
 
+export interface ImageDimensions {
+  width: number;
+  height: number;
+}
+let dimensions = $state.raw<Record<string, ImageDimensions>>({});
+
+/** Decoded dimensions are shared with the bottom status bar. */
+export function getImageDimensions(tabId: string): ImageDimensions | undefined {
+  return dimensions[tabId];
+}
+
+export function setImageDimensions(tabId: string, value: ImageDimensions): void {
+  if (!images[tabId] || value.width <= 0 || value.height <= 0) return;
+  dimensions = { ...dimensions, [tabId]: value };
+}
+
 /**
  * 正在读取的标签 id 集合，避免重复请求。
  *
@@ -70,6 +86,8 @@ export async function ensureImage(tabId: string, path: string): Promise<void> {
 export function releaseImage(tabId: string): void {
   // 标记取消，防止在途请求回来后重新写入
   cancelled.add(tabId);
+  const { [tabId]: _dimensions, ...remainingDimensions } = dimensions;
+  dimensions = remainingDimensions;
 
   if (images[tabId] === undefined) return;
   const { [tabId]: _removed, ...rest } = images;

@@ -20,6 +20,7 @@
 
 import { Minus, PanelLeft, Square, X } from '@lucide/svelte';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import AppLogo from '$lib/components/common/AppLogo.svelte';
 import Hint from '$lib/components/common/Hint.svelte';
 import { t } from '$lib/i18n';
 import { toggleSidebar } from '$lib/state/layout.svelte';
@@ -87,6 +88,10 @@ $effect(() => {
     : 'pl-1.5'}"
   data-tauri-drag-region
 >
+  {#if !IS_MAC}
+    <AppLogo class="pointer-events-none mx-1 size-5" />
+  {/if}
+
   <Hint label={t('sidebar.toggleWithKey')} onclick={toggleSidebar}>
     <PanelLeft class="size-4" />
   </Hint>

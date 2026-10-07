@@ -530,10 +530,30 @@ Dracula 主题下量过整张截图，属于强调色 `#bd93f9` 的像素只有 
 
 ## 7. 图标
 
-统一用 **`@lucide/svelte`**（注意不是已废弃的 `lucide-svelte`）。
+功能图标统一用 **`@lucide/svelte`**（注意不是已废弃的 `lucide-svelte`）。
 线条风格，`stroke-width` 保持默认。
 
 **禁止用 emoji 当图标**。禁止混用其他图标库。
+
+### 应用品牌 Logo
+
+Sesame 的品牌标志为深灰底、奶白芝麻与琥珀色文本光标；芝麻以两只奶白小手自然抱住光标。
+品牌 Logo 使用固定配色，不随编辑器主题染色。功能按钮继续使用 Lucide 和主题令牌。
+
+唯一生成源是仓库根目录的 `app-icon.png`。执行 `pnpm icons`，同步生成
+`src-tauri/icons/` 的桌面 PNG、Windows ICO、macOS ICNS 与商店图标，以及
+`public/logo.png`、`public/favicon.png`、`public/favicon.ico`。不要分别修改派生图标。
+
+Windows 的 ICO、桌面 PNG 与前端品牌资源通过 SVG 视口裁掉原图每边约 8.3% 的透明留白，
+让可见主体占满系统图标单元；不重绘原图。macOS ICNS 使用原始画布和留白。
+后续调整生成源时，需检查 `scripts/generate-icons.mjs` 的留白比例及 16 / 32 / 48 像素效果。
+Rust 构建脚本监听 `icons/`，避免增量编译继续复用旧的 Windows EXE 图标资源。
+NSIS 安装及卸载结束时使用 `windows/installer-hooks.nsh` 通知 Windows Shell 失效图标缓存，
+防止相同 EXE 路径在重装后仍显示旧尺寸或旧图案。
+
+欢迎页、Windows 自定义标题栏、应用菜单的品牌项统一使用
+`common/AppLogo.svelte`，不叠加额外底色、圆角或阴影。Logo 旁已有应用名称时使用空 alt，
+避免辅助技术重复朗读。README 引用生成的 `128x128@2x.png`。
 
 已使用的图标（新增前先看这里，避免同义不同形）：
 
@@ -552,8 +572,8 @@ Dracula 主题下量过整张截图，属于强调色 `#bd93f9` 的像素只有 
 | `WrapText` / `Hash` | 自动换行 / 行号 |
 | `Settings` / `Keyboard` / `Menu` | 设置 / 快捷键 / 应用菜单 |
 | `Sun` / `Monitor` | 浅色 / 跟随系统 |
-| `ZoomIn` `ZoomOut` `Maximize` `Scan` | 放大 / 缩小 / 适应 / 原始尺寸 |
-| `ExternalLink` | 用默认程序打开 |
+| `ZoomIn` `ZoomOut` `Maximize` / 1:1 标识 | 放大 / 缩小 / 适应 / 原始尺寸 |
+| `ExternalLink` | 用外部程序打开 |
 | `Loader2` | 加载中（配 `animate-spin`） |
 | `FileWarning` / `ChevronsDown` | 大文件提示 / 继续加载 |
 | `RotateCcw` | 恢复默认 |
@@ -1509,16 +1529,29 @@ Rust 侧统一用 `paths::to_slash()` 把路径转成正斜杠（`C:/Users/...`�
 
 ### CSS transform 不改变布局盒尺寸
 
-`transform: scale()` **不参与布局**：父级 `overflow-auto` 的
-`scrollWidth` / `scrollHeight` 仍按未缩放的尺寸计算。因此「放大图片」
-这类功能只用 transform 时，溢出部分没有滚动条可滚，右侧与底部永远看不到。
+图片查看器以实际可视区域减去四周 16px 留白，计算适应窗口的倍率；小图默认不放大。
+使用 `ResizeObserver` 跟随窗口、侧栏和标签可见性的变化。默认缩放及「重置」都恢复适应窗口。
+手动缩放从当前显示倍率起算，并保留视口中心的图片位置；原始尺寸单独切换到 100%。
+图片区域支持 Ctrl + 鼠标滚轮缩放，以鼠标指向的位置为中心；普通滚轮继续滚动图片。
+按住空格进入抓手模式，左键拖动图片以平移；拖动时使用 pointer capture，避免移出视口后中断。
+松开空格、切换标签或窗口失去焦点时退出抓手模式。输入框、可编辑内容和对话框不拦截空格。
+图片画布和文本编辑区不显示整块焦点描边；抓手模式把焦点移到画布，不让最后点击的工具栏按钮出现键盘焦点框。
+按钮、输入框和标签页的键盘导航提示仍保留。「原始尺寸」使用 1:1 标识，与「适应窗口」的四角图标区分。
+wheel 监听为非 passive，取消浏览器页面缩放；按像素、行或页归一化滚轮增量，
+兼容普通鼠标与触控板，并沿用 1%–800% 的缩放范围。
 
-正解是**让占位与绘制分离**：外层盒子按缩放后尺寸撑开（负责滚动范围），
-内层元素用 transform 缩放（负责绘制，避免重排）。
+图片按缩放后的实际 `width / height` 布局，滚动范围由真实尺寸决定。
+旧的「原尺寸图片 + transform」在缩小时仍会保留原尺寸的溢出范围，因此不再使用。
+居中容器采用 `max-content` 尺寸、`min-w-full / min-h-full` 和网格居中：
+小于视口时居中，大于视口时四边都可滚到；只有图片加留白超出对应方向时才出现滚动条。
 
-另外，容器内居中要用内层盒子的 `m-auto` 而不是外层的 `justify-center`——
-flex 居中对齐在内容大于容器时会让溢出**同时**向两端溢出，
-起始端（左上）因此滚不到。
+原始像素尺寸、文件体积与格式统一放在左下角状态栏，不再显示泛化的「图片」标签。
+顶部工具栏只保留缩放、重置、适应窗口、原始尺寸及「用外部程序打开」。
+Windows 外部打开调用系统应用程序选择器；macOS 选择已安装的 .app，然后打开原文件。
+Windows 安装包同时注册 OpenWithProgids、SupportedTypes 和 RegisteredApplications/Capabilities；
+NSIS 和 MSI 的候选项从 `tauri.conf.json` 的文件类型列表生成，不修改用户的 UserChoice 默认选择。
+
+窗口使用 `visible: false` 创建，由 window-state 插件恢复位置与尺寸后显示，避免启动时先居中再跳位。
 
 ### 快捷键面板必须与实际绑定一致
 

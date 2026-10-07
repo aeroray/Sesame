@@ -36,7 +36,10 @@ let { open = $bindable(), onOpenChange }: Props = $props();
  * 在这里求值会固定在模块加载时的语言，切换语言后不会更新。
  * `EDITOR_HOTKEYS` 的 `label` 同样已经是 key（见 `utils/hotkeys.ts`）。
  */
-const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] }[] = [
+const groups: {
+  title: MessageKey;
+  items: { keys: string; label: MessageKey; literalKeys?: MessageKey }[];
+}[] = [
   {
     title: 'shortcuts.groupFile',
     items: [
@@ -61,6 +64,8 @@ const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] 
   {
     title: 'shortcuts.groupView',
     items: [
+      { keys: 'Ctrl+Wheel', label: 'image.wheelZoom', literalKeys: 'image.wheelShortcut' },
+      { keys: 'Space+Drag', label: 'image.spacePan', literalKeys: 'image.panShortcut' },
       { keys: 'Ctrl+B', label: 'command.toggleSidebar' },
       { keys: 'Ctrl+Shift+M', label: 'editor.preview' },
       { keys: 'Ctrl+,', label: 'menu.settings' },
@@ -86,7 +91,7 @@ const groups: { title: MessageKey; items: { keys: string; label: MessageKey }[] 
           {#each group.items as item (item.keys)}
             <div class="flex items-center justify-between gap-4 py-0.5">
               <span class="text-sm text-content-muted">{t(item.label)}</span>
-              <Kbd>{formatKeys(item.keys)}</Kbd>
+              <Kbd>{item.literalKeys ? t(item.literalKeys) : formatKeys(item.keys)}</Kbd>
             </div>
           {/each}
         </section>

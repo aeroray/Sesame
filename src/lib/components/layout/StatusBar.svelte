@@ -10,11 +10,15 @@ import Hint from '$lib/components/common/Hint.svelte';
 import { Badge } from '$lib/components/ui/badge';
 import { LANGUAGE_LABELS } from '$lib/editor/languages';
 import { t } from '$lib/i18n';
+import { getImage, getImageDimensions, isLoading } from '$lib/state/images.svelte';
 import { isPreviewing } from '$lib/state/layout.svelte';
 import { settings, updateSetting } from '$lib/state/settings.svelte';
 import { activeTab } from '$lib/state/tabs.svelte';
+import { formatBytes } from '$lib/utils/format';
 
 const tab = $derived(activeTab());
+const imagePayload = $derived(tab?.kind === 'image' ? getImage(tab.id) : undefined);
+const imageDimensions = $derived(tab?.kind === 'image' ? getImageDimensions(tab.id) : undefined);
 
 /** 当前标签页能否预览（仅 Markdown）。 */
 const canPreview = $derived(tab?.language === 'markdown');
@@ -56,8 +60,17 @@ const lineEndingLabel = $derived(
 >
   {#if tab}
     {#if tab.kind === 'image'}
-      <!-- 图片没有行列与编码概念；尺寸与体积已在查看器工具栏里，这里不重复 -->
-      <span class="px-1">{t('editor.image')}</span>
+      {#if imageDimensions}
+        <span class="px-1 tabular-nums">{imageDimensions.width} × {imageDimensions.height}</span>
+      {/if}
+      {#if imagePayload}
+        {#if imageDimensions}{@render separator()}{/if}
+        <span class="px-1 tabular-nums">{formatBytes(imagePayload.size)}</span>
+        {@render separator()}
+        <span class="px-1 uppercase">{imagePayload.mime.replace('image/', '')}</span>
+      {:else if isLoading(tab.id)}
+        <span class="px-1">{t('image.loading')}</span>
+      {/if}
     {:else}
       <!--
         光标位置带「行 / 列」字样。

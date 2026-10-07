@@ -8,6 +8,7 @@
 import { Clock, FileText, FolderOpen, X } from '@lucide/svelte';
 import { newTab } from '$lib/actions/new-tab';
 import { openPath, openViaDialog } from '$lib/actions/open-file';
+import AppLogo from '$lib/components/common/AppLogo.svelte';
 import { Button } from '$lib/components/ui/button';
 import { ScrollArea } from '$lib/components/ui/scroll-area';
 import { t } from '$lib/i18n';
@@ -23,14 +24,7 @@ const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
   <div class="flex w-full max-w-lg flex-col gap-5">
     <!-- 品牌区 -->
     <div class="flex flex-col items-center gap-2">
-      <!--
-        品牌块用**强调色填充**而不是淡色底。
-        它是落地页最显眼的元素，也是「当前主题长什么样」的第一处体现——
-        早先用 `bg-brand-100`（很淡），换主题时几乎看不出变化。
-      -->
-      <div class="flex size-11 items-center justify-center rounded-lg bg-primary shadow-sm">
-        <span class="text-lg font-semibold text-primary-foreground">S</span>
-      </div>
+      <AppLogo class="size-14" />
       <h1 class="text-base font-medium text-content">Sesame</h1>
       <p class="text-xs text-content-faint">{t('app.tagline')}</p>
     </div>

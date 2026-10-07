@@ -29,11 +29,13 @@ interface Props {
    * 这个按钮是否是「开关」。
    *
    * 只有开关才该带 `aria-pressed`。Hint 也用于一次性动作
-   * （最小化、放大、用默认程序打开、新建标签页……），
+   * （最小化、放大、用外部程序打开、新建标签页……），
    * 无条件输出 `aria-pressed="false"` 会让读屏软件把每一个动作按钮
    * 都播报成「处于关闭状态的切换按钮」——语义是错的。
    */
   toggle?: boolean;
+  /** Disabled while an action is unavailable or an application chooser is open. */
+  disabled?: boolean;
   /** 是否为危险操作：悬停时变红，提示这是破坏性动作。 */
   danger?: boolean;
   onclick?: (event: MouseEvent) => void;
@@ -47,6 +49,7 @@ let {
   class: className = 'size-7',
   active = false,
   toggle = false,
+  disabled = false,
   danger = false,
   onclick,
   children,
@@ -90,6 +93,7 @@ const classes = $derived(
           class={classes}
           aria-label={label}
           aria-pressed={toggle ? active : undefined}
+          {disabled}
           {onclick}
         >
           {@render children()}

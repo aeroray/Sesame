@@ -326,6 +326,11 @@
     outline-offset: 2px;
   }
 
+  /* Content canvases use the caret/grab cursor, rather than a frame around the whole pane. */
+  .image-viewport:focus-visible {
+    outline: none;
+  }
+
   /* 减少动效偏好 */
   @media (prefers-reduced-motion: reduce) {
     *,

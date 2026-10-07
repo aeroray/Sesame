@@ -221,12 +221,20 @@ export const en = {
   },
 
   image: {
+    viewArea: 'Image preview',
+    spacePan: 'Hold Space and drag to pan the image',
+    panShortcut: 'Space + drag',
+    wheelZoom: 'Zoom image with Ctrl + mouse wheel',
+    wheelShortcut: 'Ctrl + mouse wheel',
     zoomOut: 'Zoom out',
     zoomIn: 'Zoom in',
     fit: 'Fit to window',
     fitShort: 'Fit',
     actualSize: 'Actual size',
-    openExternal: 'Open in default app',
+    resetZoom: 'Reset zoom (fit to window)',
+    openExternal: 'Open with external app',
+    chooseExternalApp: 'Choose an application to open this image',
+    applications: 'Applications',
     /** 图片还没读完时的占位文案。 */
     loading: 'Reading image…',
     /** 图片数据拿到了但没法渲染（格式损坏等）。 */
@@ -288,7 +296,7 @@ export const en = {
     reloadFailed: 'Could not reload',
     loadFailed: 'Could not load',
     readImageFailed: 'Could not read the image',
-    openExternallyFailed: 'Could not open with the default app',
+    openExternallyFailed: 'Could not open with an external app',
     writeBlocked: 'Could not write to this file',
     notWritable: 'Image files cannot be saved',
     nothingToSave: 'There is nothing to save',

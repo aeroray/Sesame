@@ -269,7 +269,7 @@ $effect(() => {
 
 <div class="relative h-full w-full" class:hidden={!active}>
   {#if tab.kind === 'image'}
-    <ImageViewer {tab} />
+    <ImageViewer {tab} {active} />
   {:else if preview}
     {#if PreviewComponent}
       <PreviewComponent content={getPreviewText(tab.id)} />

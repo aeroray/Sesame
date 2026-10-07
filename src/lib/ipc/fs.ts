@@ -163,6 +163,11 @@ export function readImage(path: string): Promise<ImagePayload> {
   return call<ImagePayload>('read_image', { path });
 }
 
+/** Show the system application chooser on Windows; use the selected app on macOS. */
+export function openImageExternally(path: string, application?: string): Promise<void> {
+  return call<void>('open_image_externally', { path, application: application ?? null });
+}
+
 /** 读取上次会话快照。 */
 export function sessionLoad(): Promise<SessionSnapshot> {
   return call<SessionSnapshot>('session_load');

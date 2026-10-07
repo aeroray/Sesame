@@ -5,9 +5,10 @@
  * 快捷键可能被输入法或系统占用，因此每个功能都必须有可点击的入口，
  * 不能只依赖快捷键。
  */
-import { Copy, FolderOpen, Info, Keyboard, Menu, Settings, Undo2 } from '@lucide/svelte';
+import { Copy, FolderOpen, Keyboard, Menu, Settings, Undo2 } from '@lucide/svelte';
 import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import { reopenClosedTab } from '$lib/actions/reopen-tab';
+import AppLogo from '$lib/components/common/AppLogo.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DropdownMenuContent,
@@ -108,7 +109,7 @@ const hasFile = $derived(activeTab()?.path != null);
     -->
 
     <DropdownMenuItem class="gap-2 text-content-faint" disabled>
-      <Info class="size-3.5 shrink-0" />
+      <AppLogo class="size-4" />
       <span class="truncate">Sesame 0.1.0</span>
     </DropdownMenuItem>
   </DropdownMenuContent>

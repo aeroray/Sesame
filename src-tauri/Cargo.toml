@@ -44,7 +44,7 @@ fontdb = "0.24"
 # 版本必须与 Cargo.lock 中 wry 使用的一致，否则类型不兼容。
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Foundation"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_UI_Shell"] }
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

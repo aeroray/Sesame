@@ -12,6 +12,32 @@ use crate::core::{lang_map, paths};
 use crate::model::{AppError, AppResult, ImagePayload};
 use crate::state::AppState;
 
+/// Show an application chooser without reopening Sesame through its own default association.
+#[tauri::command]
+pub async fn open_image_externally(
+    path: String,
+    application: Option<String>,
+    window: tauri::WebviewWindow,
+) -> AppResult<()> {
+    let resolved = paths::normalize(&path, None)?;
+    let resolved = tauri::async_runtime::spawn_blocking(move || {
+        let slash = paths::to_slash(&resolved);
+        if lang_map::image_mime(&slash).is_none() {
+            return Err(AppError::InvalidPath(format!(
+                "不是可识别的图片格式：{slash}"
+            )));
+        }
+        let meta = std::fs::metadata(&resolved).map_err(|err| AppError::from_io(&slash, err))?;
+        if !meta.is_file() {
+            return Err(AppError::NotAFile(slash));
+        }
+        Ok(resolved)
+    })
+    .await
+    .map_err(AppError::from_join)??;
+    crate::core::external::open_image(window, resolved, application).await
+}
+
 /// 图片读取的同步实现。
 fn read_image_sync(resolved: std::path::PathBuf, mime: &'static str) -> AppResult<ImagePayload> {
     let slash = paths::to_slash(&resolved);

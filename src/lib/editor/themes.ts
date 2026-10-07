@@ -31,6 +31,12 @@ import { CJK_FALLBACK, quoteFont } from '$lib/utils/fonts';
  * 所有主题下都生效。
  */
 export const sesameUiTheme: Extension = EditorView.baseTheme({
+  '&.cm-focused': {
+    outline: 'none',
+  },
+  '.cm-content': {
+    outline: 'none',
+  },
   /*
    * 行号区不画右侧分隔线。
    *
