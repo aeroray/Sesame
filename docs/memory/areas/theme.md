@@ -2,7 +2,7 @@
 
 Memory here applies only when touched files or task scope match this area.
 
-## MC-AREA-20261010-a1b2c3d4 — 主题令牌由 JS 推导
+## MC-AREA-20261010-a1b2c3d4 — Theme tokens derived in JS
 
 Status: active
 Scope: area:theme
@@ -13,12 +13,12 @@ Evidence:
 - repo:src/lib/theme/theme-tokens.ts
 
 Decision:
-令牌推导后写入 `<html>` 内联样式，CSS 只留兜底值；强调色靠 `data-accent` 切换。
+Derive tokens and write them as inline styles on `<html>`; CSS keeps fallbacks only. Accents switch through `data-accent`.
 
 Reason:
-写死在 CSS 里必然「改了背景忘了改边框」。
+Hard-coding them in CSS guarantees that someone changes a background and forgets the border.
 
-## MC-AREA-20261010-b2c3d4e5 — 字体栈必须显式含中文
+## MC-AREA-20261010-b2c3d4e5 — Font stacks must name a CJK font
 
 Status: active
 Scope: area:theme
@@ -29,12 +29,12 @@ Evidence:
 - repo:src/app.css
 
 Decision:
-界面与编辑器字体可分别设置且回落到不同栈，两栈都要显式列出中文字体。
+UI and editor fonts are set separately and fall back to different stacks; both stacks must list a CJK font explicitly.
 
 Reason:
-等宽字体几乎不含中文字形，混排时会出现两种字体。
+Monospace fonts rarely include CJK glyphs, so omitting one puts two fonts on the same line.
 
-## MC-AREA-20261010-c3d4e5f6 — app.css 的状态变体桥接不可删
+## MC-AREA-20261010-c3d4e5f6 — app.css state-variant bridge is load-bearing
 
 Status: active
 Scope: area:theme
@@ -45,7 +45,7 @@ Evidence:
 - repo:src/app.css
 
 Constraint:
-`app.css` 顶部把 bits-ui 的 `data-state` 映射到 `data-checked:` 等变体的声明必须保留。
+Keep the declarations at the top of `app.css` that map bits-ui `data-state` onto variants such as `data-checked:`.
 
 Reason:
-删掉后开关、选中态、展开态会全部失去样式。
+Removing them strips styling from switches, selected states, and expanded states.

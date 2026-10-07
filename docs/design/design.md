@@ -1,147 +1,109 @@
-# Sesame 设计规范
+# Sesame Design Spec
 
-本文件是 Sesame 外观的唯一权威来源。**做任何界面改动前先读这里**；新增组件、调色、
-改间距都以本文为准，不要在组件里另起一套。
+Sole authority for Sesame's appearance. Read before any UI change; do not start a second set of rules inside components.
 
-适用范围：`src/` 下的全部界面代码。协议级约束见 [../memory/constraints.md](../memory/constraints.md)，
-架构决策见 [../memory/decisions.md](../memory/decisions.md)。
+Scope: all UI under `src/`. Constraints: [../memory/constraints.md](../memory/constraints.md). Decisions: [../memory/decisions.md](../memory/decisions.md).
 
 ---
 
-## 1. 设计定位
+## 1. Design positioning
 
-Sesame 是**轻量文本编辑器**，不是 IDE。视觉上的三条主张：
+Lightweight text editor, not an IDE. Three claims:
 
-1. **内容优先**——界面元素让位于文本。没有装饰性插图、没有渐变背景、没有大圆角卡片。
-2. **紧凑**——桌面应用，信息密度高于网页。行高与内边距按"能看清"取最小值，不按"呼吸感"取大值。
-3. **安静**——只有一处强调色，只在激活态、焦点、进度出现。其余全是中性灰阶。
+1. **Content first** — UI yields to text. No decorative illustrations, gradient backgrounds, or large rounded cards.
+2. **Compact** — desktop density, above web. Line height and padding take the minimum that stays legible.
+3. **Quiet** — exactly one accent colour, only for active state, focus, and progress. Everything else neutral greyscale.
 
-### 支持平台
+### Supported platforms
 
-**只有 Windows 与 macOS。** 平台判定集中在
-[../src/lib/utils/platform.ts](../../src/lib/utils/platform.ts)。
+**Windows and macOS only.** Detection centralised in [`../src/lib/utils/platform.ts`](../../src/lib/utils/platform.ts).
 
-Linux 不是目标平台：无边框窗口的红绿灯、文件关联、打包格式在每个
-Linux 桌面环境上表现都不同，维护成本远超收益。因此**不要在界面代码里
-新增 Linux 分支**，也不要为它写条件编译。
+No Linux target: traffic lights, file associations, and packaging differ per desktop environment; cost exceeds benefit. **Do not add Linux branches or conditional compilation in UI code.**
 
-### 界面语言
+### UI languages
 
-**简体中文与英文**，默认跟随系统。实现见
-[../src/lib/i18n/](../../src/lib/i18n/)，规则见下面「文案规范」一节。
+**Simplified Chinese and English**, default follows system. Implementation: [`../src/lib/i18n/`](../../src/lib/i18n/).
 
-界面文案的写法：按钮用动词短语（"新建文件"而非"点击此处新建文件"），
-状态用名词短语（"就绪"、"大文件模式"）。不写"请"、"您可以"这类客套词。
+Copy style: buttons use verb phrases (新建文件, not 点击此处新建文件); status uses noun phrases (就绪, 大文件模式). No politeness filler such as 请 or 您可以.
 
----
+## 2. Colour
 
-## 2. 颜色
+All colour in **oklch**, never hex — matching L across light/dark holds contrast automatically.
 
-全部用 **oklch** 定义，不用 hex。原因：oklch 的亮度轴是感知均匀的，
-亮暗两套主题只要保持 L 值对应关系，对比度就自然成立，不必逐个色值去试。
+### 2.1 Two token layers
 
-### 2.1 令牌分两层
-
-| 层 | 命名 | 用途 |
+| Layer | Naming | Use |
 | --- | --- | --- |
-| shadcn 标准令牌 | `--background` `--primary` `--muted` `--border` `--ring` … | **组件库内部使用**，不要手工引用 |
-| 自有语义令牌 | `--surface` `--content` `--border-subtle` `--border-strong` | **业务组件使用**，见下 |
+| shadcn standard tokens | `--background` `--primary` `--muted` `--border` `--ring` … | **Used inside the component library**; do not reference by hand |
+| Own semantic tokens | `--surface` `--content` `--border-subtle` `--border-strong` | **Used by business components**; see below |
 
-分两层的原因：shadcn 生成的组件（`src/lib/components/ui/`）引用的是第一层，
-业务代码若也直接用第一层，日后换组件库主题会连带动到业务样式。
+shadcn components (`src/lib/components/ui/`) reference layer 1; business code using layer 1 would inherit business styles when the library theme is swapped.
 
-### 2.2 自有语义令牌（业务组件只用这套）
+### 2.2 Own semantic tokens (business components use only this set)
 
-| 令牌 | 用途 | 亮色 | 暗色 |
+| Token | Use | Light | Dark |
 | --- | --- | --- | --- |
-| `--surface` | 主背景 | `oklch(0.99 0.002 65)` | `oklch(0.19 0.006 60)` |
-| `--surface-raised` | 抬升面（对话框、卡片） | `oklch(1 0 0)` | `oklch(0.23 0.007 60)` |
-| `--surface-sunken` | 下沉面（标题栏、标签栏、状态栏） | `oklch(0.96 0.003 65)` | `oklch(0.16 0.005 60)` |
-| `--border-subtle` | 常规分隔线 | `oklch(0.91 0.004 65)` | `oklch(0.29 0.007 60)` |
-| `--border-strong` | 需要强调的边、滚动条 | `oklch(0.84 0.006 65)` | `oklch(0.37 0.008 60)` |
-| `--content` | 正文 | `oklch(0.22 0.008 60)` | `oklch(0.93 0.004 65)` |
-| `--content-muted` | 次要文字 | `oklch(0.5 0.008 60)` | `oklch(0.68 0.007 65)` |
-| `--content-faint` | 最弱提示（占位、时间戳） | `oklch(0.65 0.006 60)` | `oklch(0.52 0.006 65)` |
+| `--surface` | main background | `oklch(0.99 0.002 65)` | `oklch(0.19 0.006 60)` |
+| `--surface-raised` | raised surface (dialogs, cards) | `oklch(1 0 0)` | `oklch(0.23 0.007 60)` |
+| `--surface-sunken` | sunken surface (title bar, tab bar, status bar) | `oklch(0.96 0.003 65)` | `oklch(0.16 0.005 60)` |
+| `--border-subtle` | ordinary dividers | `oklch(0.91 0.004 65)` | `oklch(0.29 0.007 60)` |
+| `--border-strong` | edges needing emphasis, scrollbars | `oklch(0.84 0.006 65)` | `oklch(0.37 0.008 60)` |
+| `--content` | body text | `oklch(0.22 0.008 60)` | `oklch(0.93 0.004 65)` |
+| `--content-muted` | secondary text | `oklch(0.5 0.008 60)` | `oklch(0.68 0.007 65)` |
+| `--content-faint` | weakest hints (placeholders, timestamps) | `oklch(0.65 0.006 60)` | `oklch(0.52 0.006 65)` |
 
-对应 Tailwind 工具类：`bg-surface` `text-content` `border-border-subtle` 等。
+Tailwind utilities: `bg-surface` `text-content` `border-border-subtle`, etc.
 
-### 2.3 主题（皮肤）系统
+### 2.3 Theme (skin) system
 
-**配色不是一个「强调色」，而是整套主题。**
+**A colour scheme is a whole theme, not one "accent colour".**
 
-早先只有「亮色/深色」加一个可切换的强调色。问题是：**强调色与编辑器配色
-是两套互不相干的东西**——用户选「松绿」，界面按钮变绿了，但编辑器里的
-关键字、字符串、注释还是原来那套暖褐色。两个区域各说各话，看起来就不像
-一个统一的产品。
+Rejected: light/dark + switchable accent — accent and editor colours were unrelated systems ("pine green" made buttons green while editor keywords stayed warm brown). Use the mature-editor (VS Code / Sublime / JetBrains) **theme model**: one theme fixes UI colours, editor colours and syntax highlighting together.
 
-现在采用成熟编辑器（VS Code / Sublime / JetBrains）的**主题制**：
-一套主题同时决定界面配色、编辑器配色与语法高亮。
+#### Single source of truth: 4 base colours + derivation
 
-#### 单一数据源：4 个基准色 + 推导
+30+ tokens × 13 themes = 400 hand-written numbers: unmaintainable, and guarantees "changed the background, forgot the border".
 
-界面有 30 多个令牌。若每套主题都手写这 30 个色值，13 套就是 400 个数——
-无法维护，且必然出现「改了背景忘了改边框」。
+Each theme declares only **4 base colours** (`bg` / `fg` / `accent` / `accentFg`); the rest derive in [`theme-tokens.ts`](../../src/lib/theme/theme-tokens.ts) via `color-mix()` at fixed ratios:
 
-因此每套主题只声明 **4 个基准色**（`bg` / `fg` / `accent` / `accentFg`），
-其余由 [`theme-tokens.ts`](../../src/lib/theme/theme-tokens.ts) 用
-`color-mix()` 按固定比例推导：
-
-| 推导目标 | 方式 |
+| Derivation target | Method |
 | --- | --- |
-| 浮起面 / 下沉面 / 卡片 | 背景色往白或黑掺 |
-| 正文次级 / 最弱 | 前景色往**背景色**方向退 |
-| 边框三级 | 同上，比例更低 |
-| 强调色 10 级色阶 | 强调色往白或黑掺 |
+| Raised surface / sunken surface / card | Blend background toward white or black |
+| Secondary / weakest body text | Retire foreground toward the **background** colour |
+| Three border levels | Same, at lower ratios |
+| Accent 10-step scale | Blend accent toward white or black |
 
-**亮暗用相反方向**：亮色主题的层级是「越浮起越白」，暗色是「越浮起越亮」。
-两套共用同一组比例，因此对比度关系天然一致。
+**Light and dark run opposite directions** — light "raised = whiter", dark "raised = lighter" — on the same ratio set, so contrast holds by construction.
 
-#### 语法高亮来自社区包，不自己挑色
+#### Syntax highlighting comes from community packages, never hand-picked
 
-语法色直接用 `@uiw/codemirror-theme-*`（MIT，2026-09 仍在更新）。
-自己给 13 套主题 × 20 个语法标签配色，既容易出错，也无法与用户在其他
-编辑器里看到的同名主题保持一致——「Dracula」就该是大家熟悉的那个样子。
+Use `@uiw/codemirror-theme-*` directly (MIT, updated 2026-09). Hand-colouring 13 themes × 20 syntax tags is error-prone and cannot match what users see for the same-named theme elsewhere — "Dracula" must look like the familiar Dracula.
 
-内置 13 套：Sesame Light / Dark、Dracula、Monokai、One Dark、Nord、
-Tokyo Night、GitHub Light / Dark、Solarized Light / Dark、VS Code Light / Dark。
+13 built in: Sesame Light / Dark, Dracula, Monokai, One Dark, Nord, Tokyo Night, GitHub Light / Dark, Solarized Light / Dark, VS Code Light / Dark.
 
-**实测色值与官方规范逐位吻合**（Dracula 背景 `#282a36`、关键字 `#ff79c6`、
-字符串 `#f1fa8c`，像素级色差为 0）。
+**Measured values match the official specs bit for bit** (Dracula background `#282a36`, keyword `#ff79c6`, string `#f1fa8c`; pixel-level colour difference 0).
 
-两处已知的上游偏差，**刻意保持原样**（与用户在其他工具里看到的一致，
-比贴合规范文档更重要）：
+Two upstream deviations **deliberately kept** — matching other tools beats matching the spec documents:
 
-- Dracula 的 `propertyName` 用 `#66d9ef`，该色不在官方调色板里；`number` 未定义。
-- Nord 的前景用纯白 `#FFFFFF`，官方规范是 nord4 `#d8dee9`。
+- Dracula `propertyName` `#66d9ef`, not in the official palette; `number` undefined.
+- Nord foreground pure white `#FFFFFF`; spec is nord4 `#d8dee9`.
 
-#### 主题选择器：缩略代码预览 + 亮暗分组
+#### Theme picker: thumbnail code preview + light/dark grouping
 
-**不要用「色块 + 名字」表达一套主题。** 早先每个主题只画两个小色块
-（背景色 + 强调色），问题是：**色块说明不了一套主题长什么样**——
-Dracula 和 Monokai 都是深紫调，光看色块几乎分不出来。
+**Never express a theme as "swatch + name".** Rejected: background + accent swatches — Dracula and Monokai are both dark purple and indistinguishable as swatches.
 
-改为 [`ThemeThumbnail.svelte`](../../src/lib/components/common/ThemeThumbnail.svelte)：
-用该主题**真实的语法色**画出几根彩色短线，模拟「关键字、字符串、
-函数、类型、注释」的样子。用户一眼就能看出主题的性格。
+[`ThemeThumbnail.svelte`](../../src/lib/components/common/ThemeThumbnail.svelte) draws short lines in the theme's **real syntax colours** (keyword, string, function, type, comment).
 
-两个实现要点：
+- **Colours must equal the real editor's**: from `ThemeDefinition.preview`, same values as the theme's `editor.styles`.
+- **Line widths deliberately irregular** — equal-length lines look like a barcode; "word length" looks like code.
 
-- **颜色必须与真实编辑器一致。** 取自 `ThemeDefinition.preview`，
-  而那几支色与主题的 `editor.styles` 是同一套值。缩略图若与真实编辑器
-  不是同一配色，预览就失去意义。
-- **线条宽度刻意不规则。** 每根线一样长会看起来像条形码；
-  按「词长」排布才像代码。
+**Group by light / dark** — 13 flat themes make a long, hard-to-scan list. In-group order = `THEMES` order.
 
-**按浅色 / 深色分组。** 13 套主题平铺会让列表很长且难找；
-分组后「想要亮一点的」能直接定位。组内顺序即 `THEMES` 的顺序。
+#### Dialogs must have a height cap, or content overflows the window
 
-#### 对话框必须限高，否则内容会溢出窗口
+`dialog-content` defaults to `grid` with no height limit. The 13-theme preview list grew content past the window and cut the bottom "restore defaults" / "done" buttons off outside it (**measured; users cannot reach them**).
 
-`dialog-content` 默认是 `grid` 且没有高度上限。设置项本来不多，
-所以一直没暴露问题；加了 13 套主题的预览列表之后，内容高度超过窗口，
-底部的「恢复默认」与「完成」按钮被切在窗口外（**实测如此，用户够不到**）。
-
-修法（三条缺一不可）：
+Fix — all three parts required:
 
 ```svelte
 <DialogContent
@@ -153,227 +115,153 @@ Dracula 和 Monokai 都是深紫调，光看色块几乎分不出来。
 </DialogContent>
 ```
 
-1. **高度用固定值 `h-[34rem]`，不能用 `max-h-*`。**
-   用 `max-h` 时对话框高度会随内容增减：切到「外观」（13 套主题）就高，
-   切到「通用」（只有一项）就矮，**每切一次整个窗口跳一下**。
-   固定高度后内容多少都不影响外框。实测两页高度差为 **0 px**。
-2. **`minmax(0, 1fr)` 里的 `0`。** 不写的话 grid 子项的最小高度是
-   内容高度，滚动区会被内容撑开、`overflow` 失效。
-3. **必须同时写 `overflow-x-hidden`。** `overflow-y: auto` 只隐含
-   「x 方向 visible」，而 visible 与 auto 混用时浏览器会把 x 也算成 auto，
-   于是内容稍微超宽就冒出横向滚动条。滚动容器自身还要 `min-w-0`，
-   否则 flex 子项的最小宽度是内容宽度，同样撑破容器。
+1. **Fixed height `h-[34rem]`, not `max-h-*`.** `max-h` follows content — tall on "Appearance" (13 themes), short on "General" (one item) — so **the whole window jumps on every switch**. Measured difference between the two pages: **0 px**.
+2. **The `0` in `minmax(0, 1fr)`**: without it a grid item's min-height is its content height, so content stretches the scroll area and `overflow` stops working.
+3. **Write `overflow-x-hidden` explicitly**: `overflow-y: auto` only implies "x is visible", and visible mixed with auto makes the browser compute x as auto — slightly over-wide content then yields a horizontal scrollbar. The scroll container also needs `min-w-0`, else a flex item's min-width is its content width and bursts the container.
 
-#### 宽度覆盖要带 `sm:` 前缀
+#### Width overrides need the `sm:` prefix
 
-`dialog-content` 的默认类里带 `sm:max-w-sm`，而 **`sm:` 变体的规则在 CSS 里
-排在无前缀规则之后**，因此只写 `max-w-3xl` 会被它覆盖——实测对话框仍被压在
-24rem，左侧分类栏把右侧内容挤得只剩一点，「界面字体」被压成竖排。
-写 `sm:max-w-3xl` 才能在同一层级覆盖。
+`dialog-content` defaults include `sm:max-w-sm`, and **`sm:` variant rules come after unprefixed rules**, so a bare `max-w-3xl` is overridden — measured: dialog pinned at 24rem, left category column squeezed the right content to nothing, "interface font" wrapped into vertical text. Write `sm:max-w-3xl`.
 
-#### 行号区的分隔线：主题包会漏设，必须自己兜底
+#### Gutter divider: theme packages miss it, so we must backstop it
 
-CodeMirror 默认主题用 `&light .cm-gutters` /
-`&.cm-gutters-before { borderRightWidth: 1px }` 给行号区加一条竖线，
-选择器比裸 `.cm-gutters` **更具体**，只写 `border: none` 盖不掉。
+CodeMirror's default theme draws the gutter line via `&light .cm-gutters` / `&.cm-gutters-before { borderRightWidth: 1px }` — **more specific** than a bare `.cm-gutters`, so `border: none` cannot override.
 
-主题包对这条线的处理**不一致**（实测逐个读过源码）：
+Theme packages handle it **inconsistently** (measured by reading every source file):
 
-| 设了 `gutterBorder: transparent` | 没设（会露出默认竖线） |
+| Sets `gutterBorder: transparent` | Does not (default line shows through) |
 | --- | --- |
-| Dracula、Monokai、Solarized、One Dark、VS Code、Tokyo Night | **Nord、GitHub** |
+| Dracula, Monokai, Solarized, One Dark, VS Code, Tokyo Night | **Nord, GitHub** |
 
-这正好解释「某些主题下才会出现一条线」。因此这条抑制必须放在
-`sesameUiTheme`（`baseTheme`，与主题无关）里统一兜底。
+Suppression therefore lives in `sesameUiTheme` (`baseTheme`, theme-independent) as a single backstop.
 
-> 该规则在改用主题包时丢过一次——它原本写在被删掉的
-> `lightUi` / `darkUi` 里，没有一起搬过来。**凡是「与主题无关」的编辑器样式，
-> 都应放在 `baseTheme` 而不是某个具体主题里**，这样迁移时不会漏。
+> Lost once when switching to theme packages — it lived in the deleted `lightUi` / `darkUi` and was not carried over. **Any "theme-independent" editor style belongs in `baseTheme`, not a specific theme**, so migrations cannot drop it.
 
-#### 主题内的每个装饰都必须跟随主题
+#### Every in-theme decoration must follow the theme
 
-这是最容易漏的地方。**每一个带颜色的编辑器装饰都要从主题取色**，
-否则换主题后它会成为唯一一个不搭调的元素。
+**Every coloured editor decoration must take its colour from the theme**, or it becomes the one jarring element after a theme switch.
 
-已经踩过两次同一个坑：
+Same trap hit twice:
 
-| 装饰 | 原来的问题 | 现在 |
+| Decoration | Original problem | Now |
 | --- | --- | --- |
-| 匹配括号底纹 | 写死暖米色，与主题脱节 | `var(--match-bracket)`（主题强调色） |
-| 括号彩虹三档 | 写死蓝/绿/橙，换主题后不变 | `var(--rainbow-0/1/2)`（主题语法色） |
-| 缩进参考线 | 写死灰阶 | `var(--indent-guide)` |
+| Matching-bracket background | Hardcoded warm beige, off-theme | `var(--match-bracket)` (theme accent) |
+| Rainbow brackets, 3 levels | Hardcoded blue/green/orange, unchanged across themes | `var(--rainbow-0/1/2)` (theme syntax colours) |
+| Indent guides | Hardcoded greys | `var(--indent-guide)` |
 
-括号彩虹的三档色由**每套主题的语法调色板**提供
-（如 Dracula 用 `#bd93f9` / `#50fa7b` / `#ffb86c`），
-因此它看起来是主题的一部分，而不是外挂上去的。
+Rainbow bracket colours come from **each theme's syntax palette** (Dracula: `#bd93f9` / `#50fa7b` / `#ffb86c`).
 
-判断标准很简单：**如果一个装饰的颜色没有出现在 `theme-tokens.ts` 的输出里，
-它就是漏了。**
+Test: **a decoration whose colour is absent from `theme-tokens.ts` output has been missed.**
 
-#### 强调色色阶：单一方向，亮暗共用
+#### Accent scale: single direction, shared by light and dark
 
-界面里强调色要分多个层次（选中底、悬停、焦点环、按钮）。这 10 级现在
-**从 `accent` 按比例推导**，不再手写——每套主题省掉 10 个色值。
+The 10 accent levels (selected background, hover, focus ring, buttons) **derive proportionally from `accent`** — 10 fewer hand-written values per theme.
 
-两条必须记住的规则：
-
-**1. `weight` 是「强调色占比」，不是「掺入的白/黑占比」。**
+**1. `weight` is the accent share, not the blended white/black share.**
 
 ```js
-mix(accent, 'white', 8)   // → color-mix(accent 8%, white) = 极淡
-mix(accent, 'white', 96)  // → color-mix(accent 96%, white) = 几乎纯色
+mix(accent, 'white', 8)   // → color-mix(accent 8%, white) = very pale
+mix(accent, 'white', 96)  // → color-mix(accent 96%, white) = almost solid
 ```
 
-曾经把 50 级写成 `weight: 96`，以为「96 就是掺 96% 白」。结果
-`--brand-50` 几乎等于实心强调色（实测与白底的亮度差 0.855，
-而最浓的 500 是 0.871），设置面板的选中项于是变成**一块实心色**。
+Level 50 as `weight: 96`, read as "96% white", made `--brand-50` almost solid accent — measured luminance gap from a white background 0.855 vs 0.871 for the densest 500 — so the settings panel's selected item became **a solid block of colour**.
 
-**2. 色阶只有一套，50 最浅 → 900 最深，亮暗共用。**
-
-不要给暗色另写一套反向色阶。组件里的写法是：
+**2. One scale only: 50 lightest → 900 darkest, shared by light and dark.** No second, reversed scale for dark.
 
 ```
 bg-brand-100 text-brand-900  dark:bg-brand-900/40 dark:text-brand-100
 ```
 
-亮色 = 浅底深字、暗色 = **深底浅字**，两者**同向**。
-若给暗色写反向色阶，`brand-900` 会变成浅粉彩色，
-`dark:bg-brand-900/40` 就不再是深色底，选中态会发亮刺眼。
+Light = pale background, dark text; dark = **dark background, light text**; both **same direction**. A reversed dark scale makes `brand-900` a pale pastel, `dark:bg-brand-900/40` no longer a dark background, and the selected state glow harshly.
 
-暗色要「淡」的语义（`--accent`）用 `brand-900` + 透明度实现，
-源文件里的手工令牌也是这个结构：色阶定义在 `:root`（单一方向），
-`.dark` 只做**语义重映射**，不重定色阶。
+Dark's "pale" semantics (`--accent`) come from `brand-900` + opacity. Scale in `:root` (single direction); `.dark` only **semantic remapping**, never redefines the scale.
 
-#### `--primary` 不能直接用 accent
+#### `--primary` must not be `accent` directly
 
-主题给的 `accent` 是它最具代表性的颜色，但不一定适合当「填充按钮底 + 白字」。
-实测 **Solarized Light** 的 `#268bd2` 与白字对比度只有 **3.41**，
-低于 WCAG AA 的 4.5。
+`accent` is a theme's most representative colour but not necessarily fit for "filled-button background + white text". Measured: **Solarized Light** `#268bd2` on white text is **3.41** contrast, below WCAG AA's 4.5.
 
-因此 `--primary` 取色阶上的点：
+`--primary` takes a point on the scale:
 
-| 模式 | 取值 | 理由 |
+| Mode | Value | Rationale |
 | --- | --- | --- |
-| 亮色 | `brand-600`（比 accent 深一档） | 白字够清楚；Solarized Light 3.41 → **4.73** |
-| 暗色 | `brand-500`（即 accent 本体） | 保留主题辨识度；若取偏白的 400，按钮会变成一层灰白，就看不出是 Dracula 还是 Monokai |
+| Light | `brand-600` (one step darker than accent) | White text legible; Solarized Light 3.41 → **4.73** |
+| Dark | `brand-500` (i.e. accent itself) | Preserves theme identity; the paler 400 turns the button into a slab of grey-white and Dracula becomes indistinguishable from Monokai |
 
-改完后 13 套主题的按钮文字与选中项文字对比度**全部 ≥ 4.5**。
+Button text and selected-item text contrast is **≥ 4.5 for all 13 themes**.
 
-#### 验证方法：量对比度，别靠眼睛
+#### Verification: measure contrast, do not trust the eye
 
-这类问题必须用工具测，肉眼分不清 3.41 和 4.5。两个实现细节：
+The eye cannot tell 3.41 from 4.5.
 
-- **`color-mix` 要交给浏览器解析后再归一化。** 写进 `style.color` 后
-  `getComputedStyle` 返回的是 `oklab(...)` 而**不是** `rgb(...)`，
-  用正则匹配 rgb 会全部落空（探针第一版就栽在这里）。
-  用 canvas：`ctx.fillStyle = <任意 CSS 颜色>` 再 `getImageData`，
-  拿到的必然是 sRGB 分量，不必自己实现 oklab→sRGB 转换。
-- **判据要按语义写，不要按级数写。** 第一版判据是「50 必须比 500
-  更贴近背景」——那是浅色主题的假设；暗色背景是深的，离背景最近的是 900。
-  判据本身错了，会误报。应测的是：色阶**单调**、选中底**足够淡**、
-  按钮与选中项文字**对比度达标**。
+- **Let the browser resolve `color-mix`, then normalise.** In `style.color`, `getComputedStyle` returns `oklab(...)`, **not** `rgb(...)`, so regex-matching rgb misses everything (the first probe failed here). Use canvas: `ctx.fillStyle = <any CSS colour>`, then `getImageData` — guaranteed sRGB components, no oklab→sRGB conversion to write.
+- **Write criteria semantically, not by level number.** "50 must be closer to the background than 500" assumes a light theme; dark backgrounds make 900 closest. Test: scale **monotonic**, selected background **pale enough**, button / selected-item text **contrast meets the threshold**.
 
-#### 状态栏与大文件提示条
+#### Status bar and large-file banner
 
-状态栏每一项都要有悬停提示，且**提示内容要描述点击后会发生什么**：
+Every status bar item needs a hover tooltip describing **what happens on click**:
 
-| 项 | 提示 |
+| Item | Tooltip |
 | --- | --- |
-| 行 N / 列 M | 光标位置（行 · 列） |
-| 语言 | 文件语言 |
-| 编码 | 选择文本编码… |
-| 换行 | 换行风格 |
+| Line N / Column M | Cursor position (line · column) |
+| Language | File language |
+| Encoding | Choose text encoding… |
+| Line endings | Line ending style |
 
-两个踩过的坑：
+- **A tooltip must not hang on only half an item.** Line/column split into two `<span>`s left `title` only on "line", so hovering "column" showed nothing; the language item was missed too. One `span` for the whole item, or every `span` gets one.
+- **The tooltip describes the click's result, not the action.** Encoding read "reopen with the specified encoding…", but clicking **first opens a picker** and the user chooses again. Use "Choose text encoding…".
 
-- **提示不能只挂在其中一半上。** 行列拆成两个 `<span>` 后，`title` 只写了
-  「行」那个，「列」悬停无提示；语言那项也漏了。要么整项一个 `span`，
-  要么每个 `span` 都写。
-- **提示描述的是「点击的结果」，不是「这个动作」。** 编码项的提示原本写
-  「以指定编码重新打开…」，但点击后**先弹出选择器**，用户还要再选一次。
-  改成「选择文本编码…」才与实际行为一致。
+Large-file banner's two buttons each get a semantically matching icon:
 
-大文件提示条的两个按钮各配语义相符的图标：
-
-| 按钮 | 图标 | 理由 |
+| Button | Icon | Rationale |
 | --- | --- | --- |
-| 继续加载 | `Plus` | 语义是「再加一块」，与分块加载机制对应 |
-| 全部加载 | `ChevronsDown` | 一次到底 |
+| Continue loading | `Plus` | "Add another chunk", matching the chunked-loading mechanism |
+| Load all | `ChevronsDown` | All the way at once |
 
-`ChevronsDown` 原本给「继续加载」用，但它更像「滚到最底部」，
-容易被理解成跳转而不是加载。
+Rejected: `ChevronsDown` for "continue loading" — reads as "scroll to the very bottom", a jump rather than a load.
 
-#### 快捷键提示必须走 `formatKeys()`
+#### Shortcut hints must go through `formatKeys()`
 
-macOS 上实际按键是 Cmd，`formatKeys()` 会转成 `⌘`。**写死 `Ctrl+` 会让
-macOS 用户看到与实际不符的提示**（应用菜单里就曾硬编码过三处）。
+On macOS the key is Cmd and `formatKeys()` renders `⌘`; **hardcoded `Ctrl+` shows macOS users hints that do not match reality** (three occurrences in the app menu).
 
-另外快捷键面板要与实际绑定**一一对应**：`Ctrl+Shift+T`（重新打开已关闭）
-与 `Ctrl+Shift+C`（复制路径）当时已注册却没列出来，漏列等于让人以为没有。
+The shortcut panel must match actual bindings **one-to-one**: `Ctrl+Shift+T` (reopen closed) and `Ctrl+Shift+C` (copy path) were registered but unlisted — an omission implies the feature does not exist.
 
-#### 验证方法：纯展示组件直接在浏览器里渲染
+#### Verification: render pure presentational components straight in the browser
 
-`LargeFileBanner`、`StatusBar` 这类组件是「props 进、DOM 出」，
-**不需要 Tauri 运行时**。用 `mount()` 挂到一个普通 `div` 上，
-在 headless Edge 里按几组典型数据渲染，再导出 DOM 里的文案、
-`title` 属性、图标类名——比启动整个应用快得多，也更容易覆盖边界状态。
+`LargeFileBanner` and `StatusBar` are "props in, DOM out" and **need no Tauri runtime**: `mount()` onto a plain `div`, render in headless Edge with several typical datasets, export DOM text, `title` attributes and icon class names — faster than launching the app, easier to cover edge states.
 
-这一步实际抓到过问题：新加的 `editor.language` 键当时并不存在，
-渲染出来是字面的 `editor.language`（`svelte-check` 也能查出来，
-但浏览器里一眼就看到）。
+Caught: the new `editor.language` key did not exist and rendered as the literal `editor.language` (also caught by `svelte-check`).
 
-> 注意别搞错取色对象：探针里 `host.querySelector('div')` 取到的是
-> **外层包装**而不是组件根元素，量出来是 `rgba(0,0,0,0)`，
-> 差点误判成「主题色没生效」。应取目标容器的 `firstElementChild`。
+> `host.querySelector('div')` returns the **outer wrapper**, not the component root — measures `rgba(0,0,0,0)`, misdiagnosed as "the theme colour is not applied". Take the target container's `firstElementChild`.
 
-#### 体积代价
+#### Size cost
 
-13 套主题（含语法高亮）净增 **3.6 KB gzip**。
-CSS 反而小了 0.5 KB——因为亮暗两份几乎重复的编辑器样式（近 500 行）
-合并成了一份，色值改走 CSS 变量。
+13 themes incl. syntax highlighting: **3.6 KB gzip** net. CSS shrank 0.5 KB — the near-duplicate light/dark editor styles (nearly 500 lines) merged into one, colours moved to CSS variables.
 
-### 2.4 用色规则
+### 2.4 Colour usage rules
 
-- **克制**：强调色只出现在这些位置——激活标签的顶部指示条、未保存圆点、
-  焦点环、`primary` 按钮、侧栏激活项底色、欢迎页品牌块、大文件提示条。
-  不要给普通卡片、普通列表项加强调色底。
-- **大文件提示条是唯一的大面积强调色**。它铺满整条，因为「文件没全加载完」
-  是需要用户注意的状态，值得占用视觉重量。除此之外任何新增的整条/整块
-  背景都必须先讨论。
-- **状态色只用于状态**：`--destructive` 只用于关闭按钮悬停与错误，不做装饰。
-- **不要在组件里写 hex 或 `rgb()`**。要新颜色先加令牌。
-- **新增主题只需 4 个色值**：在 `lib/theme/palettes.ts` 里加一条，
+- **Restraint**: accent only for the active tab's top indicator bar, unsaved dot, focus ring, `primary` button, sidebar active item background, welcome-page brand block, large-file banner. No accent background on ordinary cards or list items.
+- **The large-file banner is the only large-area accent** — "file not fully loaded" must be noticed and deserves the weight. Any other new full-bar / full-block background must be discussed first.
+- **Status colours only for status**: `--destructive` only for the close button's hover and errors, never decorative.
+- **No hex or `rgb()` inside components.** New colour → add a token first.
+- **A new theme needs only 4 colour values**: add an entry in `lib/theme/palettes.ts`.
 
-#### 强调色必须**真的出现在界面上**
+#### The accent must **actually appear** in the UI
 
-令牌链路正确 **不等于** 用户能看见主题色。踩过一次：
+A correct token chain does **not** equal the user seeing the theme colour. Measured: under Dracula a full screenshot held only **80 pixels** of accent `#bd93f9` (the 2px active-tab underline) — tokens all resolved, but the welcome page's two buttons were `variant="outline"` (neutral grey) and the brand block `bg-brand-100` (extremely pale), so **the landing page showed no theme colour at all**.
 
-Dracula 主题下量过整张截图，属于强调色 `#bd93f9` 的像素只有 **80 个**
-（就是激活标签那条 2px 下划线）。令牌全部正确解析，但欢迎页的两个按钮
-用的是 `variant="outline"`（中性灰），品牌块用 `bg-brand-100`（极淡），
-于是**落地页看不到任何主题色**——用户自然觉得「主题没生效」。
+- **Welcome-page brand block fills with `bg-primary`**, not a pale background — the landing page's most prominent element, the theme's first manifestation.
+- **Every page has at least one `primary` filled button.** The welcome page's "open file" is the primary action — `variant="default"`; secondary actions `outline`.
+- After changing theme-related styles, **count accent-coloured pixels in a screenshot**, do not verify token resolution. 80 → about 3700 after the fix.
 
-因此：
+### 2.5 Input control contrast requirements
 
-- **欢迎页的品牌块用 `bg-primary` 填充**，不用淡色底。它是落地页最显眼的
-  元素，也是主题的第一处体现。
-- **每个页面至少有一个 `primary` 填充按钮**。欢迎页的「打开文件」是主行动，
-  用 `variant="default"`；次要动作用 `outline`。
-- 改动主题相关样式后，正确做法是**量截图里强调色的像素数**，
-  而不是看令牌是否解析成功。改完后这个数字从 80 涨到约 3700。
+`--input` in dark mode must be **clearly brighter than the background** (currently `oklch(0.42 0.008 60)`, background `0.16`).
 
-  从 `@uiw/codemirror-theme-*` 里挑一个现成的语法高亮扩展即可。
-
-### 2.5 输入控件的对比度要求
-
-`--input` 在暗色下必须**明显亮于背景**（当前 `oklch(0.42 0.008 60)`，背景 `0.16`）。
-
-这是踩过的坑：初版把 `--input` 设成 `oklch(0.32)`，结果设置面板里的开关在暗色下
-几乎看不见——填充色与背景只差一点点亮度。**任何新增的开关、滑块、输入框都要在暗色下肉眼确认。**
+Rejected: `--input` at `oklch(0.32)` — settings-panel toggles nearly invisible in dark mode, fill and background differing by little luminance. **Every new toggle, slider, or text input must be visually confirmed in dark mode.**
 
 ---
 
-## 3. 字体
+## 3. Typography
 
 ```css
 --font-sans: 'Inter', -apple-system, 'Segoe UI', 'PingFang SC',
@@ -381,1262 +269,886 @@ Dracula 主题下量过整张截图，属于强调色 `#bd93f9` 的像素只有 
 --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, monospace;
 ```
 
-中文必须显式列出 `PingFang SC` / `Microsoft YaHei` / `Source Han Sans SC`，
-否则 Windows 上会回退到衬线体。
+Chinese fonts must explicitly list `PingFang SC` / `Microsoft YaHei` / `Source Han Sans SC`; otherwise Windows falls back to a serif face.
 
-### 字号阶梯（只有 4 级）
+### Font size ladder (4 levels only)
 
-| 类 | 尺寸 | 用途 |
+| Class | Size | Use |
 | --- | --- | --- |
-| `text-xs` | 12px | 标签栏、状态栏、侧栏列表、表单说明 |
-| `text-sm` | 14px | 正文默认、表单标签、按钮、菜单项 |
-| `text-base` | 16px | 欢迎页标题、对话框标题、Markdown 预览的 h3 |
-| `text-lg` | 18px | 欢迎页品牌标记（仅此一处） |
+| `text-xs` | 12px | Tab bar, status bar, sidebar lists, form hints |
+| `text-sm` | 14px | Default body text, form labels, buttons, menu items |
+| `text-base` | 16px | Welcome-page title, dialog titles, Markdown preview h3 |
+| `text-lg` | 18px | Welcome-page brand mark (this one place only) |
 
-**不要用任意值**（`text-[13px]`）。需要新尺寸说明阶梯设计有问题，应先讨论。
+**No arbitrary values** (`text-[13px]`). Needing a new size means the ladder design is wrong — discuss first.
 
-`text-[11px]` 与 `text-[10px]` 是**有意的例外**，用于必须比 `text-xs` 更弱的辅助文字：
-状态栏、设置项下方的说明行、侧栏与菜单里的计数/时间戳、大文件提示条。
-除此之外不要用任意字号。
+`text-[11px]` and `text-[10px]` are **deliberate exceptions** for auxiliary text weaker than `text-xs`: status bar, settings description rows, sidebar/menu counts and timestamps, large-file banner. No other arbitrary sizes.
 
-字重只用 `font-normal` 与 `font-medium` / `font-semibold`。不用 `font-bold`。
-等宽字体用于：代码、路径、行列号、尺寸数字、版本号。
+Font weight: only `font-normal` and `font-medium` / `font-semibold`. Never `font-bold`.
+
+Mono font for: code, paths, line/column numbers, size numbers, version numbers.
 
 ---
 
-## 4. 间距与尺寸
+## 4. Spacing and Sizing
 
-### 4.1 固定高度（界面骨架）
+### 4.1 Fixed Heights (UI Skeleton)
 
-| 区域 | 高度 | 类 |
+| Area | Height | Class |
 | --- | --- | --- |
-| 标题栏 | 36px | `h-9` |
-| 标签栏 | 36px | `h-9` |
-| 图片查看器工具栏 | 32px | `h-8` |
-| 状态栏 | 24px | `h-6` |
-| 大文件提示条 | 自适应 | `py-1.5` |
+| Title bar | 36px | `h-9` |
+| Tab bar | 36px | `h-9` |
+| Image viewer toolbar | 32px | `h-8` |
+| Status bar | 24px | `h-6` |
+| Large-file notice bar | auto | `py-1.5` |
 
-骨架总高固定：标题栏 + 标签栏 + 状态栏 = 96px，其余全部给内容区。
-**改这三个高度要同时确认最小窗口（720×480）下内容区仍可用。**
+Title bar + tab bar + status bar = 96px fixed; rest → content area. Changing these three heights requires re-confirming the content area is usable at the minimum window size (720×480).
 
-### 4.2 内边距惯例
+### 4.2 Padding Conventions
 
-| 场景 | 值 |
+| Context | Value |
 | --- | --- |
-| 标题栏 / 标签栏 | `px-1.5` ~ `px-3` |
-| 状态栏 | `px-2` |
-| 侧栏内容 | `p-2` |
-| 对话框 | 组件自带 `p-4` |
-| Markdown 预览正文 | `px-8 py-6` |
+| Title bar / tab bar | `px-1.5` ~ `px-3` |
+| Status bar | `px-2` |
+| Sidebar content | `p-2` |
+| Dialogs | component-supplied `p-4` |
+| Markdown preview body | `px-8 py-6` |
 
-### 4.3 图标尺寸
+### 4.3 Icon Sizes
 
-| 场景 | 尺寸 |
+| Context | Size |
 | --- | --- |
-| 状态栏按钮内图标 | `size-3` |
-| 标签栏 / 侧栏图标 | `size-3.5` |
-| 标题栏图标 | `size-4` |
-| 欢迎页大图标 | `size-6` 以上 |
+| Icon inside status-bar buttons | `size-3` |
+| Tab bar / sidebar icons | `size-3.5` |
+| Title bar icons | `size-4` |
+| Welcome page large icons | `size-6` or larger |
 
-图标按钮的**点击区**最小 `size-5`（20px），标题栏窗口按钮 `size-9`（36px）。
-不要为了好看把点击区缩到 20px 以下。
+Icon-button hit-area minimum `size-5` (20px); title-bar window buttons `size-9` (36px). Never shrink a hit area below 20px.
 
 ---
 
-## 5. 圆角与边框
+## 5. Radii and Borders
 
-| 类 | 用途 |
+| Class | Use |
 | --- | --- |
-| `rounded-none` | 标题栏窗口按钮（贴合边缘） |
-| `rounded-xs` | 小标记、关闭按钮 |
-| `rounded-md` | 列表项、卡片、输入框、提示气泡 |
-| `rounded-lg` | 欢迎页品牌块、`primary` 按钮 |
-| `rounded-full` | 开关、未保存圆点、进度条 |
+| `rounded-none` | Title-bar window buttons (flush to edges) |
+| `rounded-xs` | Small markers, close buttons |
+| `rounded-md` | List items, cards, inputs, tooltips |
+| `rounded-lg` | Welcome-page brand block, `primary` button |
+| `rounded-full` | Switches, unsaved dot, progress bar |
 
-边框统一 `border-border-subtle`。**只在需要分隔层级时画线**，
-不要给每个容器都加边框——本应用靠背景色深浅分层，不靠线框。
-
-唯一的强调边：激活标签顶部 `h-0.5 bg-brand-500`。
+Borders uniformly `border-border-subtle`. Draw a line only where it separates hierarchy levels; do not border every container — layer by background light/dark, not outlines. Sole accent edge: active tab top `h-0.5 bg-brand-500`.
 
 ---
 
-## 6. 组件库使用约定
+## 6. Component-Library Conventions
 
-### 6.1 优先用组件库，不用原生标签
+### 6.1 Prefer the Component Library over Native Tags
 
-`src/lib/components/ui/` 下的 shadcn-svelte 组件是**首选**：
+shadcn-svelte components under `src/lib/components/ui/` are first choice:
 
-| 需求 | 用什么 | 不要用 |
+| Need | Use | Do not use |
 | --- | --- | --- |
-| 按钮 | `Button` | `<button>` |
-| 文本输入 | `Input` / `Textarea` | `<input>` / `<textarea>` |
-| 开关 | `Switch` | `<input type="checkbox">` |
-| 下拉选择 | `Select` | `<select>` |
-| 对话框 | `Dialog` | `<dialog>` |
-| 图标按钮 + 提示 | `Hint`（本项目封装，见 6.3） | 裸 `Button` + 手写 Tooltip |
-| 滚动区 | `ScrollArea` | `overflow-auto` |
-| 快捷键展示 | `Kbd` | `<kbd>` |
-| 标签徽章 | `Badge` | 手写 span |
+| Button | `Button` | `<button>` |
+| Text input | `Input` / `Textarea` | `<input>` / `<textarea>` |
+| Switch | `Switch` | `<input type="checkbox">` |
+| Dropdown select | `Select` | `<select>` |
+| Dialog | `Dialog` | `<dialog>` |
+| Icon button + hint | `Hint` (project wrapper, see 6.3) | bare `Button` + hand-rolled Tooltip |
+| Scroll area | `ScrollArea` | `overflow-auto` |
+| Shortcut display | `Kbd` | `<kbd>` |
+| Label badge | `Badge` | hand-written span |
 
-**例外**：标签栏的标签项、欢迎页的最近文件行、图片查看器的图片容器——
-这些需要精确控制拖拽、原生 `draggable`、`transform` 缩放，用原生元素更合适。
-用原生元素时必须在代码里写一句为什么。
+Exceptions — native elements fit better for: tab-bar tab items, welcome-page recent-file rows, image-viewer image container (need precise drag control, native `draggable`, `transform` zoom). Each native element needs a one-line code comment explaining why.
 
-### 6.2 状态变体必须由 app.css 声明
+### 6.2 State Variants Must Be Declared by app.css
 
-`src/app.css` 顶部的 `@custom-variant` 块**不能删**。它把 bits-ui 写出的
-`data-state="checked"` 映射到组件类名使用的 `data-checked:` 简写。
+Never delete the `@custom-variant` block at the top of `src/app.css`: it maps the `data-state="checked"` bits-ui emits onto the `data-checked:` shorthand used by component class names. Deleting it drops styling for switches, selected states and expanded states — a switch degrades into an almost invisible dark dot. See [../memory/decisions.md](../memory/decisions.md).
 
-删掉的后果：开关、选中态、展开态全部失去样式——开关会退化成一个几乎看不见的暗色圆点。
-这是实际踩过的坑，详见 [../memory/decisions.md](../memory/decisions.md)。
+New state variant → first confirm `app.css` has the matching `@custom-variant`.
 
-新增使用新状态变体的组件时，先确认 `app.css` 里有对应的 `@custom-variant`。
+### 6.3 The `Hint` Wrapper
 
-### 6.3 `Hint` 封装
-
-所有图标按钮一律用 `src/lib/components/common/Hint.svelte`：
+All icon buttons must use `src/lib/components/common/Hint.svelte`:
 
 ```svelte
-<Hint label="切换侧边栏 · Ctrl+B" onclick={toggleSidebar}>
+<Hint label="Toggle sidebar · Ctrl+B" onclick={toggleSidebar}>
   <PanelLeft class="size-4" />
 </Hint>
 ```
 
-它一次解决四件事：Tooltip 的四层结构、`aria-label`、悬停态、点击区。
-可选 props：`side`（气泡方向，默认 `bottom`）、`active`（开关型按钮的激活底色）、
-`danger`（危险操作悬停变红）、`class`（尺寸类，默认 `size-7`）。
+Covers Tooltip's four-layer structure, `aria-label`, hover state, hit area. Props: `side` (popup direction, default `bottom`), `active` (toggle-button background), `danger` (red hover for destructive actions), `class` (size classes, default `size-7`).
 
-**不要**在业务组件里重复写 `TooltipProvider > TooltipRoot > TooltipTrigger > TooltipContent`。
+**Do not** repeat `TooltipProvider > TooltipRoot > TooltipTrigger > TooltipContent` in business components.
 
-### 6.4 `Select` 必须传 `items`
+### 6.4 `Select` Must Be Passed `items`
 
-每个 `Select` 都要传 `items`，否则菜单未打开时显示的是原始 value
-（会出现 `system`、`utf-8` 这类英文值而不是中文标签）：
-
-```svelte
-<Select type="single" value={v} onValueChange={f} items={items}>
-  <SelectTrigger><SelectValue /></SelectTrigger>
-  <SelectContent>
-    {#each items as item (item.value)}
-      <SelectItem value={item.value} label={item.label}>{item.label}</SelectItem>
-    {/each}
-  </SelectContent>
-</Select>
-```
-
-原因：bits-ui 无法在菜单关闭时从 DOM 读选项文字，只能靠 `items` 或已挂载项的缓存。
+Pass `items`: `<Select type="single" value={v} onValueChange={f} items={items}>` with `<SelectItem value={item.value} label={item.label}>`. Without it the closed menu shows the raw value (English `system`, `utf-8` instead of the Chinese labels) — bits-ui cannot read option text from the DOM while closed, relying only on `items` or the cache of mounted items.
 
 ---
 
-## 7. 图标
+## 7. Icons
 
-功能图标统一用 **`@lucide/svelte`**（注意不是已废弃的 `lucide-svelte`）。
-线条风格，`stroke-width` 保持默认。
+Functional icons: `@lucide/svelte` (not the deprecated `lucide-svelte`), line style, `stroke-width` at its default.
 
-**禁止用 emoji 当图标**。禁止混用其他图标库。
+Forbidden: emoji as icons; mixing icon libraries.
 
-### 应用品牌 Logo
+### App Brand Logo
 
-Sesame 的品牌标志为深灰底、奶白芝麻与琥珀色文本光标；芝麻以两只奶白小手自然抱住光标。
-品牌 Logo 使用固定配色，不随编辑器主题染色。功能按钮继续使用 Lucide 和主题令牌。
+Brand mark: dark grey ground, milk-white sesame seed, amber text cursor; seed hugs the cursor with two small milk-white hands. Fixed colours, never tinted by the editor theme. Functional buttons keep Lucide and theme tokens.
 
-唯一生成源是仓库根目录的 `app-icon.png`。执行 `pnpm icons`，同步生成
-`src-tauri/icons/` 的桌面 PNG、Windows ICO、macOS ICNS 与商店图标，以及
-`public/logo.png`、`public/favicon.png`、`public/favicon.ico`。不要分别修改派生图标。
+Single generation source: `app-icon.png` in the repo root. `pnpm icons` sync-generates desktop PNGs, Windows ICO, macOS ICNS, and store icons into `src-tauri/icons/`, plus `public/logo.png`, `public/favicon.png`, `public/favicon.ico`. Never modify derived icons individually.
 
-Windows 的 ICO、桌面 PNG 与前端品牌资源通过 SVG 视口裁掉原图每边约 8.3% 的透明留白，
-让可见主体占满系统图标单元；不重绘原图。macOS ICNS 使用原始画布和留白。
-后续调整生成源时，需检查 `scripts/generate-icons.mjs` 的留白比例及 16 / 32 / 48 像素效果。
-Rust 构建脚本监听 `icons/`，避免增量编译继续复用旧的 Windows EXE 图标资源。
-NSIS 安装及卸载结束时使用 `windows/installer-hooks.nsh` 通知 Windows Shell 失效图标缓存，
-防止相同 EXE 路径在重装后仍显示旧尺寸或旧图案。
+Windows ICO, desktop PNGs, frontend brand assets: an SVG viewport crops roughly 8.3% transparent padding per edge so the visible subject fills the system icon cell; the source is not redrawn. macOS ICNS keeps the original canvas and padding. When adjusting the source, check the padding ratio in `scripts/generate-icons.mjs` and the 16 / 32 / 48 pixel results. The Rust build script watches `icons/` so incremental builds do not reuse stale Windows EXE icon resources. NSIS installer and uninstaller hooks end with `windows/installer-hooks.nsh` notifying the Windows Shell to invalidate the icon cache, so a reinstalled EXE at the same path does not keep an old size or artwork.
 
-欢迎页、Windows 自定义标题栏、应用菜单的品牌项统一使用
-`common/AppLogo.svelte`，不叠加额外底色、圆角或阴影。Logo 旁已有应用名称时使用空 alt，
-避免辅助技术重复朗读。README 引用生成的 `128x128@2x.png`。
+Welcome page, Windows custom title bar, and app-menu brand item all use `common/AppLogo.svelte`, with no extra background colour, radius, or shadow. App name already next to the logo → empty alt (avoid assistive tech reading it twice). README references the generated `128x128@2x.png`.
 
-已使用的图标（新增前先看这里，避免同义不同形）：
+Icons already in use (check here before adding one, to avoid different shapes for the same meaning):
 
-| 图标 | 含义 |
+| Icon | Meaning |
 | --- | --- |
-| `PanelLeft` | 侧边栏开关 |
-| `Minus` `Square` `X` | 最小化 / 最大化 / 关闭 |
-| `Plus` | 新建标签 |
-| `FileText` | 文本文件 |
-| `Image` | 图片文件 |
-| `FolderOpen` | 打开文件 |
-| `Clock` | 最近打开 |
-| `Layers` | 已打开列表 |
-| `Moon` | 已休眠 |
-| `Eye` / `Code` | 预览 / 返回编辑 |
-| `WrapText` / `Hash` | 自动换行 / 行号 |
-| `Settings` / `Keyboard` / `Menu` | 设置 / 快捷键 / 应用菜单 |
-| `Sun` / `Monitor` | 浅色 / 跟随系统 |
-| `ZoomIn` `ZoomOut` `Maximize` `SquareDot` | 放大 / 缩小 / 适应窗口 / 原始尺寸 |
-| `ExternalLink` | 用外部程序打开 |
-| `Loader2` | 加载中（配 `animate-spin`） |
-| `FileWarning` / `ChevronsDown` | 大文件提示 / 继续加载 |
-| `RotateCcw` | 恢复默认 |
+| `PanelLeft` | Sidebar toggle |
+| `Minus` `Square` `X` | Minimize / maximize / close |
+| `Plus` | New tab |
+| `FileText` | Text file |
+| `Image` | Image file |
+| `FolderOpen` | Open file |
+| `Clock` | Recently opened |
+| `Layers` | Opened list |
+| `Moon` | Hibernated |
+| `Eye` / `Code` | Preview / back to edit |
+| `WrapText` / `Hash` | Word wrap / line numbers |
+| `Settings` / `Keyboard` / `Menu` | Settings / shortcuts / app menu |
+| `Sun` / `Monitor` | Light / follow system |
+| `ZoomIn` `ZoomOut` `Maximize` `SquareDot` | Zoom in / zoom out / fit window / actual size |
+| `ExternalLink` | Open with external program |
+| `Loader2` | Loading (with `animate-spin`) |
+| `FileWarning` / `ChevronsDown` | Large-file notice / continue loading |
+| `RotateCcw` | Restore defaults |
 
-**一个功能只能在表里出现一次**。加新图标前先看这里：同义不同形会让用户
-以为是两个功能（见 6.3 的 `Hint` 与 12 的开关按钮）。
+**A feature may appear in this table only once.** Different shapes for the same meaning read as two features (see the `Hint` in 6.3, the toggle buttons in 12).
 
-### 「原始尺寸」为什么是 `SquareDot`
+### Why "Actual Size" Is `SquareDot`
 
-这一处曾经用 `1:1` **文字**占位。它的毛病不是不好看，而是**会被读反**：
-图片语境里的 `1:1` 首先指「宽高比 1:1」（正方形），而不是「100% 缩放」。
-用户拿到的是一个无法验证的比例，而不是一个可点的动作。
+Rejected: the **text** `1:1` — in an image context it reads backwards as "aspect ratio 1:1" (square), not "100% zoom", giving a ratio the user cannot verify instead of a clickable action.
 
-选型时对比过以下几类（都在真实 14px 尺寸下渲染并排看过）：
+Candidates compared side by side at the real 14px size:
 
-| 候选 | 形状 | 淘汰原因 |
-| --- | --- | --- |
-| `Scan` `Fullscreen` `Focus` `ScanSquare` | 四角括号 | **与「适应窗口」的 `Maximize` 同形**，一排放两个四角框必然误读 |
-| `Maximize2` `Expand` `Scaling` `MoveDiagonal` | 各种箭头 | 同排已有放大/缩小，箭头语义会打架 |
-| `Crop` `Frame` `Ratio` | 裁剪/参考线/比例 | 语义错误或与宽高比混淆 |
-| `SquareDimensions` `Ruler` `RulerDimensionLine` | 方框+箭头 / 尺子 | 表达的是「尺寸/测量」，而不是「按像素原样显示」 |
-| **`SquareDot`** | 方框 + 中心实心点 | 选用：一个像素点落在一个像素格里 |
-
-它与 `Maximize` 是一对**反义形状**：一个向外撑满、一个固定不动。
-两个按钮紧挨着，形状对立比语义相近更利于区分。
-
----
-
-## 8. 交互状态
-
-每个可点元素都要有这四个状态，缺一不可：
-
-| 状态 | 表现 |
+| Candidate | Why rejected |
 | --- | --- |
-| 默认 | 按语义令牌取色 |
-| 悬停 | `hover:` 改背景或文字色，`transition-colors` |
-| 焦点 | `:focus-visible` 由 app.css 统一给 2px 品牌色描边 |
-| 禁用 | `disabled:opacity-50 disabled:pointer-events-none` |
+| `Scan` `Fullscreen` `Focus` `ScanSquare` | Corner brackets — **same shape as `Maximize` for "fit window"**; two corner-bracket boxes in one row are guaranteed to be misread |
+| `Maximize2` `Expand` `Scaling` `MoveDiagonal` | Arrows — zoom in/out already sits in the same row; arrow semantics collide |
+| `Crop` `Frame` `Ratio` | Wrong semantics, or confused with aspect ratio |
+| `SquareDimensions` `Ruler` `RulerDimensionLine` | Expresses "size / measurement", not "show as-is at pixel scale" |
+| **`SquareDot`** | Chosen — box + solid centre dot: one pixel dot landing in one pixel cell |
 
-**不要移除焦点环**。不要用 `outline-none` 除非同时给了等效的可见反馈。
+`SquareDot` and `Maximize` are a pair of **antonym shapes**: one expands outward to fill, one stays fixed. The buttons sit adjacent; opposing shapes distinguish them better than similar semantics.
 
-过渡时长：`transition-colors` 或 `duration-100`~`200`。
-布局类属性（`width`、`height`）只在侧栏折叠时用 `transition-[width] duration-200`。
-**不要过渡 `all`**——会把 `transform` 一起带上，产生意外的位移动画。
+## 8. Interaction states
 
-`prefers-reduced-motion` 已在 app.css 全局处理，组件不必重复。
+Every clickable element needs all four states, no exceptions:
+
+| State | Behaviour |
+| --- | --- |
+| Default | colours from semantic tokens |
+| Hover | `hover:` changes background or text colour, `transition-colors` |
+| Focus | `:focus-visible` gets a 2px brand outline from app.css globally |
+| Disabled | `disabled:opacity-50 disabled:pointer-events-none` |
+
+**Never remove the focus ring.** No `outline-none` unless equivalent visible feedback is provided at the same time.
+
+Duration: `transition-colors` or `duration-100`~`200`. Layout properties (`width`, `height`) transition only on sidebar collapse: `transition-[width] duration-200`. **Never transition `all`** — it drags `transform` along into unintended movement animations.
+
+`prefers-reduced-motion` is handled globally in app.css; components must not repeat it.
 
 ---
 
-## 9. 文案规范
+## 9. Copy / wording rules
 
-界面文案**一律走 i18n 字典**，不在组件里写中文字面量。
+UI copy **always goes through the i18n dictionary**; no Chinese string literals in components.
 
-| 位置 | 规范 | 例 |
+| Location | Rule | Example |
 | --- | --- | --- |
-| 按钮 | 动词 + 名词，2–4 字 | 新建文件 / 打开文件 / 全部替换 / 恢复默认 |
-| 菜单项 | 名词或动词短语 | 设置 / 快捷键 / 浅色 / 深色 |
-| 状态 | 名词短语 | 就绪 / 图片 / 大文件模式 / 已休眠 |
-| 空状态 | 陈述事实 + 下一步 | 还没有打开过文件 / 把文件拖到窗口里，或按 Ctrl+O 选择 |
-| 错误提示 | 说清原因，不甩术语 | 没有访问权限：xxx（不是 `EACCES`） |
-| 确认框 | 问句 + 明确后果 | 「xxx」有未保存的修改，是否保存？ |
+| Button | verb + noun, 2–4 characters | New file / Open file / Replace all / Restore defaults |
+| Menu item | noun or verb phrase | Settings / Shortcuts / Light / Dark |
+| Status | noun phrase | Ready / Image / Large-file mode / Asleep |
+| Empty state | state the fact + the next step | No files opened yet / Drop a file into the window, or press Ctrl+O |
+| Error | state the cause, no jargon | No access permission: xxx (not `EACCES`) |
+| Confirm dialog | question + explicit consequence | "xxx" has unsaved changes. Save? |
 
-数字与路径用 `tabular-nums`（等宽数字），避免变化时宽度跳动。
+Numbers and paths use `tabular-nums` so widths don't jitter when values change.
 
-### 国际化（i18n）
+### Internationalization (i18n)
 
-两种语言：简体中文与英文。默认跟随系统（`navigator.languages`，
-`zh` 开头归简体中文，其余归英文），用户可在设置里显式指定。
+Two languages: Simplified Chinese and English. Default follows the system (`navigator.languages`; anything starting with `zh` → Simplified Chinese, everything else → English); user can override in settings.
 
-**不引入 i18n 框架。** 只有两种语言、约 160 条文案，没有懒加载语言包、
-没有复数规则文件、没有日期数字本地化需求。一个类型化字典加一个 `t()`
-就够，省下首屏体积与一层间接 API。
+**Do not introduce an i18n framework.** Two languages, ~160 strings, no lazy-loaded language packs, no plural-rule files, no date/number localization. One typed dictionary plus `t()` suffices.
 
-#### 结构
+#### Structure
 
 ```
 src/lib/i18n/
-  locale.ts         语言标识、系统语言探测（纯函数，无状态）
-  locale.svelte.ts  当前语言的 $state（**必须是 .svelte.ts**）
-  messages/en.ts    英文，字典结构的唯一来源
-  messages/zh-CN.ts 中文，标注为同一类型
-  index.ts          t() 与再导出
+  locale.ts         language tag, system-language detection (pure functions, no state)
+  locale.svelte.ts  current language as $state (**must be .svelte.ts**)
+  messages/en.ts    English, the single source of the dictionary shape
+  messages/zh-CN.ts Chinese, annotated with the same type
+  index.ts          t() and re-exports
 ```
 
-**`locale` 必须放在 `.svelte.ts` 文件里。** Svelte 的 runes 只在
-`.svelte` / `.svelte.ts` 中可用；放在普通 `.ts` 里会在启动时抛
-`rune_outside_svelte`，**整个应用白屏**，而 `svelte-check` 查不出来。
-这条已经踩过一次。
+**`locale` must live in a `.svelte.ts` file.** Runes work only in `.svelte` / `.svelte.ts`; in a plain `.ts` it throws `rune_outside_svelte` at startup and **white-screens the whole app**, and `svelte-check` cannot catch it. Already hit once.
 
-#### 类型安全
+#### Type safety
 
-`Messages = typeof en`，中文那份标注为同一类型。因此：
+`Messages = typeof en`; the Chinese file is annotated with that same type. Therefore:
 
-- 漏译 → 编译报错（比「运行时回退到英文」可靠——回退会让漏译溜进发布版）
-- 多写不存在的 key → 编译报错
-- `t()` 的 key 参数受类型约束，写错 key 编译不过
+- Missing translation → compile error (runtime fallback to English would let missing translations slip into a release).
+- Extra key not in `en` → compile error.
+- `t()`'s key parameter is type-constrained; a wrong key does not compile.
 
-**英文那份不要加 `as const`。** 那会把每个值收窄成字符串字面量
-（`'Save'` 而非 `string`），中文版写 `'保存'` 就会类型不匹配——
-字典反而没法翻译了。
+**Do not add `as const` to the English file** — it narrows every value to a string literal (`'Save'` instead of `string`), so a Chinese `'保存'` fails to typecheck and the dictionary becomes untranslatable.
 
-#### 使用
+#### Usage
 
 ```svelte
-<script lang="ts">
-  import { t } from '$lib/i18n';
-</script>
 <p>{t('welcome.emptyTitle')}</p>
 <span>{t('tab.close', { name: tab.name })}</span>
 ```
 
-- 占位符用 `{name}`，由 `t()` 插值。**漏传参数时保留原样**
-  （界面上会看到 `{name}`），比静默替换成空串好定位。
-- 复数用 `{ one, other }`，靠 `count` 选择。中文两种形态写一样即可——
-  不做 CLDR 规则，英语只需区分 1 与其余。
+- Placeholders use `{name}`, interpolated by `t()`. Missing argument is left verbatim (UI shows `{name}`) — easier to locate than a silent empty string.
+- Plurals use `{ one, other }`, selected by `count`. Chinese writes the same form for both — no CLDR rules; English only distinguishes 1 from the rest.
 
-#### 什么不该进字典
+#### What must not go into the dictionary
 
-- **代码注释**：保持中文，它们不是界面文案。
-- **`console.*` 日志**：给开发者看的，不随界面语言变化。
-  统一走 [../src/lib/utils/log.ts](../../src/lib/utils/log.ts)。
-- **语言名本身**：永远用该语言书写（中文写「简体中文」、英文写 `English`），
-  不跟随界面语言翻译。否则一个误设成中文的英文用户会在设置里看到「英语」，
-  认不出那是自己的语言，也就换不回去。
+- **Code comments**: stay Chinese; not UI copy.
+- **`console.*` logs**: developer-facing, don't change with UI language. Always via [`log.ts`](../../src/lib/utils/log.ts).
+- **Language names**: always written in their own language (Chinese「简体中文」, English `English`), never translated — else an English user misconfigured to Chinese sees「英语」and cannot switch back.
 
-#### 原生对话框按钮文案的坑
+#### Native dialog button copy gotcha
 
-用自定义按钮文案时，各平台返回的是**按钮文字本身**而不是 `Yes`/`No`。
-因此**弹框与比对必须用同一时刻的同一份文案**：
+Custom button copy → every platform returns **the button text itself**, not `Yes`/`No`; the dialog and the comparison must use the same copy captured at the same moment:
 
 ```ts
-// 正确：先取到局部变量，两处共用
 const btnSave = t('action.save');
 const answer = await message(..., { buttons: { yes: btnSave } });
 if (answer === btnSave) return 'save';
 ```
 
-若弹框前取一次、比对时再取一次，而用户在这期间切了语言，
-比对就会失败——「不保存」会被当成「取消」。`close-tab.ts` 与
-`save-file.ts` 都按这个模式写。
+Re-reading the copy for the comparison fails after a language switch — "Don't save" is treated as "Cancel". `close-tab.ts` and `save-file.ts` follow this pattern.
 
-### 状态栏里的数字必须带标签
+### Numbers in the status bar must carry labels
 
-**光有数字读者猜不出含义。** 光标位置早先只写 `19:17`，
-用户看不懂这是什么（实测被问过）。改成「行 19，列 17」后立刻明确。
+A bare number tells the reader nothing: cursor position used to show only `19:17` and users could not tell what it was. Every status-bar item needs a readable label or `title` tooltip:
 
-状态栏每一项都应有可读的标签或 `title` 提示：
-
-| 项 | 展示 | 提示 |
+| Item | Display | Tooltip |
 | --- | --- | --- |
-| 光标位置 | 行 19，列 17 | 光标位置（行:列） |
-| 语言 | JavaScript | —（本身自明） |
-| 编码 | UTF-8（**可点击**） | 以指定编码重新打开… |
-| 换行 | CRLF | 换行风格 |
+| Cursor position | Line 19, Col 17 | Cursor position (line:col) |
+| Language | JavaScript | — (self-evident) |
+| Encoding | UTF-8 (**clickable**) | Reopen with encoding… |
+| Line endings | CRLF | Line ending style |
 
-`UTF-8` / `CRLF` 对开发者是常识，保留原样即可；
-但「行/列」这种纯数字组合没有标签就一定看不懂。
+`UTF-8` / `CRLF` are common knowledge for developers and can stay as-is; a bare number pair like line/column is unreadable without a label.
 
-**编码必须可点击**：探测不可能全对（实测 Big5 / Shift_JIS /
-无 BOM 的 UTF-16LE 都会被判成 GBK），用户需要一个纠正入口。
-未命名标签没有磁盘文件可重读，此时它退化为不可点击的文字。
+**Encoding must be clickable**: detection can never be fully right (Big5 / Shift_JIS / BOM-less UTF-16LE are all misdetected as GBK in testing), so users need a correction entry point. An untitled tab has no on-disk file to re-read → non-clickable text.
 
-### 装饰性功能的默认值
+### Decorative feature defaults
 
-「缩进参考线」与「括号彩虹」都是可选的编辑器装饰，但**默认值相反**：
+"Indent guides" and "rainbow brackets" are both optional decorations, with **opposite defaults**:
 
-| 功能 | 默认 | 理由 |
+| Feature | Default | Reason |
 | --- | --- | --- |
-| 缩进参考线 | **开** | 极淡的竖线，帮助判断嵌套层级，几乎不占视觉重量 |
-| 括号彩虹 | **关** | 多色括号是主动吸引注意力的装饰，与「安静」的定位有张力 |
+| Indent guides | **on** | Very faint vertical lines that help judge nesting depth, with almost no visual weight |
+| Rainbow brackets | **off** | Multicoloured brackets actively grab attention, in tension with the "quiet" positioning |
 
-判断标准是「它是否在争夺注意力」，而不是「它是否有用」。
-两者都有用，但只有参考线可以在不被察觉的前提下提供价值。
+Criterion: "does it compete for attention", not "is it useful".
 
-括号彩虹另有两条硬约束（见 `editor/rainbow-brackets.ts`）：
-文档超过 20 万字符时不启用（预计算是 O(n)），
-且必须跳过字符串与注释里的括号——否则 `printf("(((")` 会让
-后面所有括号的层级错位、颜色整体偏掉。
+Rainbow brackets has two further hard constraints (see `editor/rainbow-brackets.ts`): disabled past 200,000 characters (precomputation is O(n)); brackets inside strings and comments must be skipped — otherwise `printf("(((")` mislevels every bracket after it and shifts all the colours.
 
 ---
 
-## 10. 新增组件检查清单
+## 10. New-component checklist
 
-写一个新界面前，逐条确认：
+Confirm each item before writing a new UI:
 
-- [ ] 颜色只用第 2.2 节的语义令牌，没有硬编码 hex
-- [ ] 字号落在第 3 节的阶梯上（微调例外仅限 10px/11px 说明文字）
-- [ ] 圆角从第 5 节选，没有自创值
-- [ ] 按钮/输入/开关/对话框优先用了 `ui/` 下的组件
-- [ ] 图标按钮用了 `Hint`，且 `label` 是中文
-- [ ] 有 `Select` 的话传了 `items`
-- [ ] 可点元素有悬停、焦点、禁用三态
-- [ ] 文案是中文、简洁、无客套词
-- [ ] **在亮色与暗色下都肉眼看过**（尤其输入类控件的对比度）
-- [ ] 在最小窗口 720×480 下不破版
-- [ ] `pnpm check` 零错误
-
----
-
-## 11. 已知的实现约束（改样式前必读）
-
-1. **`app.css` 的 `@custom-variant` 块不能删**——删了组件状态样式全失效。
-2. **暗色下 `--input` 要明显亮于背景**——否则开关不可见。
-3. **行号 gutter 必须在折叠 gutter 之前注册**——CodeMirror 按扩展注册顺序排 gutter，
-   顺序错了折叠箭头会跑到行号左边。见 `src/lib/editor/extensions.ts`。
-4. **CodeMirror 的搜索面板要单独写暗色样式**——它的内置样式假设浅色背景，
-   见 `src/lib/editor/themes.ts` 的 `.cm-panel.cm-search` 规则。
-5. **图标库是 `@lucide/svelte`**，不是 `lucide-svelte`。
-6. **Markdown 预览的 HTML 必须过 DOMPurify**——`marked` 不转义原始 HTML。
-   改预览组件时不要移除净化。
-7. **危险按钮必须同时写 `hover:` 与 `dark:hover:`**。`Button` 的 `ghost` 变体带有
-   `dark:hover:bg-muted/50`，其选择器优先级高于单独的 `hover:bg-destructive`，
-   只写后者在暗色下不会变红。见 `Hint.svelte` 的 `danger` 分支。
-8. **`Hint` 的状态类要排在调用方 `class` 之后**。`cn` 是 tailwind-merge，
-   同族工具类后写者胜出；顺序反了调用方的 `bg-*` 会吃掉 `active`/`danger` 的底色。
+- [ ] Colours only from the section 2.2 semantic tokens, no hard-coded hex
+- [ ] Font size on the section 3 scale (fine-tuning exceptions only for 10px/11px caption text)
+- [ ] Radius chosen from section 5, no invented values
+- [ ] Buttons/inputs/switches/dialogs prefer the components under `ui/`
+- [ ] Icon buttons use `Hint`, with a Chinese `label`
+- [ ] Any `Select` is passed `items`
+- [ ] Clickable elements have hover, focus and disabled states
+- [ ] Copy is Chinese, concise, without polite filler
+- [ ] **Eyeballed in both light and dark** (especially contrast of input-type controls)
+- [ ] No layout breakage at the minimum window size 720×480
+- [ ] `pnpm check` has zero errors
 
 ---
 
-## 12. 列表与操作列的布局约定
+## 11. Known implementation constraints (read before changing styles)
 
-带「悬停才出现的操作按钮」的列表（欢迎页最近文件、侧栏列表）必须遵守：
+1. **Never delete the `@custom-variant` block in `app.css`** — deleting it kills all component state styles.
+2. **`--input` must be clearly brighter than the background in dark mode** — otherwise switches are invisible.
+3. **Register the line-number gutter before the folding gutter** — CodeMirror orders gutters by extension registration order; wrong order puts the fold arrow left of the line numbers. See `src/lib/editor/extensions.ts`.
+4. **The CodeMirror search panel needs its own dark styles** — built-in styles assume a light background; see `.cm-panel.cm-search` in `src/lib/editor/themes.ts`.
+5. **The icon library is `@lucide/svelte`**, not `lucide-svelte`.
+6. **Markdown-preview HTML must pass through DOMPurify** — `marked` does not escape raw HTML. Do not remove sanitization when touching the preview component.
+7. **Danger buttons must set both `hover:` and `dark:hover:`.** `Button`'s `ghost` variant carries `dark:hover:bg-muted/50`, whose selector wins over a bare `hover:bg-destructive`; with only the latter it does not turn red in dark mode. See the `danger` branch of `Hint.svelte`.
+8. **`Hint`'s state classes must come after the caller's `class`** — `cn` is tailwind-merge, so the later same-family utility wins; reversed order lets the caller's `bg-*` eat the `active`/`danger` background.
 
-- **操作按钮与相邻的次要信息共用同一个位置**，悬停时前者淡入、后者淡出。
-  例如时间列：不悬停显示「21 分钟前」，悬停显示移除按钮。
-  这样行尾不会多出一列，也就不存在「没悬停时看着缺一块」的问题，
-  表头也不需要为额外的列做补偿对齐。
-- 容器**固定宽度**、两个元素绝对定位重叠，悬停只切换 `opacity`。
-  若改成 `display` 切换或让宽度自适应，行宽会随悬停跳动。
-- **不要在 `<button>` 里嵌 `<button>`**——这是非法 HTML，浏览器会打乱结构。
-  需要整行可点、又有内部操作按钮时，内部那个用 `span` + `role="button"` +
-  `tabindex="0"`，并自行处理 Enter / 空格。
-- 操作按钮加 `focus-visible:opacity-100`，保证键盘用户也能看到它。
+## 12. List and action-column layout conventions
 
-### 开关类按钮：只用文字颜色区分，图标不变
+Hover action buttons (welcome-page recent files, sidebar lists):
 
-| 状态 | 颜色 |
+- **Action button shares one slot with adjacent secondary info**: hover fades one in, the other out (time column: "21 minutes ago" → remove button). No extra row-end column → nothing "looks missing" unhovered, header needs no compensating alignment.
+- Container **fixed width**; both elements absolute, overlapping; hover toggles `opacity` only. `display` toggle or adaptive width → row width jumps.
+- **Never nest `<button>` in `<button>`**: invalid HTML, browser scrambles structure. Clickable row + inner action button → inner uses `span` + `role="button"` + `tabindex="0"`, Enter / Space handled manually.
+- Action buttons: `focus-visible:opacity-100`.
+
+### Toggle buttons: distinguish by text colour only, icon unchanged
+
+| State | Colour |
 | --- | --- |
-| 已开启 | `text-content`（亮色，跟随主题前景色） |
-| 已关闭 | `text-content-faint`（灰色） |
+| On | `text-content` (bright; follows theme foreground) |
+| Off | `text-content-faint` (grey) |
 
-**不加底色。** 曾试过品牌色底，视觉上过重、与状态栏整体不协调；
-而更早只加 `bg-surface` 又因与状态栏底色几乎同色而完全看不出状态。
+**No background colour.** Rejected: brand-coloured bg — too heavy for the status bar; `bg-surface` only — invisible against the status-bar bg.
 
-**图标固定不变。** 换图标会让按钮看起来像两个不同的功能，
-而它其实只是同一个开关的两种状态。状态由颜色表达即可。
+**Icon never changes** — else one two-state toggle reads as two features. Tooltip still spells out "on / off" (colour-unsure users, screen readers).
 
-提示文字仍写明「已开启 / 已关闭」，兼顾不确定颜色含义的用户与无障碍读屏。
+Measured (dark theme): active icon brightest pixel 232, inactive 105.
 
-实测（暗色主题）：激活图标最亮像素 232，未激活 105，区分明显。
+See `active` branch of [`Hint.svelte`](../../src/lib/components/common/Hint.svelte), [`StatusBar.svelte`](../../src/lib/components/layout/StatusBar.svelte).
 
-见 [../src/lib/components/common/Hint.svelte](../../src/lib/components/common/Hint.svelte)
-的 `active` 分支与 [../src/lib/components/layout/StatusBar.svelte](../../src/lib/components/layout/StatusBar.svelte)。
-- **同一类控件的尺寸必须一致**。主页与侧栏都有「移除」按钮，
-  早先一处用 `size-3.5`、另一处用 `size-3`，肉眼能看出主页那个偏大。
-  改任何一处的图标尺寸前，先搜一遍同类控件是否还有别的实例。
+- **Same-kind controls share one size**: home-page vs sidebar "remove" (`size-3.5` vs `size-3`) looked different. Search other instances before changing an icon size.
 
-### 自定义按钮的对话框，返回值是**按钮文字**而不是 Yes/No
+### Dialogs with custom buttons return the **button text**, not Yes/No
 
-用 `@tauri-apps/plugin-dialog` 的 `message()` 配自定义按钮文案时，
-各平台返回的是**按钮的文字本身**：
+`message()` (`@tauri-apps/plugin-dialog`) with custom button copy returns **the button text itself** on every platform:
 
-| 平台 | 底层实现 | 返回值 |
+| Platform | Implementation | Return value |
 | --- | --- | --- |
 | Windows | rfd `win_cid` | `Custom("保存")` / `Custom("不保存")` / `Custom("取消")` |
-| macOS | rfd `NSAlert` | 同上，`Custom(文案)` |
-| Linux | zenity 分支 | 同上，`Custom(文案)` |
+| macOS | rfd `NSAlert` | `Custom(copy)` |
+| Linux | zenity branch | `Custom(copy)` |
 
-**因此不能判断 `'Yes'` / `'No'`**。早先 `close-tab.ts` 判断 `answer === 'No'`，
-在 Windows 上永远不成立，「不保存」被当成「取消」——用户点了没有任何反应（实测确认）。
+**Testing for `'Yes'` / `'No'` never works.** `close-tab.ts` tested `answer === 'No'` — never true on Windows, so "Don't save" acted as "Cancel", clicking did nothing.
 
-正确做法：把按钮文案抽成常量，用返回值与**同一份常量**比对。
-见 [../src/lib/actions/close-tab.ts](../../src/lib/actions/close-tab.ts) 的 `askUnsaved`。
+Extract button copy into a constant; compare the return value against that same constant. See `askUnsaved` in [`close-tab.ts`](../../src/lib/actions/close-tab.ts).
 
-### Svelte 的 `<script>` 注释里不要写尖括号标签名
+### Do not write angle-bracketed tag names in a Svelte `<script>` comment
 
-**这是踩过的坑。** 在 `<script>` 块的注释里写尖括号包起来的标签名
-（例如「样式块的名字」），Svelte 解析器会把它当成**真实标签**，
-导致 `<script>` 无法闭合：
+Bracketed tag name in a `<script>` comment parses as a **real tag**, so `<script>` cannot close: `` `<script>` was left open ``.
 
-```
-Error: `<script>` was left open
-```
+**Rule: never bracket a tag name in a comment** — write "style block" or `style block`.
 
-最小复现：
+### Verifying styles requires the browser's computed values, not the source
 
-```svelte
-<script lang="ts">
-  /** 说明：Svelte 编译 <style> 时…… */   ← 这个 <style> 会让解析器错乱
-  const x = 1;
-</script>
-```
+**Layout-shape** changes (centering, fitting, alignment) must be measured over CDP against computed style + `getBoundingClientRect`: launch Edge with `--remote-debugging-port` (headless fine), take `webSocketDebuggerUrl` from `/json/list`, connect, `Runtime.evaluate` a measurement of `getComputedStyle(el)` properties + `el.getBoundingClientRect()` + element offset from the container/window centreline. Node 26 ships `WebSocket` and `fetch`; no deps.
 
-**规则：注释里提到标签名时，不要带尖括号**，写成「样式块」或 `style 块` 即可。
+**A class name present in build output proves nothing** — a CSS declaration is not necessarily computed.
 
-### 验证样式必须看浏览器的计算结果，不能只看源码
+#### Debugging trap: `!important` declarations are reordered to the end by CSSOM
 
-凡是涉及**布局形状**的改动（居中、贴合内容、对齐），都要用 CDP 实测
-真实的 computed style 与 `getBoundingClientRect`。
+`rule.cssText` reorders **`!important` declarations to the end**, easily truncated out of view and read as "declaration missing" (measured in Chrome: a leading `width: fit-content !important` prints after `max-width` and `color`).
 
-做法（Node 26 自带 `WebSocket` 与 `fetch`，无需任何依赖）：
+**Print full `cssText`, or read `rule.style.getPropertyValue('width')`** — never conclude from a truncated string.
 
-1. 用 `--remote-debugging-port` 启动 Edge（headless 即可）。
-2. 从 `/json/list` 取页面的 `webSocketDebuggerUrl`，连上后调
-   `Runtime.evaluate` 执行测量表达式。
-3. 测量内容：`getComputedStyle(el)` 的关键属性 + `el.getBoundingClientRect()`，
-   以及元素与容器/窗口中心线的偏差。
+Comments inside a rule body do **not** swallow declarations (measured); project writes explanations above the rule for readability only.
 
-**只看构建产物里有没有某个类名是不够的**——CSS 里写了不等于浏览器算出来就是它。
+### Scrollbars take no space — you must make room manually
 
-#### 排查时的一个陷阱：`!important` 声明会被 CSSOM 排到末尾
+bits-ui `ScrollArea` scrollbar is `position: absolute` **overlay**, 10px wide; does not widen the container.
 
-用 `rule.cssText.slice(0, 200)` 之类的方式打印规则来排查时，
-**带 `!important` 的声明会被浏览器重排到 `cssText` 的末尾**，
-很容易被截断在视野之外，看起来像「这条声明丢了」。
-
-实测（Chrome）：
-
-```
-源码:  .t1 { width: fit-content !important; max-width: 340px; color: red; }
-cssText: .t1 { max-width: 340px; color: red; width: fit-content !important; }
-```
-
-`width` 从最前被移到了最后。**因此排查时要打印完整的 `cssText`，
-或者直接用 `rule.style.getPropertyValue('width')` 取值**，
-不要靠截断的字符串下结论——我因此误判过一次根因。
-
-另外，**规则体内部的注释不会吞掉声明**（实测 `.t3 { /* 注释 */ width: fit-content; display: flex; }`
-两条声明都在）。虽然如此，本项目仍约定把说明写在规则上方，纯粹为了可读性，
-与解析行为无关。
-
-### 滚动条不占空间，必须手动让位
-
-bits-ui 的 `ScrollArea` 滚动条是 `position: absolute` 的**覆盖式**元素（宽 10px），
-它不会撑开容器。因此：
-
-- 滚动容器内的内容必须自己留出右侧内边距（`pr-3` / `pr-4`），
-  否则文字会被滚动条压住。
-- **该内边距要计入对齐计算**。表头在滚动容器之外，若不同步补上同样的值，
-  它就会比列表内容更靠右——这正是「清空」与时间戳对不齐的原因。
-  当前取值：欢迎页列表 `pr-3` + 行 `px-2` = 20px，表头用 `pl-2 pr-5` 对应；
-  侧栏容器 `p-2 pr-4` = 16px，表头与行都用 `px-1.5`，天然一致。
-- 按钮自带水平内边距（如 `px-1.5`）会让文字比盒子再缩进，
-  用 `-mr-1.5` 把盒子右移回来，文字右缘才真正对齐。
+- Scroll-container content needs its own right padding (`pr-3` / `pr-4`), else the scrollbar covers text.
+- **Include it in alignment math.** The table header sits outside the scroll container; without the same value it ends right of the list content — cause of the "Clear"/timestamp misalignment. Current: welcome-page list `pr-3` + row `px-2` = 20px, header `pl-2 pr-5`; sidebar `p-2 pr-4` = 16px, header and rows both `px-1.5`.
+- Buttons carry their own horizontal padding (`px-1.5`), indenting text past the box; `-mr-1.5` pulls the box back so text right edges align.
 
 ---
 
-## 13. 字体
+## 13. Typography
 
-### 字体栈必须显式包含中文字体
+### The font stack must explicitly include CJK fonts
 
-**这是「编辑器里中英文像两种字体」的根因**：等宽字体（Consolas、JetBrains Mono 等）
-几乎都不含中文字形。只写英文字体时，浏览器会为中文单独回退到系统默认中文字体
-（Windows 上常是宋体），于是同一行里英文是等宽无衬线、中文变成衬线体，
-字宽与风格都对不上。
+**Root cause of "Chinese and English look like two different fonts in the editor"**: monospace fonts (Consolas, JetBrains Mono…) contain no CJK glyphs; an English-only stack falls back to the system CJK font (often SimSun on Windows) → one line mixes monospace sans-serif English with serif Chinese, mismatched widths and style.
 
-解决办法：把中文字体显式排进字体栈，浏览器按字符逐个查找，
-两种文字的风格就由我们控制，而不是交给系统兜底。
+Fix: list CJK fonts explicitly; the browser resolves per character, controlling both scripts.
 
-中文字体列表集中在 [../src/lib/utils/fonts.ts](../../src/lib/utils/fonts.ts) 的
-`CJK_FALLBACK`，**界面字体与编辑器字体共用同一份**——两处各写一份很容易改一漏一。
+CJK list = `CJK_FALLBACK` in [`fonts.ts`](../../src/lib/utils/fonts.ts), **shared by UI and editor fonts** — separate copies drift.
 
-### 字体设置
+### Font settings
 
-| 设置项 | 默认值 | 说明 |
+| Setting | Default | Notes |
 | --- | --- | --- |
-| 界面字体 | 空字符串 | 空 = 用 `app.css` 的内置栈。非空时覆盖 CSS 变量 `--font-sans` |
-| 编辑器字体 | 空字符串 | 空 = 用内置的默认**等宽**字体栈（与界面字体无关） |
+| UI font | empty string | Empty = built-in stack in `app.css`. Non-empty overrides `--font-sans` |
+| Editor font | empty string | Empty = built-in default **monospace** stack (independent of UI font) |
 
-**编辑器字体不跟随界面字体**。两者的默认值都显示为「跟随系统默认」，
-但各自回落到不同的内置栈：界面用 `--font-sans`，编辑器用 `--font-mono`。
-编辑器是代码编辑面，等宽是基本要求；跟随界面字体反而会让代码失去对齐。
+**The editor font does not follow the UI font.** Both defaults display "follow system default" but fall back to `--font-sans` vs `--font-mono`; monospace is a baseline requirement for code editing, and following the UI font would cost code alignment.
 
-### 行号字体归属编辑器
+### Line-number font belongs to the editor
 
-**行号栏跟随编辑器字体，不跟随界面字体。**
+**The gutter follows the editor font, not the UI font** — line numbers share the code's column and align line by line. VSCode does the same (`editor.fontFamily`).
 
-理由：行号属于代码编辑面，与代码同栏显示、需要逐行对齐，用同一字体才视觉连贯。
-VSCode 亦如此（行号用 `editor.fontFamily`）。
+Font on `.cm-content` alone leaves the gutter inheriting `--font-sans` from body. `editorFontTheme()` sets the same stack on `.cm-content` and `.cm-gutters`.
 
-实现上必须显式设置——只给 `.cm-content` 设字体时，行号会继承 body 的
-`--font-sans`，导致一列数字与正文风格割裂。因此 `editorFontTheme()` 把
-同一个字体栈同时应用到 `.cm-content` 和 `.cm-gutters`。
+### Font picker
 
-### 字体选择器
+Popover + searchable list, not a Select: hundreds of fonts; a dropdown can be neither searched nor previewed.
 
-用 Popover + 搜索列表，不用 Select：系统字体有几百个，塞进下拉菜单既难找也无法预览。
-
-- **必须有加载态**。枚举要扫描系统字体目录，首次可能耗时数百毫秒。
-- **预览文本必须同时含中英文**（当前是「Sesame sesame 中文 123」）。
-  只预览英文会掩盖中文回退问题——而这正是用户最需要判断的。
-- 每个条目用该字体自身渲染预览，字体名本身用界面默认字体渲染以保证可读。
-- 枚举失败时降级为「只有默认项可选」，不能让设置面板整个不可用。
+- **Loading state required** — directory scan, hundreds of ms first time.
+- **Preview text needs Chinese and English** (currently "Sesame sesame 中文 123"); English-only hides the CJK fallback problem.
+- Entry previews in its own font; font name renders in the UI default font.
+- Enumeration failure → default option only; never brick the settings panel.
 
 ---
 
-## 14. 编辑器 gutter（行号与折叠栏）
+## 14. Editor gutter (line numbers and fold column)
 
-### 折叠标记用 SVG chevron 图标，且与所在行对齐
+### Fold markers are SVG chevron icons, aligned to their row
 
-采用 **VSCode 同款的人字箭头**：展开时朝下，折叠时朝右。
+VSCode-style chevron: **down** expanded, **right** folded.
 
-**用 SVG 图标，不要用 CSS 边框拼、也不要用字体字符。** 三种做法的差别：
+**SVG icon only — never CSS borders, never a font character.**
 
-| 做法 | 问题 |
+| Approach | Problem |
 | --- | --- |
-| 字体字符（`⌄` / `›`） | 字形随用户所选字体而变，粗细不可控，小尺寸下糊成一团 |
-| CSS 边框拼 | 尺寸被单元格挤压，`padding` 稍大就贴边，看起来比左侧行号小一号 |
-| **SVG 图标**（当前） | 几何固定、`stroke-width` 可控，尺寸用 `em` 跟随字号 |
+| Font character (`⌄` / `›`) | Varies with user's font, weight uncontrollable, smears at small sizes |
+| CSS borders | Squeezed by the cell; larger `padding` touches the edge; reads one size smaller than the line numbers |
+| **SVG icon** (current) | Fixed geometry, controllable `stroke-width`, size in `em` follows font size |
 
-图标路径与 Lucide 的 `chevron-down` / `chevron-right` 一致，
-折叠态用同一个路径旋转 `-90deg` 得到，两种状态共用一份几何。
+Path matches Lucide `chevron-down` / `chevron-right`; folded = same path rotated `-90deg`.
 
-两个必须处理的细节：
+1. **Position**: marker is inline text in a fixed-height box on the baseline — measured ~4px below the line number in the same row. **Fix**: `.cm-foldGutter .cm-gutterElement` → `display:flex` + `align-items:center`.
+2. **Padding**: default near zero; icon touches line numbers and border. **Fix**: cell `padding: 0 4px`, icon container `1.25em`. CodeMirror derives gutter width from content width → column widens, icon unsquashed.
 
-1. **位置**：CodeMirror 默认把标记作为行内文本放进固定高度的盒子，字形按基线排布，
-   实测比同行行号低约 4px，看起来像挂在两行之间。
-   **修法**：`.cm-foldGutter .cm-gutterElement` 设为 `display:flex` + `align-items:center`。
-2. **留白**：默认几乎没有内边距，图标紧贴行号与边框，视觉上很挤。
-   **修法**：给单元格加 `padding: 0 4px`，图标容器用 `1.25em`。
-   CodeMirror 按内容宽度自动算 gutter 宽度，加了 padding 整列会相应变宽，不会压扁图标。
+Folded arrow `--brand-600` to mark the folded row.
 
-已折叠的箭头用 `--brand-600` 加重，让「哪一行被折叠了」一眼可见。
+See [../src/lib/editor/fold-gutter.ts](../../src/lib/editor/fold-gutter.ts).
 
-见 [../src/lib/editor/fold-gutter.ts](../../src/lib/editor/fold-gutter.ts)。
+### Line numbers and fold column toggle together
 
-### 行号栏与折叠栏一起开关
+Same **Compartment** — must toggle together: fold markers lose their reference without line numbers. Rejected: fold gutter as fixed extension — disabling line numbers left the fold icons visible (measured).
 
-两者放在**同一个 Compartment** 里，因为它们必须一起开关：
-折叠标记脱离行号就失去了参照，用户看不出标记属于哪一行。
-早先折叠栏放在固定扩展里，关掉行号后折叠图标仍然留着（实测被指出）。
+Keep `codeFolding()` when disabled: folding capability + keybindings, no visible element; Ctrl+Shift+[ still works.
 
-关闭时仍保留 `codeFolding()`——它只提供折叠能力与快捷键，不产生可见元素，
-因此关掉行号只是「不显示那一列」，Ctrl+Shift+[ 之类的折叠快捷键依然可用。
+### Line numbers are not selectable
 
-### 行号不可选中
+`user-select: none` on line numbers and fold column — copying code otherwise drags the digits in.
 
-**行号与折叠栏必须 `user-select: none`。**
-用户想复制代码时很容易把行号一起选进去，粘出来的内容里混着数字，非常困扰。
+Rule must be `.cm-editor .cm-content`, **not** `.cm-editor` (includes the gutter).
 
-注意 `app.css` 里可选中区域的规则要写成 `.cm-editor .cm-content` 而**不是**
-`.cm-editor`——后者会把 gutter 一起包含进去，行号又变得可选。
+### Line-number left/right padding must be symmetric
 
-### 行号左右内边距必须对称
+Right whitespace reserves one fold-marker width; without an equal left gap the digits shift right and look uncentred. Both sides `0.6em`.
 
-右侧的留白其实是给折叠栏让位（那里会有一个折叠标记宽度的空间）。
-若左侧不留同样宽度的空隙，整列数字就会明显偏右、看起来没有居中。
-因此两侧都给 `0.6em`。
-
-### 行号左右空隙恒等，右侧由折叠图标占用
-
-gutter 的实际布局是：
+### Line-number side gaps are equal, the right one occupied by the fold icon
 
 ```
-[ 行号列：padLeft + 数字 + padRight ][ 折叠列：MARKER_SIZE ]
+[ line-number column: padLeft + digits + padRight ][ fold column: MARKER_SIZE ]
 ```
 
-数字在行号列里右对齐，因此：
+Digits right-aligned → gap **left** = `padLeft`, gap **right** = `padRight + MARKER_SIZE`. Equal ⇒ `padLeft = MARKER_SIZE`, `padRight = 0`.
 
-- 数字**左侧**空隙 = `padLeft`
-- 数字**右侧**空隙 = `padRight + MARKER_SIZE`（折叠列始终占位）
+Also remove CodeMirror's default `min-width: 20px` — cell wider than the digits; `flex-end` absorbs the surplus left, so the left gap exceeds `MARKER_SIZE`. Safe: a separate hidden spacer computes width from the **max line number** → gutter width stable while scrolling.
 
-要两者相等 → `padLeft = MARKER_SIZE`、`padRight = 0`。
+Measured (13px font, `MARKER_SIZE = 1.25em`): left 17px, right 18px.
 
-**还必须去掉 CodeMirror 默认的 `min-width: 20px`**：它让单元格比数字宽，
-多出的宽度被 `flex-end` 吸收到左侧，左侧空隙就大于 `MARKER_SIZE`，左右又不等了。
-去掉是安全的——CodeMirror 另有一个隐藏 spacer 按**最大行号**计算宽度，
-gutter 整体宽度依然稳定，不会随滚动抖动。
+### Line numbers must be flex-centred, not left to the default line box
 
-实测（13px 字号，`MARKER_SIZE = 1.25em`）：左侧 17px、右侧 18px，视觉对称。
+Line numbers and fold arrows **must share one alignment mechanism** — else they differ by half a pixel to several pixels.
 
-### 行号必须用 flex 居中，不能只靠默认行盒
+Default: digits laid on the **line box** (`text-align: right`, no flex). Cell height derives from the **body font size**, digits are 1px smaller → line box shorter than the cell, sits at top → ink ~1.5px above the row centre, while the flex-centred arrow holds centre.
 
-行号与折叠箭头**必须用同一套对齐机制**，否则两者会差半个像素到几个像素。
+**Fix**: `.cm-lineNumbers .cm-gutterElement` → `display: flex` + `align-items: center`, keep `justify-content: flex-end`.
 
-CodeMirror 默认把行号按**行盒**排布（`text-align: right`，无 flex）。
-问题在于：gutter 单元格的高度由**正文字号**算出，而行号用的是小 1px 的字号，
-它的行盒比单元格矮，于是贴着顶部摆放——数字墨迹比真正的行中心偏高约 1.5px。
-折叠箭头是 flex 居中的，两者就对不齐，肉眼能看出「数字偏上」。
+Measured: centre deviation **≤0.5px** on every row.
 
-**修法**：给 `.cm-lineNumbers .cm-gutterElement` 也加
-`display: flex` + `align-items: center`，`justify-content: flex-end` 保留右对齐。
+### Plain text between icon buttons needs `leading-none` to align with the icons
 
-改完实测：每一行的行号中心与箭头中心偏差都在 **0.5px** 以内。
+Toolbar zoom ratio is a **text** element (`适应` / `100%`) between `size-6` icon buttons. Measured (895×70 screenshot, DPR 1):
 
-### 图标按钮之间的纯文字，必须 `leading-none` 才能与图标对齐
-
-图片查看器工具栏正中的缩放比例是一个**文字**元素（`适应` / `100%`），
-两侧都是 `size-6` 的图标按钮。实测（实机截图 895×70 的像素测量，DPR 1）：
-
-| 元素 | 墨迹中心 | 相对工具栏内容盒中心（52.5） |
+| Element | Ink centre | vs toolbar content-box centre (52.5) |
 | --- | --- | --- |
-| 五个图标按钮 | 53.0 | +0.5 |
-| 「适应」文字 | 52.0 | **−0.5** |
+| Five icon buttons | 53.0 | +0.5 |
+| `适应` text | 52.0 | **−0.5** |
 
-即文字比同排图标**高 1px**，肉眼能看出「适应两个字偏上」。
+Text sits **1px higher** than the icons in the same row.
 
-**根因不是 flex 没居中，而是居中错了对象。**
-`align-items: center` 居中的是**行盒**，而行盒高度 = `line-height`。
-工具栏继承 `text-[11px]`，行高是 `1.5 × 11px = 16.5px`，
-而中文字形在 em 方框里的墨迹并不居于行盒正中——上多下少，
-于是行盒居中了，墨迹却偏上。
+**Root cause: `align-items: center` centres the line box, not the ink.** Line-box height = `line-height`; toolbar inherits `text-[11px]` → `1.5 × 11px = 16.5px`, and CJK ink sits high inside the em box line.
 
-**修法**：给这个文字元素加 `leading-none`（`line-height: 1`），
-让行盒收紧到字号本身，字形墨迹随之与图标对齐。
+**Fix**: `leading-none` (`line-height: 1`) on that text element.
 
-实测（同版本 Chromium + 构建产物的真实 CSS，阈值包围盒量墨迹中心）：
+Measured (same Chromium + build-output CSS, ink centre via threshold bounding box):
 
-| 修法 | Δ（文字 − 图标） |
+| Fix | Δ (text − icon) |
 | --- | --- |
-| 不处理 | **−1.00px** |
+| none | **−1.00px** |
 | `leading-none` | **0.00px** |
-| `h-6` + flex 居中 | −1.00px（**没用**，仍是在居中小数行盒） |
-| `text-box: trim-both cap alphabetic` | −0.33px（新特性，且中英混排会切掉字形） |
+| `h-6` + flex centring | −1.00px (**useless** — still centres the fractional line box) |
+| `text-box: trim-both cap alphabetic` | −0.33px (clips glyphs in mixed CJK/Latin) |
 
-**注意两个反直觉的点**：
+- An `inline-flex h-6 items-center justify-center` wrapper still centres that 16.5px line box; the offset is unchanged. Only `line-height` fixes it.
+- Offset present at DPR 1, 2 and 4, no drift with the threshold, but **whole pixels only at DPR 1 (real-machine default)** — verify at DPR 1, never extrapolate from high DPR.
 
-- 给文字套 `inline-flex h-6 items-center justify-center` 看起来「更稳」，
-  但它居中的仍是那个 16.5px 的行盒，偏移一点没变。
-  换容器不解决问题，改 `line-height` 才行。
-- 这个偏移在 DPR 1、2、4 下都存在，且不随阈值漂移；
-  但**只在 DPR 1（实机默认）下才会以整像素表现出来**，
-  因此验证必须在 DPR 1 下做，不能只在高 DPR 下外推。
+### Gutter registration order
 
-### gutter 注册顺序
+**Line numbers before fold column.** CodeMirror lays gutters out left to right in extension registration order; reversed → fold markers left of the line numbers.
 
-**行号必须排在折叠栏之前注册**。CodeMirror 按扩展注册顺序从左到右排列 gutter，
-顺序反了折叠标记会跑到行号左边，与所有主流编辑器相反。
+### Two CSS-variable naming schemes
 
-### CSS 变量的两套命名
+Tailwind v4 `@theme` generates only `--color-brand-*`; **`var(--brand-500)` in a component or CodeMirror theme resolves to nothing.**
 
-Tailwind v4 的 `@theme` 只生成 `--color-brand-*` 这一套名字。
-**在组件或 CodeMirror 主题里写 `var(--brand-500)` 会取不到值**。
+Short names need raw tokens in `:root` (this project does) mapped by `@theme inline`. Writing only `--color-brand-*` made `:focus-visible`'s `outline: 2px solid var(--brand-500)` an invalid declaration → **keyboard focus ring invisible** — accessibility defect, not cosmetic.
 
-若需要短名，必须在 `:root` 里单独定义原始令牌（本项目已如此），
-再由 `@theme inline` 映射。曾经因为只写了 `--color-brand-*`，
-`:focus-visible` 的 `outline: 2px solid var(--brand-500)` 变成无效声明，
-**键盘焦点框完全不显示**——这是无障碍缺陷，不是纯样式问题。
+## 15. Save strategy
 
----
+Two file classes, different save paths:
 
-## 15. 保存策略
-
-编辑器要同时处理两类文件，它们的保存路径**完全不同**：
-
-| | 已有文件（打开） | 新建文件（未命名） |
+| | Existing file (opened) | New file (untitled) |
 | --- | --- | --- |
-| 有路径 | 是 | **否** |
-| 自动保存 | 可直接写回原文件 | 无从下手 |
-| Ctrl+S | 直接写回 | 弹「另存为」让用户选路径 |
-| 关闭窗口 | 未保存则弹确认框 | 未保存则弹确认框 |
+| Has a path | yes | **no** |
+| Autosave | write straight back to the original file | nothing to write to |
+| Ctrl+S | write straight back | open "Save As" to pick a path |
+| Close window | confirm dialog if unsaved | confirm dialog if unsaved |
 
-### 三层保护
+### Three protection layers
 
-按「代价从低到高、可靠性从高到低」排：
+Cost low → high, reliability high → low:
 
-1. **用户主动保存**（Ctrl+S）——最终目标，内容落到用户自己的文件上。
-2. **自动保存**（可选开关）——停止输入后写回**原文件**。只对有路径的标签有效。
-3. **草稿备份**（始终开启）——把未保存的正文写到应用数据目录的 `drafts/`。
-   **不改动用户的任何文件**，任何标签都适用，是未命名标签唯一的保命手段。
+1. **Explicit user save** (Ctrl+S) — content lands in the user's own file.
+2. **Autosave** (optional toggle) — after typing stops, write back to the **original file**. Path-holding tabs only.
+3. **Draft backup** (always on) — unsaved body text → `drafts/` in the app data directory. Touches no user file; every tab; only safety net for untitled tabs.
 
-**关键：草稿备份不依赖自动保存开关。** 它是数据安全的底线，不该被用户关掉。
-关掉自动保存只意味着「不主动改用户的文件」，不代表「可以丢内容」。
+**Draft backup is independent of the autosave toggle** — the data-safety floor, never user-switchable. Autosave off = "don't proactively modify user files", not "content may be lost".
 
-### 恢复时直接还原，不弹确认框
+### Restore directly on startup, no confirmation dialog
 
-草稿存在就必须还原，**不要在启动路径上拦一个模态框**。
+Restore any existing draft — **no modal on the startup path**. Restoring is non-destructive (content is already in the draft); discarding = close the tab. Keep the choice in the UI.
 
-理由：内容已经安全躺在草稿里，恢复它**不具破坏性**——用户若确实想丢弃，
-关掉那个标签即可，代价远低于每次启动都被弹窗拦一下。
-把选择权留在界面上，而不是拦在启动路径上。
+Only when content was actually restored: one auto-dismissing title-bar status line naming the extra tab.
 
-只在确实恢复了内容时用标题栏状态提示说明一句（几秒后自动消失，不打断操作），
-解释「为什么一打开就多了个标签」，否则用户会困惑。
+### Atomic writes are the baseline, not an optimisation
 
-### 原子写入是底线，不是优化项
+**Every save: temp file → fsync → rename** ([atomic.rs](../../src-tauri/src/core/atomic.rs)). `fs::write` over the target leaves a truncated file ("neither old nor new") on crash or power loss mid-write.
 
-**任何保存都必须走「临时文件 → fsync → rename」。**
-直接 `fs::write` 覆盖目标时，进程若在写到一半崩溃或断电，
-磁盘上留下的是「既不是旧版也不是新版」的残缺文件——用户多年的文件就此报废。
+1. **Temp file in the target's own directory** — cross-device `rename` is not atomic (copy + delete).
+2. **`sync_all()` before rename** — OS-cache flush is not enough; power loss can leave the target empty or truncated.
+3. **Windows: rename fails when the target is in use** (antivirus, indexers). Retry with backoff, then report the error truthfully. **Never "delete the target, then rename"** — window where the file is deleted but the new one has not arrived.
 
-三个容易做错的细节（见 [../src-tauri/src/core/atomic.rs](../../src-tauri/src/core/atomic.rs)）：
+### External-modification conflict: re-check before save + update baseline after
 
-1. **临时文件必须在目标同目录**。跨设备的 `rename` 不是原子操作，
-   会退化成「拷贝 + 删除」。
-2. **rename 之前必须 `sync_all()`**。只 flush 到操作系统缓存不够——
-   断电时缓存内容仍会丢，可能留下一个空的或截断的目标文件。
-3. **Windows 上目标被占用时 rename 会失败**（杀毒扫描、索引服务）。
-   做几次退避重试；仍失败就如实报错，**绝不退化成「先删目标再改名」**——
-   那会打开一个「文件已删但新文件还没到位」的窗口，比直接失败更危险。
+A desktop editor cannot exclusively own a file (terminal scripts, Git branch switches, other editors); "disk never changes after open" → one Ctrl+S **silently clobbers other changes**.
 
-### 外部修改冲突：保存前复核 + 保存后更新基线
+1. **Fingerprint on open** (`mtime` + size) = persistence baseline.
+2. **Re-check before save**: mismatch → `conflict` error, refuse to write. Deleted file also counts; do not resurrect.
+3. **Three exits on conflict**:
+   - **Overwrite disk** — my content wins, loses the other changes (word this explicitly)
+   - **Load disk** — discard my edits, re-read
+   - **Save As** — keep both, safest, default
+4. **Update the baseline on successful save** — else your own write's mtime reads as an external modification and every save raises a conflict dialog.
 
-桌面编辑器无法独占文件——用户可能在终端跑脚本、在 Git 里切分支、
-用另一个编辑器改同一个文件。若假设「打开之后磁盘永远不变」，
-一次 Ctrl+S 就会**无提示地覆盖掉别人的修改**。
+Use `mtime + size`, not a content hash: hashing reads the whole file; rehashing a few-MB file per save is not worth it; any real write updates mtime.
 
-做法：
+### When a write cannot succeed, give an exit, not a dead end
 
-1. **打开时记指纹**（`mtime` + 大小），作为「持久化基线」。
-2. **保存前复核**：重新取指纹比对，不一致就返回 `conflict` 错误，拒绝写入。
-   文件被删除也算冲突——不能凭空重建，用户可能是有意删的。
-3. **冲突时给三个出口**，对应三种真实意图：
-   - **覆盖磁盘**：以我的内容为准（会丢别人的改动，措辞要明确）
-   - **加载磁盘**：放弃我的修改，重新读盘
-   - **另存为**：两边都保留，最安全，也是默认
-4. **保存成功后必须更新基线**。否则自己刚写盘产生的 mtime 变化，
-   会被下一次复核误判成「外部修改」，用户每存一次就撞一次冲突框。
+Read-only files, files locked by another process, directories without write permission: these saves will fail. Never just pop "Save failed":
 
-用 `mtime + 大小` 而不是内容哈希：哈希要读完整个文件，
-几 MB 的文件每次保存都算一遍并不划算；而任何真实写入都会更新 mtime。
+- state the reason (in Chinese, not an errno)
+- offer "Save As to another location"
+- if the user defers, **keep the dirty state** and state "your changes are still in the editor"
 
-### 写不进去时给出口，不要给死路
+Content must never be lost because one write failed.
 
-只读文件、被其他进程占用、目录无写权限——这些保存必然失败。
-此时**不能弹一个「保存失败」就结束**，而要给出可执行的下一步：
+### Why drafts are mandatory
 
-- 说明原因（用中文，不甩 errno）
-- 引导「另存为到其他位置」
-- 用户选择稍后处理时，**保持脏状态**并明确告知「修改仍在编辑器中」
+Untitled body text had nowhere to land on disk: no path → autosave cannot help; the session snapshot records paths only, no body text. Measured: "new → type → close window" loses content silently, empty array in `session.json`.
 
-内容绝不能因为一次写入失败就丢失。
+- **Untitled content survives restart** as an equally untitled dirty tab, body intact.
+- **Crash protection**: after a force-kill, the last backup is still on disk.
 
-### 为什么必须有草稿
+### Draft lifecycle
 
-未命名标签的正文原本**没有任何落盘去处**：没有路径，自动保存帮不上忙；
-会话快照只记路径，也带不走正文。实测确认过：「新建 → 输入 → 关窗口」
-内容会静默消失，且 `session.json` 里是空数组。
-
-草稿带来两个好处：
-
-- **未命名内容不再丢失**：重启后恢复成一个同样未命名的脏标签，正文完好。
-- **崩溃保护**：进程被强杀时，最后一次备份仍在磁盘上。
-
-### 草稿的生命周期
-
-| 时机 | 动作 |
+| Moment | Action |
 | --- | --- |
-| 标签变脏 | 防抖 2 秒后写一份草稿 |
-| 关闭窗口前 | **立即冲刷**所有脏标签的草稿（不能等防抖） |
-| 保存成功 | 删除该草稿 |
-| 用户选「不保存」 | 删除该草稿 |
-| 关闭窗口且用户已逐个处理完 | 清空全部草稿 |
+| Tab becomes dirty | write a draft after a 2-second debounce |
+| Before closing the window | **flush immediately** drafts for all dirty tabs (cannot wait for the debounce) |
+| Save succeeds | delete that draft |
+| User chooses "Don't save" | delete that draft |
+| Window closed and user handled every tab | clear all drafts |
 
-最后一条很重要：若不清理，下次启动会把刚处理过的内容又恢复一遍，
-造成「明明保存过却还提示有未保存内容」的困惑。
+Without the last row, the next launch restores just-handled content ("unsaved changes" despite having saved).
 
-### 删除草稿不能做「是否写过」的前置判断
+### Draft deletion must not pre-check "was it ever written"
 
-`dropDraft` 曾经用「本会话是否写过这份草稿」做前置 return。
-但**启动时从磁盘恢复的草稿没有经过写入路径**，不在那个集合里，
-于是保存或放弃之后草稿文件永远删不掉，重启又冒出来。
+`dropDraft` early-returned on "written this session"; a draft restored from disk at startup never went through the write path, so it could never be deleted and reappeared on restart. Deletion is idempotent (missing file = success): **just call it**, no pre-check.
 
-删除本身是幂等的（文件不存在也算成功），**直接调用即可**，不要加前置判断。
+### Editor search panel: vertical alignment must use flex, not `vertical-align`
 
-### 编辑器查找面板：垂直对齐必须用 flex，不能靠 vertical-align
+Three defects, all from `vertical-align` and the inline baseline:
 
-CodeMirror 的搜索面板有**三处对齐缺陷**，都源于它依赖 `vertical-align` 与行内基线：
-
-| 元素 | 默认做法 | 后果 |
+| Element | Default approach | Consequence |
 | --- | --- | --- |
-| 输入框 / 按钮 | `vertical-align: middle` | 与复选框不在同一中线 |
-| 复选框 | 行内元素按基线对齐 | 相对文字偏高 |
-| 关闭按钮 | `position: absolute; top: 0` | 被钉在面板顶端，且没有尺寸，显得又小又偏 |
+| Input / buttons | `vertical-align: middle` | not on the same centreline as the checkbox |
+| Checkbox | inline, aligned to baseline | sits too high relative to the text |
+| Close button | `position: absolute; top: 0` | pinned to the panel top; no size, looks small and off-position |
 
-**统一修法**：面板用 `display: flex` + `align-items: center`，让所有子项由 flex 居中，
-不再依赖 `vertical-align`。
+**Fix**: panel `display: flex` + `align-items: center`.
 
-配套要做的几件事：
+- Clear CodeMirror's `margin: .2em .6em .2em 0`; spacing via container `gap` (else a gap opens between checkbox and its text).
+- Checkbox label `inline-flex` + `gap`.
+- Close button: 20px hit area; `top: 50%` + `translateY(-50%)`; `26px` right padding on the panel (absolutely positioned, out of flow).
+- **Change light and dark rules together** — else alignment shifts on theme switch.
 
-- 清掉 CodeMirror 给的 `margin: .2em .6em .2em 0`，间距改由容器 `gap` 统一控制，
-  否则复选框与它的文字之间会裂开一道缝。
-- 复选框标签用 `inline-flex` + `gap` 把复选框与文字真正居中。
-- 关闭按钮给 20px 点击区，并用 `top: 50%` + `translateY(-50%)` 垂直居中；
-  面板右侧要留出 `26px` 内边距，因为它是绝对定位、不占文档流。
-- **亮暗两套的布局必须同步改**。两份只改一处，切主题时对齐就会变。
+**Trap: the button gradient is `background-image`, not `background-color`**: `'&light .cm-button': { backgroundImage: 'linear-gradient(#eff1f5, #d9d9df)' }`, `'&dark .cm-button': { backgroundImage: 'linear-gradient(...)' }` (`@codemirror/view`). `backgroundColor: 'transparent'` **does not override it**; write `backgroundImage: 'none'`, repeated for `hover` and `active`.
 
-**另一个必须注意的坑：按钮的渐变底是 `background-image`，不是 `background-color`。**
+### Title bar: skeleton actions left, window actions right
 
-```js
-// CodeMirror 的默认样式（在 @codemirror/view 里）
-'&light .cm-button': { backgroundImage: 'linear-gradient(#eff1f5, #d9d9df)' }
-'&dark .cm-button':  { backgroundImage: 'linear-gradient(...)' }
-```
+Split by **scope of effect**, not frequency:
 
-因此只写 `backgroundColor: 'transparent'` **覆盖不掉它**，按钮仍会显示那条深灰渐变。
-必须显式写 `backgroundImage: 'none'`，`hover` 与 `active` 态也要各写一遍。
-
-### 标题栏：左侧骨架操作，右侧窗口操作
-
-标题栏的按钮按「作用范围」分两侧，不按使用频率：
-
-| 位置 | 放什么 | 例子 |
+| Position | What goes there | Examples |
 | --- | --- | --- |
-| **左侧** | 影响**界面骨架**的操作 | 侧栏开关、应用菜单（汉堡包） |
-| **右侧** | **窗口级**操作 | 主题切换、最小化/最大化/关闭 |
+| **Left** | operations affecting the **UI skeleton** | sidebar toggle, app menu (hamburger) |
+| **Right** | **window-level** operations | theme switch, minimise/maximise/close |
 
-汉堡包菜单原本在右侧，与窗口按钮混在一起。实测改到左侧更自然：
-它和侧栏开关同属「改变界面布局」这一类，放在一起形成一组。
+Hamburger moved right → left: same "change the interface layout" class as the sidebar toggle.
 
-**主题切换独立成一个按钮**（[ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)），
-不再藏在汉堡包菜单里。原因：主题是高频操作，藏在两级菜单里要多点一次；
-而它只有三个选项，独占一个按钮的代价很小。**两处都放会让用户猜「哪个才是真的」，
-因此菜单里那份已移除。**
+**Theme switch is its own button** ([ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)), not in the hamburger: high-frequency, two levels deep costs a click, three options only. Rejected: duplicating it in both places — users guess "which one is real"; the menu copy was removed.
 
-两个容易写错的判断（`ThemeMenu` 里同时用到，不要合并）：
+Two judgements, both in `ThemeMenu`; do not merge:
 
-- **图标用 `mode.current`**（已解析的实际主题）。跟随系统时
-  `settings.theme` 是 `'system'`，那不是个可画的图标；用户想知道的是
-  「现在屏幕上是亮还是暗」。
-- **勾选状态必须比对 `settings.theme`**。系统为深色时，
-  `mode.current === 'dark'` 与 `settings.theme === 'system'` 会**同时成立**，
-  用 `mode.current` 判断勾选会让「深色」和「跟随系统」都显示为当前。
+- **Icon: `mode.current`** (resolved theme). Under follow-system `settings.theme` is `'system'`, not a drawable icon.
+- **Checkmark: `settings.theme`.** System dark → `mode.current === 'dark'` and `settings.theme === 'system'` true at once, so `mode.current` shows both "Dark" and "Follow system" as current.
 
-### 状态栏：空状态不写占位文字
+### Status bar: no placeholder text in the empty state
 
-没有打开任何文件时，状态栏**什么都不显示**，不写「就绪」。
+No file open → status bar **shows nothing**, no "Ready". It was a non-clickable placeholder; the status bar carries facts about the current file (line/column, language, encoding, line endings).
 
-原先那两个字是纯占位：它不告诉用户任何信息，也不可点击，
-而状态栏的每一寸都该承载「当前文件的事实」（行列、语言、编码、换行）。
-空着反而更清楚地表达「此刻没有文件」。
+### Action feedback: one line of status text in the title-bar centre, not toast
 
-### 操作反馈：标题栏中央的一行状态文字，不用 toast
+**No toast; no `svelte-sonner`.** [StatusLine.svelte](../../src/lib/components/layout/StatusLine.svelte) + [status.svelte.ts](../../src/lib/state/status.svelte.ts).
 
-**结论先行：不使用 toast，也不使用 `svelte-sonner`。**
-实现是 [../src/lib/components/layout/StatusLine.svelte](../../src/lib/components/layout/StatusLine.svelte)
-+ [../src/lib/state/status.svelte.ts](../../src/lib/state/status.svelte.ts)。
+#### Why toasts were dropped
 
-#### 为什么放弃 toast
+Unsuitable for operation confirmations:
 
-toast 用来表达「已保存」这类**操作确认**并不合适：
+1. **Intrusive** — floating card that moves and disappears on its own.
+2. **Positionally meaningless** — bottom-right (or top-centre) has no spatial relation to the event; drags the gaze off the document.
+3. **Redundant** — the dirty dot clears and the status bar updates anyway.
 
-1. **打扰**：它是浮在内容之上的卡片，还会自己移动、自己消失，天然抢注意力。
-2. **位置无语义**：右下角（或顶部居中）与「刚刚发生了什么」没有空间关联，
-   用户的视线本来在文档上，却要被拉到一个角落。
-3. **冗余**：同一件事往往还有别处能看出来——保存后标题栏的未保存圆点会消失、
-   状态栏内容会更新。再弹一张卡片是第三遍重复。
+**Fix**: one short line (icon + text) in the title-bar centre, auto-dismisses after a few seconds.
 
-**改法**：在标题栏中央显示一行简短文字（图标 + 文案），几秒后自动消失。
-位置固定、不遮挡内容、不需要用户做任何事。信息量不变，打扰程度低得多。
+#### The title-bar centre no longer shows the file name
 
-#### 标题栏中央不再显示文件名
+The tab bar already shows it less than 40px away. The space goes to what changes: "did the thing that just happened succeed".
 
-原先那里常驻显示当前标签的文件名。但**标签栏已经写着同一个名字**，
-两者相距不到 40px——纯属重复。这块空间留给真正会变的信息：
-「刚才那件事做成了没有」。
+#### Status line vs native dialog: the division of labour
 
-#### 状态提示与原生对话框的分工
-
-这是本设计里最重要的一条界线：
-
-| 用途 | 形式 | 例子 |
+| Purpose | Form | Example |
 | --- | --- | --- |
-| **告知**（用户无需决策） | 标题栏状态提示，自动消失 | 已保存、已加载磁盘内容 |
-| **决策**（用户必须选择） | 原生 `message()` 对话框 | 覆盖磁盘 / 加载磁盘 / 另存为；保存 / 不保存 / 取消 |
+| **Inform** (no user decision) | Title-bar status line, auto-dismiss | Saved; disk contents loaded |
+| **Decide** (user must choose) | Native `message()` dialog | Overwrite disk / load disk / save as; save / don't save / cancel |
 
-**需要决策的事绝不能只显示一行会消失的字**——用户还没读完它就没了，
-而操作却在等他回答。反过来，「已保存」也绝不该弹一个需要点击的框。
+**A decision must never be a single line that disappears** (it vanishes while the operation waits); "Saved" must never raise a click-requiring dialog.
 
-#### 时长按语气分档
+#### Duration tiers by tone
 
-成功一闪而过即可，错误要留久一点（用户可能需要看清原因）：
-
-| 语气 | 时长 | 颜色 |
+| Tone | Duration | Colour |
 | --- | --- | --- |
-| success | 2.2s | 绿色 |
-| info | 2.6s | 次要文字色 |
-| warning | 4s | 琥珀 |
+| success | 2.2s | green |
+| info | 2.6s | secondary text colour |
+| warning | 4s | amber |
 | error | 6s | destructive |
 
-**连续调用直接替换上一条，不排队。** 排队会让提示严重滞后于操作——
-用户已经做完三件事，屏幕还在报第一件。
+**Consecutive calls replace the previous message; never queue** — queuing lags messages far behind actions.
 
-#### 两个容易忽略的细节
+#### Two easily missed details
 
-1. **动画的 key 必须用递增序号，不能用文字。**
-   连续两次「已保存」文字相同，若用文字做 `{#key}`，第二次不会重新挂载，
-   看起来像没反应。用自增的 `seq` 才能每次重放淡入。
-2. **用户再次编辑时要清掉「已保存」。**
-   否则标题栏继续挂着「已保存」而文档已经脏了，这条提示就从
-   「操作确认」变成了「误导」。只清 success，错误与警告不该被一次按键打断。
+1. **Animation key = incrementing sequence number, never the text.** Consecutive "Saved" messages share identical text, so with text as `{#key}` the second does not remount; only an auto-incremented `seq` replays the fade-in.
+2. **Clear "Saved" on the next edit** — else the title bar says "Saved" while the document is dirty. Clear only `success`; errors and warnings must not be interrupted by a keystroke.
 
-#### 文案要短
+#### Keep the copy short
 
-「已保存」而不是「文件保存成功」；「未保存，修改仍在编辑器中」而不是
-「保存操作失败，您的修改仍然保留在编辑器中，请稍后重试」。
-标题栏只有一行，写长了会被截断，也违背「安静」的定位。
+"Saved", not "File saved successfully"; "Not saved, changes are still in the editor", not "The save operation failed; your changes remain in the editor, please retry later". Long text truncates.
 
-#### 只用图标与文字上色，不加底色
+#### Colour the icon and text only — no background fill
 
-标题栏是常驻界面元素，一块彩色背景会显得像系统通知，与「安静」的定位冲突。
-四种语气各一个图标 + 一种文字颜色即可。
+A coloured background reads as a system notification. Four tones = one icon + one text colour each.
 
-### 必须关掉 WebView2 的浏览器快捷键
+### WebView2 browser accelerator keys must be disabled
 
-Tauri 用 WebView2（Chromium），它默认带一整套**浏览器**快捷键：
-`Ctrl+F` 弹浏览器查找栏、`Ctrl+P` 打印、`F3` 下一个匹配、`Ctrl+加号` 缩放。
+WebView2 (Chromium) ships **browser** accelerators: `Ctrl+F` find bar, `Ctrl+P` print, `F3` next match, `Ctrl+plus` zoom — web-page features, not desktop-app features; the user expects the editor's own find panel.
 
-这些是「网页」功能，不是「桌面应用」功能。用户按 `Ctrl+F` 期待编辑器自己的查找面板，
-结果弹出浏览器的查找栏——那个查找栏不受我们控制、样式也完全不同，只会让人懵。
+Fix: `with_browser_accelerator_keys(false)` on the main window in `lib.rs` (WebView2 `SetAreBrowserAcceleratorKeysEnabled(false)`). Keeps copy/paste/select-all.
 
-修法：在 `lib.rs` 里对主窗口调用 `with_browser_accelerator_keys(false)`
-（对应 WebView2 的 `SetAreBrowserAcceleratorKeysEnabled(false)`），
-关闭全部浏览器专有快捷键，同时保留复制/粘贴/全选等通用编辑快捷键。
+`Cargo.toml` must declare both `webview2-com` and `windows`, **versions matching wry's in `Cargo.lock`** — else COM types are incompatible.
 
-需要在 `Cargo.toml` 显式声明 `webview2-com` 与 `windows` 两个 crate，
-**版本必须与 `Cargo.lock` 中 wry 使用的一致**，否则 COM 类型不兼容。
+### A navigation guard must be installed, denying external navigation by default
 
-### 必须装导航守卫，默认拒绝外部导航
+Tauri default **allows all navigation** (`|_, _| true`): one external link click in the Markdown preview replaces the app UI with a web page; no address bar, no back button — restart only.
 
-Tauri 的默认行为是**放行一切导航**（`|_, _| true`）。对一个只渲染本地界面的
-编辑器来说这太宽松：Markdown 预览里的外链一旦被点击，WebView 会直接导航过去，
-应用界面被替换成网页——而窗口没有地址栏也没有后退按钮，用户只能重启。
+1. **Frontend** (`MarkdownPreview.svelte`): event delegation intercepts `<a>` clicks, hands `http(s)` links to the `opener` plugin's `openUrl`.
+2. **Rust** (`navigation_guard` in `lib.rs`): allow only the app's own origin, deny the rest — the backstop.
 
-两道防线：
-
-1. **前端**（`MarkdownPreview.svelte`）：用事件委托拦下 `<a>` 点击，
-   把 `http(s)` 链接交给 `opener` 插件的 `openUrl` 用系统浏览器打开。
-2. **Rust**（`lib.rs` 的 `navigation_guard`）：只放行应用自身来源，
-   其余一律拒绝。这是兜底——即使前端漏了，界面也不会被顶掉。
-
-注意窗口是在 `tauri.conf.json` 里声明的，拿不到 `WebviewWindowBuilder`
-去调 `.on_navigation()`；应用级 `tauri::Builder` 也没有这个钩子，
-但**插件**有（Tauri 在每次导航前会询问所有插件）。因此用一个最小插件挂上去。
+The window is declared in `tauri.conf.json`, so no `WebviewWindowBuilder` `.on_navigation()`, and app-level `tauri::Builder` has no such hook; **plugins** do. Mount the guard on a minimal plugin.
 
 ---
 
-## 16. 已知的实现陷阱（改代码前必读）
+## 16. Known implementation traps (read before changing code)
 
-### Svelte 5：runes 只能写在 `.svelte` / `.svelte.ts` 里
+### Svelte 5: runes only work inside `.svelte` / `.svelte.ts`
 
-`$state` / `$derived` / `$effect` 放在普通 `.ts` 文件里会在**启动时**
-抛 `rune_outside_svelte`，**整个应用白屏**。
+Runes in a plain `.ts` throw `rune_outside_svelte` **at startup** and **blank the whole app**; **`svelte-check` stays green** and misses it.
 
-最麻烦的是 **`svelte-check` 查不出来**——类型检查全绿，只有真跑起来才暴露。
-i18n 的语言状态就踩过这一次：它原本在 `i18n/index.ts` 里，
-启动即白屏，控制台只有一句 `rune_outside_svelte`。
+**Rule: a module declaring runes must have a filename ending in `.svelte.ts`.** Pure functions and types stay in plain `.ts` (`i18n/locale.ts`); state goes in its own `.svelte.ts` (`i18n/locale.svelte.ts`).
 
-**规则：只要一个模块需要声明 runes，文件名就必须以 `.svelte.ts` 结尾。**
-纯函数与类型可以留在普通 `.ts` 里（如 `i18n/locale.ts`），
-状态单独放 `.svelte.ts`（如 `i18n/locale.svelte.ts`）。
+Debug: attach over CDP, read console exceptions (script in the "verifying styles" section below).
 
-排查手法：用 CDP 连页面读控制台异常（见下面「验证样式」一节的脚本写法），
-比读代码猜快得多。
+### Svelte 5: `$derived` does not update when reading a plain `Set` / `Map`
 
-### Svelte 5：`$derived` 读普通 `Set` / `Map` 不会更新
+`$derived` recomputes only when a **reactive source it read** changes; adding to or removing from a plain `Set` / `Map` emits no signal, so the value is computed once and stays stale.
 
-`$derived` 只在它**读到的响应式源**变化时重算。普通 `Set` / `Map` 的增删
-不产生任何信号，因此派生值只在首次求值时算一次，之后永远保持旧值。
+Rejected: plain `Set` of loading tab ids (`state/images.svelte.ts`) read by `isLoading()` and wrapped in `$derived` in `ImageViewer` — `loading` stayed `false`, so a read showed "cannot display this image" instead of a loading state.
 
-踩过的坑（`state/images.svelte.ts`）：加载中的标签 id 放在普通 `Set` 里，
-`isLoading()` 读它、`ImageViewer` 用 `$derived` 包起来——结果 `loading`
-永远是 `false`，读取期间界面显示的是「无法显示此图片」而不是加载中。
-
-**规则：凡是会被 `$derived` / 模板读取的集合状态，必须放在响应式容器里。**
-本项目的做法是用 `$state.raw` 装一个不可变对象，每次改动整体替换：
+**Rule: any collection state read by `$derived` / the template must live in a reactive container.** Convention here: `$state.raw` holding an immutable object, replaced wholesale on every change:
 
 ```ts
 let loading = $state.raw<Record<string, boolean>>({});
-// 写入时整体替换，读取 loading[id] 才能建立依赖
+// Replace wholesale on write so that reading loading[id] establishes the dependency
 loading = { ...loading, [id]: true };
 ```
 
-### CodeMirror：`updateListener` 不会为初始状态触发
+### CodeMirror: `updateListener` does not fire for the initial state
 
-**用它做「初次计算」是无效的。** 视图刚创建时什么都不会发生，
-要等用户第一次编辑或滚动才跑——表现为「功能没生效」。
+It never runs at view creation — only on the first edit or scroll, so using it for a "first computation" leaves the feature looking broken on open.
 
-缩进参考线与括号彩虹都踩过：用 `StateField` + `updateListener` 写，
-结果刚打开文件时一条线/一个颜色都没有。
+Rejected: indent guides and bracket rainbow built with `StateField` + `updateListener` — opening a file showed no lines or colours.
 
-**正解：用 `ViewPlugin`。** 它的构造函数在视图创建时就会执行，
-天然覆盖初始状态，而且它持有 `EditorView`，能直接读 `visibleRanges`。
+**Correct approach: `ViewPlugin`.** Its constructor runs at view creation, covering the initial state, and it holds the `EditorView`, so it reads `visibleRanges` directly.
 
-### CodeMirror：预计算缓存放 `StateField`，装饰放 `ViewPlugin`
+### CodeMirror: precomputed caches go in `StateField`, decorations in `ViewPlugin`
 
-需要「知道进入视口前的状态」时（例如某一行开头的括号嵌套深度），
-只扫可见范围是算不出来的。做法是：
+"The state before entering the viewport" (e.g. bracket nesting depth at the start of a line) is not computable from the visible range alone.
 
-- **`StateField` 缓存预计算结果**（每行行首的深度），文档变化时重算一次；
-- **`ViewPlugin` 只读缓存并生成装饰**，滚动时 O(可见行数)。
+- **`StateField` caches the precomputed result** (depth at each line start), recomputed once per document change;
+- **`ViewPlugin` only reads the cache and builds decorations**, O(visible lines) per scroll.
 
-括号彩虹就是这么做的。若改成每次滚动都从头扫描，滚到文件底部就是 O(n)。
+Bracket rainbow works this way; rescanning from scratch per scroll is O(n) at the bottom of the file.
 
-### 扫描文本时，跳过区间要用游标推进
+### Scanning text: skipped ranges need a cursor that only advances
 
-把「字符串/注释」这类不参与计数的区间找出来后，
-**不要在每字符处线性查找**——那是 O(字符数 × 区间数)，
-几十万字符的文档会慢到不可用。
+With ranges that must not be counted (strings/comments), **do not linearly search at every character** — O(characters × ranges), unusable at hundreds of thousands of characters.
 
-` syntaxTree.iterate` 按位置**升序**产生节点，因此一个只前进的下标就够，
-整体降到均摊 O(1)。括号彩虹的 `scanBrackets` 就是这么写的。
+`syntaxTree.iterate` yields nodes in **ascending** position order, so one forward-only index suffices, amortised O(1). `scanBrackets` (bracket rainbow) is written this way.
 
-### CSS：`background-repeat: repeat-x` 会让渐变铺满整行
+### CSS: `background-repeat: repeat-x` makes the gradient fill the whole line
 
-缩进参考线的竖线曾经**横跨整个行宽、每 2 个字符一条**，像稿纸。
-原因是把两个「重复」混淆了：
+Two different "repeats" conflated:
 
-- `background-size: 2ch` 只控制**每条渐变**的宽度；
-- `background-repeat: repeat-x` 让那一份在**整行**重复。
+- `background-size: 2ch` controls only the width of **each gradient**;
+- `background-repeat: repeat-x` repeats that one copy across the **whole line**.
 
-两者叠加就成了密纹。正解是把重复分成两层：
+Together: dense striping, one guide every 2 characters, like ruled paper. Correct fix — split repetition into two layers:
 
-1. **外层** `no-repeat`，并用 `background-size` 把这一份限制为
-   **该行的缩进宽度**（由内联 CSS 变量按行给出）。
-2. **内层** 用 `repeating-linear-gradient` 在这份宽度里按缩进步长画线。
+1. **Outer** `no-repeat`, `background-size` limiting this copy to **the line's indent width** (per-line inline CSS variable).
+2. **Inner** `repeating-linear-gradient` drawing lines at indent-step intervals within that width.
 
-### Svelte 5：`$effect` 里调用会读写同一份状态的外部函数要用 `untrack`
+### Svelte 5: an `$effect` calling an external function that reads and writes the same state needs `untrack`
 
-`$effect` 会追踪同步执行期间读到的**所有**响应式值。若调用的函数内部
-既读又写同一份状态（例如 `ensureImage` 读 `images` / `loading` 又写 `loading`），
-写入就会反过来触发 effect 重跑。虽然靠「第二次进来就早退」能收敛，
-但那是不必要的隐式依赖，容易在后续改动中变成死循环。
+`$effect` tracks **every** reactive value read during synchronous execution. A callee that both reads and writes the same state (`ensureImage` reads `images` / `loading` and writes `loading`) re-triggers the effect through that write; it converges only because the second pass early-returns — an implicit dependency that easily becomes an infinite loop in later changes.
 
-用 `untrack()` 把这类调用包起来，让 effect 只依赖真正该依赖的值。
+Wrap such calls in `untrack()`.
 
-### 内部路径用正斜杠，展示给用户时必须换回原生分隔符
+### Internal paths use forward slashes; convert to native separators before showing the user
 
-Rust 侧统一用 `paths::to_slash()` 把路径转成正斜杠（`C:/Users/...`），
-这是**内部约定**：跨平台比较与去重都靠它。这个行为已被单测固定。
+Rust normalises paths to forward slashes with `paths::to_slash()` (`C:/Users/...`). **Internal convention**: cross-platform comparison and deduplication rely on it, and unit tests pin the behaviour.
 
-但它**不适合直接交给用户**。实测按 `Ctrl+Shift+C` 复制出来的是
-`C:/Users/PC/AppData/Local/Temp/x.txt`——PowerShell 能识别，
-但 cmd.exe 的 `cd`、不少构建脚本、以及「运行」对话框都不认，
-用户看到正斜杠也会觉得「这不是 Windows 路径」。
+It **must not be handed to the user directly**. Measured: `Ctrl+Shift+C` copied `C:/Users/PC/AppData/Local/Temp/x.txt` — PowerShell accepts it, but cmd.exe's `cd`, many build scripts, and the Run dialog do not.
 
-**规则：`tab.path` 是内部表示，不要直接用于展示或交给系统 Shell。**
-需要时经 `file-actions.ts` 的 `toDisplayPath()` 转换
-（Windows 换回 `\`，macOS 本来就是 `/`）。`copyPath` 与
-`revealInFolder` 都走这个转换。
+**Rule: `tab.path` is an internal representation; never use it directly for display or hand it to a system shell.** Convert through `toDisplayPath()` in `file-actions.ts` (Windows back to `\`; macOS is already `/`). Both `copyPath` and `revealInFolder` go through this conversion.
 
-### 缩进参考线：用社区库，不要自己写
+### Indent guides: use the community library, do not hand-roll
 
-**结论先行：这个功能用 `@replit/codemirror-indentation-markers`，别自己实现。**
+**Use `@replit/codemirror-indentation-markers`; do not implement this yourself.**
 
-我先后自己写过三版，每一版都被实测打回（竖线断开、贴着行号边框、
-与文字错位、正文被 `opacity` 一起淡化）。复盘下来，难点根本不在
-「画几条线」，而在两个容易被低估的地方：
+Rejected: three hand-written versions, each failed by measurement — broken vertical lines, lines hugging the gutter border, misalignment with text, body text faded along with the lines via `opacity`. Two parts are underestimated:
 
-1. **渲染层**。给 `.cm-line` 加背景渐变会与它自身的选中高亮、
-   当前行底色互相干扰；而且背景从 padding 盒还是 content 盒起算，
-   直接决定线会不会偏到行号边框上。库改用**绝对定位的 `::before`
-   伪元素**（`z-index: -1`、`left: 2px`），把「画线」与「行的底色」
-   彻底分开。
-2. **层级推断**。空行该继承哪一级缩进是个真正的启发式问题。
-   「沿用上一行」在块首/块尾的空行上就会画错；库会**同时向前后
-   找最近的非空行**，再按它们的层级关系决定（见其 `IndentationMap`），
-   与 Ace / Monaco 同源。
+1. **Rendering layer.** A background gradient on `.cm-line` interferes with that line's own selection highlight and current-line background, and padding-box vs content-box decides whether the line drifts onto the gutter border. The library uses an **absolutely positioned `::before`** (`z-index: -1`, `left: 2px`), separating "drawing the line" from "the line's background".
+2. **Level inference.** Which indent level an empty line inherits is a genuine heuristic; "reuse the previous line" draws wrong on empty lines at block start/end. The library **searches both forward and backward for the nearest non-empty lines** and decides from their level relationship (`IndentationMap`) — Ace / Monaco lineage.
 
-**判断标准**：像这样「有公认实现、且细节比看起来多得多」的功能，
-直接用成熟库。省下的不只是时间，更是那些只有真跑起来才暴露的边界情况。
+**Criterion: where an accepted implementation exists and the details are far deeper than they look, use the mature library** — you save the edge cases that only surface when it runs.
 
-用的时候有两点值得记下：
+- **Set `markerType` to `codeOnly`, not the default `fullScope`.** `fullScope` draws lines to the **end of the scope**, leaving contentless vertical lines dangling after an object literal (measured: lines ran to the bottom of the editor). `codeOnly` stops lines at the scope's **last non-empty line**.
+- **Pass the colour as `var(--indent-guide)`.** The library assigns it to `--indent-marker-bg-color`; CSS variables nest and it still resolves, so the line colour follows `:root` / `.dark` on theme switch — no two colour sets in JS.
 
-- **`markerType` 选 `codeOnly`，不要用默认的 `fullScope`。**
-  `fullScope` 会把线画到**作用域结束**，于是对象字面量之后的空区域里
-  垂下几条没有内容的竖线（实测截图里线一直延伸到编辑器底部）。
-  `codeOnly` 让线止于该作用域**最后一个非空行**。
-- **颜色传 `var(--indent-guide)`**。CSS 变量可以层层引用，
-  库把它赋给 `--indent-marker-bg-color` 后仍能正确解析，
-  于是亮/暗主题切换时线色跟着 `:root` / `.dark` 自动变，
-  不必在 JS 里维护两套色值。
+### Editor gutter: separate with whitespace, not lines and colour blocks
 
-### 编辑器行号区：靠留白区分，不靠线条和色块
+Gutter and body share the **same background, no divider line**.
 
-行号区与正文**同底色、无分隔线**。
+Rejected: slightly darker background plus a 1px right border — fragmented the editor's left half into two colour blocks, and the guide lines hugged that border. Separation now comes from whitespace: line numbers 1px smaller than the body text and a lighter colour.
 
-早先是略深的底色 + 一条 1px 右边框，想把两者分开。实测那样反而割裂：
-编辑器左半边被切成两块色，参考线又紧贴着那条边框，看起来像「线贴到了
-边界上」。现在靠留白区分——行号本身比正文小 1px 且颜色更淡，
-已经足够形成层级。
+- **`border: none` does not clear that divider.** CodeMirror's default theme adds it under `&light .cm-gutters` via `&.cm-gutters-before { borderRightWidth: 1px }`, **more specific** than `.cm-gutters`; write `&.cm-gutters-before { borderRightWidth: 0 }` to override it (measured).
+- **Current-line highlight must be the same colour on both sides.** `.cm-activeLine` and `.cm-activeLineGutter` need exactly matching backgrounds, otherwise the highlight band breaks at the gutter/body boundary and shows a seam (the two differed by 10x chroma before).
 
-两个必须注意的实现细节：
+### Matching-bracket highlight: follow "whose colour it is"
 
-- **`border: none` 清不掉那条分隔线。** CodeMirror 的默认主题是在
-  `&light .cm-gutters` 里用 `&.cm-gutters-before { borderRightWidth: 1px }`
-  加它的，选择器比 `.cm-gutters` **更具体**，必须显式写
-  `&.cm-gutters-before { borderRightWidth: 0 }` 才能覆盖（实测如此）。
-- **当前行高亮必须两侧同色。** `.cm-activeLine` 与 `.cm-activeLineGutter`
-  的底色要完全一致，否则高亮横带会在行号与正文交界处断开、露出接缝。
-  早先两者色相不同（chroma 差 10 倍），行号底色统一之后这个差异就会暴露。
-
-### 匹配括号高亮：跟着「谁的颜色」走
-
-光标停在括号旁时，那个括号会加一层底纹。底纹用**哪个颜色**取决于
-是否开了括号彩虹——这不是随手定的，而是因为两个功能的 DOM 是嵌套的。
-
-实测确认 CodeMirror 生成的结构：
+Which colour the cursor-adjacent bracket's tint layer takes depends on whether rainbow brackets are on, because the two features' DOM is nested. Measured CodeMirror structure:
 
 ```html
 <span class="cm-rainbow-1"><span class="cm-matchingBracket">[</span></span>
 ```
 
-匹配括号是**内层** span，彩虹类是它的**直接父级**。因此：
+The matching bracket is the **inner** span; the rainbow class is its **direct parent**.
 
-| 场景 | 底纹颜色 | 选择器 |
+| Case | Tint colour | Selector |
 | --- | --- | --- |
-| 开了彩虹 | 该括号**自己的颜色** | `[class*="cm-rainbow-"] > .cm-matchingBracket` |
-| 未开彩虹 | **强调色** `--brand-500` | `.cm-matchingBracket` |
+| Rainbow on | that bracket's **own colour** | `[class*="cm-rainbow-"] > .cm-matchingBracket` |
+| Rainbow off | **accent** `--brand-500` | `.cm-matchingBracket` |
 
-前者更具体（多一个父级限定），会自然覆盖后者，**不需要 `!important`**。
+The first is more specific (extra parent qualifier) and naturally overrides the second — **no `!important` needed**.
 
-两个实现要点：
+- **The rainbow-on rule uses `currentColor`.** The inner span inherits the outer rainbow colour, so `color-mix(in oklch, currentColor 22%, transparent)` yields a same-hue tint directly.
+- **The parent uses the attribute prefix `[class*="cm-rainbow-"]`, not a list of class names**, so 3 → 4 levels later needs no change.
 
-- **开彩虹那条用 `currentColor`**。内层 span 会继承外层的彩虹色，
-  `color-mix(in oklch, currentColor 22%, transparent)` 直接得到同色系底纹。
-- **父级用属性前缀 `[class*="cm-rainbow-"]` 而不是逐个列类名**。
-  档位数以后从 3 调到 4 时，这条规则不需要跟着改。
+Rejected: hardcoded `oklch(0.88 0.06 62 / 0.5)` (warm beige) left over from before the accent-colour system — a blue/green/orange bracket turned beige under the cursor and did not move when the accent colour changed.
 
-**早先这里写死了 `oklch(0.88 0.06 62 / 0.5)`（暖米色）**，
-那是强调色系统引入之前留下的。后果是：括号本身是蓝/绿/橙，
-光标停上去却变成一块米色，两个功能各说各话；而用户换强调色时它纹丝不动。
+Dark theme opacity must be 28-30%; lower is nearly invisible on a dark background.
 
-暗色主题的透明度要提到 28–30%：深底上低透明度几乎看不出来。
+### CSS `transform` does not change the layout box size
 
-### CSS transform 不改变布局盒尺寸
+Images are laid out at their actual scaled `width / height`, so the scroll range is the true size. Rejected: "original-size image + `transform`" — still kept original-size overflow when scaled down.
 
-图片查看器以实际可视区域减去四周 16px 留白，计算适应窗口的倍率；小图默认不放大。
-使用 `ResizeObserver` 跟随窗口、侧栏和标签可见性的变化。默认缩放及「重置」都恢复适应窗口。
-手动缩放从当前显示倍率起算，并保留视口中心的图片位置；原始尺寸单独切换到 100%。
-图片区域支持 Ctrl + 鼠标滚轮缩放，以鼠标指向的位置为中心；普通滚轮继续滚动图片。
-按住空格进入抓手模式，左键拖动图片以平移；拖动时使用 pointer capture，避免移出视口后中断。
-松开空格、切换标签或窗口失去焦点时退出抓手模式。输入框、可编辑内容和对话框不拦截空格。
-图片画布和文本编辑区不显示整块焦点描边；抓手模式把焦点移到画布，不让最后点击的工具栏按钮出现键盘焦点框。
-按钮、输入框和标签页的键盘导航提示仍保留。
-wheel 监听为非 passive，取消浏览器页面缩放；按像素、行或页归一化滚轮增量，
-兼容普通鼠标与触控板，并沿用 1%–800% 的缩放范围。
+Image viewer:
 
-图片按缩放后的实际 `width / height` 布局，滚动范围由真实尺寸决定。
-旧的「原尺寸图片 + transform」在缩小时仍会保留原尺寸的溢出范围，因此不再使用。
-居中容器采用 `max-content` 尺寸、`min-w-full / min-h-full` 和网格居中：
-小于视口时居中，大于视口时四边都可滚到；只有图片加留白超出对应方向时才出现滚动条。
+- Fit-to-window = actual visible area minus 16px padding on all sides; small images are not upscaled by default; `ResizeObserver` follows window, sidebar, and tab-visibility changes.
+- Default zoom and "Reset" both restore fit-to-window. Manual zoom starts from the current displayed scale and preserves the image position at the viewport centre; original size switches to 100% separately.
+- Zoom range 1%-800%. Ctrl + mouse wheel zooms centred on the pointer position; plain wheel keeps scrolling the image. Wheel listener is non-passive and cancels browser page zoom; normalize deltas by pixel, line, or page for both mice and trackpads.
+- Space = hand mode, left-drag pans; use pointer capture while dragging so panning is not interrupted on leaving the viewport. Exit hand mode on Space release, tab switch, or window blur. Inputs, editable content, and dialogs do not intercept Space.
+- Image canvas and editor area show no whole-block focus outline; hand mode moves focus to the canvas so the last-clicked toolbar button shows no keyboard focus ring. Keyboard navigation hints for buttons, inputs, and tabs remain.
+- Centering container: `max-content` sizing, `min-w-full / min-h-full`, grid centering — centred when smaller than the viewport, scrollable to all four edges when larger; scrollbars appear only when image plus padding exceeds that direction.
 
-原始像素尺寸、文件体积与格式统一放在左下角状态栏，不再显示泛化的「图片」标签。
-顶部工具栏只保留缩放、重置、适应窗口、原始尺寸及「用外部程序打开」。
-Windows 外部打开调用系统应用程序选择器；macOS 选择已安装的 .app，然后打开原文件。
-Windows 安装包同时注册 OpenWithProgids、SupportedTypes 和 RegisteredApplications/Capabilities；
-NSIS 和 MSI 的候选项从 `tauri.conf.json` 的文件类型列表生成，不修改用户的 UserChoice 默认选择。
+Status bar: original pixel dimensions, file size, format; the generic "Image" label is gone. Top toolbar keeps only zoom, reset, fit-to-window, original size, and "Open with external program".
 
-窗口使用 `visible: false` 创建，由 window-state 插件恢复位置与尺寸后显示，避免启动时先居中再跳位。
+External open: Windows calls the system application picker; macOS selects the installed .app and then opens the original file. The Windows installer registers OpenWithProgids, SupportedTypes, and RegisteredApplications/Capabilities; NSIS and MSI candidates are generated from the file-type list in `tauri.conf.json`; the user's UserChoice default is never modified.
 
-### 快捷键面板必须与实际绑定一致
+Window is created `visible: false` and shown after the window-state plugin restores position and size — avoids a centre-then-jump on startup.
 
-`ShortcutsDialog` 里列出的编辑器快捷键，真实定义在 CodeMirror 的 keymap 中，
-不在本项目代码里。**写进面板前必须去 `node_modules/@codemirror/*` 核对**。
+### The shortcuts panel must match the real bindings
 
-已发现的错误：`Ctrl+H 替换`（`searchKeymap` 根本没有 `Mod-h`）、
-`Ctrl+Shift+Z 重做`（`historyKeymap` 里是 `Mod-y`，Windows/Linux 用 `Ctrl+Y`，
-`Ctrl+Shift+Z` 只在 macOS 与 Linux 生效）。
+`ShortcutsDialog` editor shortcuts are defined in CodeMirror keymaps, not in this project's code. **Verify against `node_modules/@codemirror/*` before writing anything into the panel.**
 
-面板承诺了做不到的事，比不写更糟。因此编辑器内建的那批已抽到
-`utils/hotkeys.ts` 的 `EDITOR_HOTKEYS`，集中核对、集中维护。
+Errors found: `Ctrl+H Replace` (`searchKeymap` has no `Mod-h` at all), `Ctrl+Shift+Z Redo` (`historyKeymap` uses `Mod-y`; Windows/Linux use `Ctrl+Y`; `Ctrl+Shift+Z` only works on macOS and Linux).
+
+Editor built-ins live in `EDITOR_HOTKEYS` in `utils/hotkeys.ts`, verified and maintained in one place — a panel that promises what it cannot do is worse than no panel.
 
 ---
 
-## 17. 相关文件
+## 17. Related files
 
-| 文件 | 作用 |
+| File | Purpose |
 | --- | --- |
-| [../src/app.css](../../src/app.css) | 令牌定义、`@custom-variant`、全局基础样式 |
-| [../src/constants.ts](../../src/constants.ts) | 字号范围、阈值、扩展名列表 |
-| [../src/lib/components/common/Hint.svelte](../../src/lib/components/common/Hint.svelte) | 图标按钮 + 提示的封装 |
-| [../src/lib/components/layout/StatusLine.svelte](../../src/lib/components/layout/StatusLine.svelte) | 标题栏中央的操作反馈 |
-| [../src/lib/state/status.svelte.ts](../../src/lib/state/status.svelte.ts) | 状态提示的状态与时长 |
-| [../src/lib/editor/themes.ts](../../src/lib/editor/themes.ts) | CodeMirror 亮暗主题与语法高亮 |
-| [../src/lib/utils/hotkeys.ts](../../src/lib/utils/hotkeys.ts) | 全局快捷键注册 + `EDITOR_HOTKEYS`（面板用） |
-| [../src/lib/components/ui/](../../src/lib/components/ui/) | shadcn-svelte 组件（供应商代码，改样式不改结构） |
+| [../src/app.css](../../src/app.css) | Token definitions, `@custom-variant`, global base styles |
+| [../src/constants.ts](../../src/constants.ts) | Font-size range, thresholds, extension list |
+| [../src/lib/components/common/Hint.svelte](../../src/lib/components/common/Hint.svelte) | Icon-button + tooltip wrapper |
+| [../src/lib/components/layout/StatusLine.svelte](../../src/lib/components/layout/StatusLine.svelte) | Action feedback in the title-bar centre |
+| [../src/lib/state/status.svelte.ts](../../src/lib/state/status.svelte.ts) | Status-hint state and duration |
+| [../src/lib/editor/themes.ts](../../src/lib/editor/themes.ts) | CodeMirror light/dark themes and syntax highlighting |
+| [../src/lib/utils/hotkeys.ts](../../src/lib/utils/hotkeys.ts) | Global shortcut registration + `EDITOR_HOTKEYS` (for the panel) |
+| [../src/lib/components/ui/](../../src/lib/components/ui/) | shadcn-svelte components (vendor code: change styles, not structure) |

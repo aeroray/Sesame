@@ -2,7 +2,7 @@
 
 Memory here applies only when touched files or task scope match this area.
 
-## MC-AREA-20261007-a1b2c3d4 — 行号栏与折叠栏
+## MC-AREA-20261007-a1b2c3d4 — Line-number and fold gutter
 
 Status: active
 Scope: area:editor
@@ -13,12 +13,12 @@ Evidence:
 - repo:src/lib/editor/fold-gutter.ts
 
 Decision:
-行号用 flex 居中而非默认行盒；折叠标记用 SVG chevron，两者一起开关。
+Centre line numbers with flex, not the default line box. Draw fold markers as SVG chevrons. Toggle both together.
 
 Reason:
-行号字号小 1px，行盒贴顶、墨迹偏高。
+Line numbers use a 1px smaller font, so their line box is shorter than the cell and sits high, pushing the ink up.
 
-## MC-AREA-20261007-b2c3d4e5 — 编辑器装配与面板对齐
+## MC-AREA-20261007-b2c3d4e5 — Editor assembly and panel alignment
 
 Status: active
 Scope: area:editor
@@ -29,12 +29,12 @@ Evidence:
 - repo:src/lib/editor/extensions.ts
 
 Decision:
-扩展手工装配、分 Compartment，视图与正文不进响应式状态；查找面板用 flex 居中。
+Assemble extensions by hand in Compartments. Keep the `EditorView` and document text out of reactive state. Centre the search panel with flex.
 
 Reason:
-手工装配才能按设置项热重配。
+Hand assembly is what makes per-setting hot reconfiguration possible.
 
-## MC-AREA-20261007-d4e5f6a7 — 大文件与深休眠
+## MC-AREA-20261007-d4e5f6a7 — Large files and deep sleep
 
 Status: active
 Scope: area:editor
@@ -45,12 +45,12 @@ Evidence:
 - repo:src/lib/editor/large-file.svelte.ts
 
 Decision:
->5 MB 只加载前缀，分块追加不触发脏标记；深休眠按取正文、`detachView`、写回的顺序。
+Over 5 MB load a prefix only; chunked appends must not mark the tab dirty. Deep sleep runs take-text, `detachView`, write-back, in that order.
 
 Reason:
-顺序颠倒会把刚保存的正文删掉。
+Reversing the order deletes the text that was just saved.
 
-## MC-AREA-20261007-e5f6a7b8 — 图片查看器按真实尺寸布局
+## MC-AREA-20261007-e5f6a7b8 — Image viewer lays out at true size
 
 Status: active
 Scope: area:editor
@@ -61,7 +61,7 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Decision:
-默认适应窗口并用 `ResizeObserver` 跟随，按缩放后的真实尺寸布局，不用 `transform`。
+Fit to window by default, tracked by `ResizeObserver`; lay the image out at its real scaled size rather than using `transform`.
 
 Reason:
-「原尺寸 + transform」缩小时仍保留溢出范围。
+Native-size image plus `transform` keeps the original overflow range when zoomed out, so edges cannot be scrolled to.

@@ -3,7 +3,7 @@
 Entries are newest first.
 Subsystem knowledge lives in `areas/`; only cross-cutting choices stay here.
 
-## MC-DEC-20261003-a1b2c3d4 — 前端用 Svelte 5 + Vite + Tailwind v4
+## MC-DEC-20261003-a1b2c3d4 — Svelte 5 + Vite + Tailwind v4, no SvelteKit
 
 Status: active
 Scope: project
@@ -13,12 +13,12 @@ Evidence:
 - repo:package.json
 
 Decision:
-单页前端用 Svelte 5 + Vite，样式用 Tailwind v4 CSS-first 配置；不用 SvelteKit。
+Single-page frontend on Svelte 5 + Vite, styled with Tailwind v4 CSS-first config. No SvelteKit.
 
 Reason:
-桌面壳由 Tauri 提供，不需要路由与 SSR。
+Tauri supplies the desktop shell, so routing and SSR are unnecessary.
 
-## MC-DEC-20261003-c1d2e3f4 — 外观规范集中于 design.md
+## MC-DEC-20261003-c1d2e3f4 — Appearance rules live in design.md
 
 Status: active
 Scope: project
@@ -28,12 +28,12 @@ Evidence:
 - repo:docs/design/design.md
 
 Decision:
-外观与交互约定统一写在 `docs/design/design.md`，改外观前先读、新增约定先更新它。
+All appearance and interaction conventions live in `docs/design/design.md`. Read it before changing looks; update it before adding a convention.
 
 Reason:
-组件里各写一套会让同类控件慢慢长得不一样。
+Rules scattered across components drift until similar controls no longer match.
 
-## MC-DEC-20261020-a1b2c3d4 — 双语界面用自建类型化字典
+## MC-DEC-20261020-a1b2c3d4 — Typed hand-rolled i18n dictionary
 
 Status: active
 Scope: project
@@ -43,12 +43,12 @@ Evidence:
 - repo:src/lib/i18n/messages/en.ts
 
 Decision:
-字典放 `lib/i18n/`，英文那份是结构来源，漏译在 svelte-check 报错。
+Dictionary under `lib/i18n/`; the English file is the structural source, so a missing translation fails `svelte-check`.
 
 Reason:
-只为两种语言引整套框架不划算，类型系统能保证两份同步。
+An i18n framework is overkill for two languages; the type system keeps both files in sync.
 
-## MC-DEC-20261020-c3d4e5f6 — 平台收敛为 Windows + macOS
+## MC-DEC-20261020-c3d4e5f6 — Windows and macOS only
 
 Status: active
 Scope: project
@@ -58,12 +58,12 @@ Evidence:
 - repo:src/lib/utils/platform.ts
 
 Decision:
-只支持 Windows 与 macOS，平台判定收敛为两值。
+Support Windows and macOS only; platform detection collapses to two values.
 
 Reason:
-Linux 的红绿灯、文件关联与打包格式在各桌面环境都不同。
+Linux traffic lights, file associations, and packaging differ per desktop environment.
 
-## MC-DEC-20261020-d4e5f6a7 — 单实例插件必须第一个注册
+## MC-DEC-20261020-d4e5f6a7 — Single-instance plugin registers first
 
 Status: active
 Scope: project
@@ -73,12 +73,12 @@ Evidence:
 - repo:src-tauri/src/lib.rs
 
 Decision:
-`tauri-plugin-single-instance` 必须第一个注册，再次打开文件时复用已有窗口。
+`tauri-plugin-single-instance` must be registered first; reopening a file reuses the existing window.
 
 Reason:
-排在后面会先初始化一遍再丢弃，可能留下半初始化状态。
+Registering it later initializes and discards other plugins, possibly leaving half-initialized state.
 
-## MC-DEC-20261021-a1b2c3d4 — 视图重建时保留撤销历史
+## MC-DEC-20261021-a1b2c3d4 — Preserve undo history across view rebuilds
 
 Status: active
 Scope: project
@@ -88,12 +88,12 @@ Evidence:
 - repo:src/lib/editor/create-view.ts
 
 Decision:
-重建视图时导出并传回撤销历史；取出即清除，整体替换内容时丢弃。
+Export and restore undo history when rebuilding the view; take-once, drop on full content replace.
 
 Reason:
-休眠唤醒与切预览都会销毁视图，撤销栈随之丢失。
+Sleep/wake and preview toggling both destroy the view, losing the undo stack.
 
-## MC-DEC-20261021-b2c3d4e5 — 装饰性功能看是否争夺注意力
+## MC-DEC-20261021-b2c3d4e5 — Decorative defaults depend on attention cost
 
 Status: active
 Scope: project
@@ -103,7 +103,7 @@ Evidence:
 - user-confirmed
 
 Decision:
-缩进参考线默认开启，括号彩虹默认关闭。
+Indent guides default on; rainbow brackets default off.
 
 Reason:
-参考线可被忽略，多色括号是主动吸引注意力的装饰。
+Guides can be ignored, while multi-colour brackets actively compete for attention.

@@ -2,7 +2,7 @@
 
 Memory here applies only when touched files or task scope match this area.
 
-## MC-AREA-20261009-a1b2c3d4 — 操作反馈用标题栏状态提示
+## MC-AREA-20261009-a1b2c3d4 — Feedback in the title bar, not toasts
 
 Status: active
 Scope: area:ui
@@ -13,12 +13,12 @@ Evidence:
 - repo:src/lib/state/status.svelte.ts
 
 Decision:
-告知类反馈在标题栏中央显示一行并自动消失；需要决策的事走原生对话框。
+Informational feedback shows one line in the title-bar centre and auto-dismisses; anything needing a decision uses a native dialog.
 
 Reason:
-toast 浮在内容上还会移动。
+Toasts float above content and move, so they lose the spatial link to the action.
 
-## MC-AREA-20261009-b2c3d4e5 — 窗口骨架
+## MC-AREA-20261009-b2c3d4e5 — Window skeleton
 
 Status: active
 Scope: area:ui
@@ -29,12 +29,12 @@ Evidence:
 - repo:src/lib/components/layout/Shell.svelte
 
 Decision:
-标题栏 + 标签栏 + 编辑区，侧栏默认折叠（Ctrl+B）。
+Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B).
 
 Reason:
-紧凑三行是「轻量」在界面上的体现。
+Three compact rows are how the lightweight positioning shows in the UI.
 
-## MC-AREA-20261009-e5f6a7b8 — 对话框返回按钮文字
+## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
 Status: active
 Scope: area:ui
@@ -45,12 +45,12 @@ Evidence:
 - repo:src/lib/utils/hotkeys.ts
 
 Decision:
-`message()` 配自定义按钮时返回按钮文字本身；标点键快捷键比对 `event.code`。
+`message()` with custom buttons returns the button text itself. Match punctuation shortcuts on `event.code`.
 
 Reason:
-输入法会改写标点键的 `event.key`。
+Input methods rewrite `event.key` for punctuation keys.
 
-## MC-AREA-20261009-f6a7b8c9 — 开关与悬停操作列
+## MC-AREA-20261009-f6a7b8c9 — Toggles and hover action columns
 
 Status: active
 Scope: area:ui
@@ -61,12 +61,12 @@ Evidence:
 - repo:src/lib/components/layout/Sidebar.svelte
 
 Decision:
-开关激活态只用文字颜色区分、图标不变；悬停按钮与相邻信息重叠，只切 `opacity`。
+Active toggles differ by text colour only, icon unchanged. Hover actions overlap the neighbouring info and switch `opacity`.
 
 Reason:
-换图标会让同一开关像两个功能。
+Swapping the icon makes one toggle look like two features.
 
-## MC-AREA-20261011-a1b2c3d4 — 图标按钮之间的纯文字加 leading-none
+## MC-AREA-20261011-a1b2c3d4 — `leading-none` between icon buttons
 
 Status: active
 Scope: area:ui
@@ -77,7 +77,7 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Decision:
-图标按钮之间的纯文字必须加 `leading-none` 才与图标对齐。
+Plain text between icon buttons needs `leading-none` to line up with them.
 
 Reason:
-居中作用于行盒，行高 1.5 倍时中文墨迹偏高 1px。
+Centring acts on the line box, so at 1.5 line-height CJK ink sits 1px high.

@@ -5,7 +5,7 @@ This registry is protocol metadata and is not part of normal task context.
 
 Entries are newest first.
 
-## MC-SUBJ-20261003-a1b2c3d4 — Sesame 技术栈
+## MC-SUBJ-20261003-a1b2c3d4 — Sesame stack
 
 Status: active
 Kind: concept
@@ -15,11 +15,10 @@ Evidence:
 - repo:src-tauri/Cargo.toml
 
 Aliases:
-- Sesame 技术栈
-- 技术栈
-- 构建与依赖
+- Sesame stack
+- build and dependencies
 
-## MC-SUBJ-20261003-b2c3d4e5 — 前端实现规范
+## MC-SUBJ-20261003-b2c3d4e5 — Frontend conventions
 
 Status: active
 Kind: concept
@@ -29,10 +28,10 @@ Evidence:
 - repo:src/app.css
 
 Aliases:
-- 前端实现规范
-- 前端约定
+- Frontend conventions
+- frontend implementation rules
 
-## MC-SUBJ-20261004-f1e2d3c4 — 字体与排版
+## MC-SUBJ-20261004-f1e2d3c4 — Typography
 
 Status: active
 Kind: concept
@@ -42,10 +41,10 @@ Evidence:
 - repo:src/lib/components/dialogs/SettingsDialog.svelte
 
 Aliases:
-- 字体与排版
-- 字体设置
+- Typography
+- font settings
 
-## MC-SUBJ-20261005-e1f2a3b4 — 编辑器 gutter 与装饰
+## MC-SUBJ-20261005-e1f2a3b4 — Editor gutter and decorations
 
 Status: active
 Kind: concept
@@ -55,10 +54,10 @@ Evidence:
 - repo:src/lib/editor/extensions.ts
 
 Aliases:
-- 编辑器 gutter 与装饰
-- 行号与折叠栏
+- Editor gutter and decorations
+- line numbers and fold gutter
 
-## MC-SUBJ-20261007-c1d2e3f4 — 草稿与会话恢复
+## MC-SUBJ-20261007-c1d2e3f4 — Draft backup and session restore
 
 Status: active
 Kind: concept
@@ -68,10 +67,10 @@ Evidence:
 - repo:src-tauri/src/commands/session.rs
 
 Aliases:
-- 草稿与会话恢复
-- 草稿备份
+- Draft backup and session restore
+- draft backup
 
-## MC-SUBJ-20261009-b1c2d3e4 — 原生对话框交互
+## MC-SUBJ-20261009-b1c2d3e4 — Native dialog interaction
 
 Status: active
 Kind: concept
@@ -80,10 +79,10 @@ Evidence:
 - repo:src-tauri/src/lib.rs
 
 Aliases:
-- 原生对话框交互
-- 确认对话框
+- Native dialog interaction
+- confirm dialog
 
-## MC-SUBJ-20261011-f1e2d3c4 — 保存策略
+## MC-SUBJ-20261011-f1e2d3c4 — Save policy
 
 Status: active
 Kind: concept
@@ -93,10 +92,10 @@ Evidence:
 - repo:src-tauri/src/commands/fs.rs
 
 Aliases:
-- 保存策略
-- 原子写入
+- Save policy
+- atomic write
 
-## MC-SUBJ-20261012-e1f2a3b4 — 操作反馈
+## MC-SUBJ-20261012-e1f2a3b4 — Operation feedback
 
 Status: active
 Kind: concept
@@ -106,10 +105,10 @@ Evidence:
 - repo:src/lib/state/status.svelte.ts
 
 Aliases:
-- 操作反馈
-- 状态提示
+- Operation feedback
+- status line
 
-## MC-SUBJ-20261014-a1b2c3d4 — 主题与强调色
+## MC-SUBJ-20261014-a1b2c3d4 — Theming and accents
 
 Status: active
 Kind: concept
@@ -118,10 +117,10 @@ Evidence:
 - repo:src/lib/theme/theme-tokens.ts
 
 Aliases:
-- 主题与强调色
-- 主题系统
+- Theming and accents
+- theme system
 
-## MC-SUBJ-20261015-c3d4e5f6 — 样式验证方法
+## MC-SUBJ-20261015-c3d4e5f6 — Style verification method
 
 Status: active
 Kind: concept
@@ -130,10 +129,10 @@ Evidence:
 - user-confirmed
 
 Aliases:
-- 样式验证方法
-- 浏览器实测
+- Style verification method
+- browser measurement
 
-## MC-SUBJ-20261016-d4e5f6a7 — 验证脚本与进程管理
+## MC-SUBJ-20261016-d4e5f6a7 — Verify scripts and process management
 
 Status: active
 Kind: concept
@@ -142,10 +141,10 @@ Evidence:
 - user-confirmed
 
 Aliases:
-- 验证脚本与进程管理
-- 验证脚本
+- Verify scripts and process management
+- verify scripts
 
-## MC-SUBJ-20261018-a1b2c3d4 — 快捷键契约
+## MC-SUBJ-20261018-a1b2c3d4 — Shortcut contract
 
 Status: active
 Kind: concept
@@ -154,10 +153,10 @@ Evidence:
 - repo:src/lib/utils/hotkeys.ts
 
 Aliases:
-- 快捷键契约
-- 快捷键
+- Shortcut contract
+- keyboard shortcuts
 
-## MC-SUBJ-20261018-e5f6a7b8 — 大文件与二进制安全
+## MC-SUBJ-20261018-e5f6a7b8 — Large files and binary safety
 
 Status: active
 Kind: concept
@@ -167,10 +166,10 @@ Evidence:
 - repo:src-tauri/src/commands/fs.rs
 
 Aliases:
-- 大文件与二进制安全
-- 大文件处理
+- Large files and binary safety
+- large file handling
 
-## MC-SUBJ-20261018-f6a7b8c9 — 导航与安全边界
+## MC-SUBJ-20261018-f6a7b8c9 — Navigation and security boundary
 
 Status: active
 Kind: concept
@@ -179,10 +178,10 @@ Evidence:
 - repo:src-tauri/src/lib.rs
 
 Aliases:
-- 导航与安全边界
-- 导航守卫
+- Navigation and security boundary
+- navigation guard
 
-## MC-SUBJ-20261020-a1b2c3d4 — 编辑器扩展装配
+## MC-SUBJ-20261020-a1b2c3d4 — Editor extension assembly
 
 Status: active
 Kind: concept
@@ -191,10 +190,10 @@ Evidence:
 - repo:src/lib/editor/extensions.ts
 
 Aliases:
-- 编辑器扩展装配
-- 编辑器扩展
+- Editor extension assembly
+- editor extensions
 
-## MC-SUBJ-20261020-b2c3d4e5 — 国际化
+## MC-SUBJ-20261020-b2c3d4e5 — Internationalization
 
 Status: active
 Kind: concept
@@ -203,10 +202,10 @@ Evidence:
 - repo:src/lib/i18n/messages/en.ts
 
 Aliases:
-- 国际化
-- 双语界面
+- Internationalization
+- bilingual UI
 
-## MC-SUBJ-20261020-c3d4e5f6 — 平台与应用装配
+## MC-SUBJ-20261020-c3d4e5f6 — Platform and app assembly
 
 Status: active
 Kind: concept
@@ -216,10 +215,10 @@ Evidence:
 - repo:src/lib/utils/platform.ts
 
 Aliases:
-- 平台与应用装配
-- 平台支持
+- Platform and app assembly
+- platform support
 
-## MC-SUBJ-20261021-b2c3d4e5 — 撤销历史
+## MC-SUBJ-20261021-b2c3d4e5 — Undo history
 
 Status: active
 Kind: concept
@@ -228,10 +227,10 @@ Evidence:
 - repo:src/lib/editor/create-view.ts
 
 Aliases:
-- 撤销历史
-- undo 历史
+- Undo history
+- undo stack
 
-## MC-SUBJ-20261021-c3d4e5f6 — 装饰性功能默认值
+## MC-SUBJ-20261021-c3d4e5f6 — Decorative feature defaults
 
 Status: active
 Kind: concept
@@ -240,10 +239,10 @@ Evidence:
 - user-confirmed
 
 Aliases:
-- 装饰性功能默认值
-- 功能默认值
+- Decorative feature defaults
+- feature defaults
 
-## MC-SUBJ-20261021-d4e5f6a7 — 图片查看器
+## MC-SUBJ-20261021-d4e5f6a7 — Image viewer
 
 Status: active
 Kind: concept
@@ -252,5 +251,5 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Aliases:
-- 图片查看器
-- 图片查看
+- Image viewer
+- image preview

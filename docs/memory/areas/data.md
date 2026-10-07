@@ -2,7 +2,7 @@
 
 Memory here applies only when touched files or task scope match this area.
 
-## MC-AREA-20261008-a1b2c3d4 — 保存一律原子写入
+## MC-AREA-20261008-a1b2c3d4 — All saves are atomic
 
 Status: active
 Scope: area:data
@@ -13,12 +13,12 @@ Evidence:
 - repo:src-tauri/src/core/atomic.rs
 
 Decision:
-保存走临时文件 + fsync + rename；保存前复核外部修改指纹，冲突时给三个出口。
+Save via temp file, fsync, rename. Re-check the external-modification fingerprint first and offer three exits on conflict.
 
 Reason:
-直接覆写断电会留下半截文件。
+Overwriting in place leaves a truncated file if power fails.
 
-## MC-AREA-20261008-b2c3d4e5 — 三层保存与草稿、会话
+## MC-AREA-20261008-b2c3d4e5 — Three save layers plus draft and session
 
 Status: active
 Scope: area:data
@@ -29,12 +29,12 @@ Evidence:
 - repo:src-tauri/src/commands/draft.rs
 
 Decision:
-主动保存 → 自动保存 → 草稿备份（始终开启）。关窗口用 `onCloseRequested` 并先冲刷草稿。
+Explicit save, then autosave, then always-on draft backup. Close through `onCloseRequested` and flush drafts first.
 
 Reason:
-未命名标签只能靠草稿保住，`beforeunload` 拦不住。
+Untitled tabs survive only through drafts, and `beforeunload` cannot block a Tauri close.
 
-## MC-AREA-20261008-c3d4e5f6 — 编码探测与手动纠正
+## MC-AREA-20261008-c3d4e5f6 — Encoding detection with manual override
 
 Status: active
 Scope: area:data
@@ -45,12 +45,12 @@ Evidence:
 - repo:src-tauri/src/core/encoding.rs
 
 Decision:
-打开按 BOM → UTF-8 → GBK 探测，保存按原编码写回；可点状态栏手动纠正。
+Detect BOM, then UTF-8, then GBK on open, and write back the original encoding. Let users correct it from the status bar.
 
 Reason:
-探测不可能全对，纠正入口放状态栏更现实。
+Detection cannot always be right, and a status-bar entry beats asking users to reopen the file.
 
-## MC-AREA-20261008-e5f6a7b8 — 状态层与 IPC 边界
+## MC-AREA-20261008-e5f6a7b8 — State layer and IPC boundary
 
 Status: active
 Scope: area:data
@@ -61,7 +61,7 @@ Evidence:
 - repo:src/lib/ipc/fs.ts
 
 Decision:
-状态层不得依赖 actions 层；路径、编码与 IO 全在 Rust 侧完成。
+The state layer must not depend on the actions layer. Path, encoding, and all IO live in Rust.
 
 Reason:
-依赖倒挂会让状态层无法单独测试。
+Inverted dependencies make the state layer untestable in isolation.
