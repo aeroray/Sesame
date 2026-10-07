@@ -2,7 +2,7 @@
 
 Memory here applies only when touched files or task scope match this area.
 
-## MC-AREA-20261009-a1b2c3d4 — Feedback in the title bar, not toasts
+## MC-AREA-20261009-a1b2c3d4 — Title-bar feedback, not toasts
 
 Status: active
 Scope: area:ui
@@ -13,10 +13,10 @@ Evidence:
 - repo:src/lib/state/status.svelte.ts
 
 Decision:
-Informational feedback shows one line in the title-bar centre and auto-dismisses; anything needing a decision uses a native dialog.
+Informational feedback shows one line in the title-bar centre and auto-dismisses; decisions use a native dialog.
 
 Reason:
-Toasts float above content and move, so they lose the spatial link to the action.
+See `do-not-use.md`.
 
 ## MC-AREA-20261009-b2c3d4e5 — Window skeleton
 
@@ -32,7 +32,7 @@ Decision:
 Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B).
 
 Reason:
-Three compact rows are how the lightweight positioning shows in the UI.
+Three compact rows express the lightweight positioning.
 
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
@@ -48,7 +48,7 @@ Decision:
 `message()` with custom buttons returns the button text itself. Match punctuation shortcuts on `event.code`.
 
 Reason:
-Input methods rewrite `event.key` for punctuation keys.
+Input methods rewrite `event.key`.
 
 ## MC-AREA-20261009-f6a7b8c9 — Toggles and hover action columns
 
@@ -61,7 +61,7 @@ Evidence:
 - repo:src/lib/components/layout/Sidebar.svelte
 
 Decision:
-Active toggles differ by text colour only, icon unchanged. Hover actions overlap the neighbouring info and switch `opacity`.
+Active toggles differ by text colour only, icon unchanged. Hover actions overlap neighbouring info via `opacity`.
 
 Reason:
 Swapping the icon makes one toggle look like two features.
@@ -77,7 +77,7 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Decision:
-Plain text between icon buttons needs `leading-none` to line up with them.
+Plain text between icon buttons needs `leading-none` to align.
 
 Reason:
-Centring acts on the line box, so at 1.5 line-height CJK ink sits 1px high.
+Centring acts on the line box: at 1.5 line-height CJK ink sits 1px high.
