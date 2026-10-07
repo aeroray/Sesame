@@ -6,6 +6,7 @@ import {
   Loader2,
   Maximize,
   RotateCcw,
+  SquareDot,
   ZoomIn,
   ZoomOut,
 } from '@lucide/svelte';
@@ -318,7 +319,15 @@ async function openExternally() {
       <Hint label={t('image.zoomOut')} side="top" class="size-6" disabled={!natural} onclick={() => zoomBy(1 / 1.25)}>
         <ZoomOut class="size-3.5" />
       </Hint>
-      <span class="w-14 px-1 text-center tabular-nums" title={`${Math.round(effectiveZoom * 100)}%`}>
+      <!--
+        缩放比例是纯文字，两侧是 size-6 的图标按钮。
+
+        `leading-none` 不是装饰，是**对齐所必需的**：`items-center` 居中的是
+        行盒，而行盒高度由 `line-height` 决定（这里是继承来的 `1.5 × 11px`）。
+        中文字形在 em 方框里的墨迹并不居于行盒正中，行盒居中后墨迹偏高 1px。
+        收紧行高让行盒贴合字号，墨迹才与图标对齐（实测 1.00px → 0.00px）。
+      -->
+      <span class="w-14 px-1 text-center leading-none tabular-nums" title={`${Math.round(effectiveZoom * 100)}%`}>
         {fit ? t('image.fitShort') : `${Math.round(effectiveZoom * 100)}%`}
       </span>
       <Hint label={t('image.zoomIn')} side="top" class="size-6" disabled={!natural} onclick={() => zoomBy(1.25)}>
@@ -330,8 +339,13 @@ async function openExternally() {
       <Hint label={t('image.fit')} side="top" class="size-6" disabled={!natural} active={fit} toggle onclick={resetZoom}>
         <Maximize class="size-3.5" />
       </Hint>
+      <!--
+        「原始尺寸」用 `SquareDot`（方框 + 中心点），而不是早先的 `1:1` 文字。
+        `1:1` 在图片语境里会被读成「宽高比 1:1」，与「100% 缩放」不是一回事。
+        形状上也与紧邻的「适应窗口」四角图标构成一放一收的对照。
+      -->
       <Hint label={t('image.actualSize')} side="top" class="size-6" disabled={!natural} onclick={actualSize}>
-        <span class="text-[10px] font-medium leading-none tabular-nums" aria-hidden="true">1:1</span>
+        <SquareDot class="size-3.5" />
       </Hint>
       <Hint label={t('image.openExternal')} side="top" class="size-6" disabled={openingExternally} onclick={() => void openExternally()}>
         <ExternalLink class="size-3.5" />

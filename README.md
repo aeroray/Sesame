@@ -48,7 +48,7 @@ file, or change three lines in it**, right now.
 | **Safety net** | Atomic writes, external-modification detection, autosave, and always-on draft backup for untitled buffers |
 | **Multi-tab** | Drag to reorder, per-tab cursor and scroll position, session restore on relaunch, reopen a closed tab with `Ctrl+Shift+T` |
 | **Markdown preview** | Rendered and sanitized with DOMPurify; external links open in your browser, not inside the app |
-| **Image viewer** | Ctrl + wheel to zoom, Space + drag to pan, reset, fit-to-window, 1:1, choose an external app; dimensions, file size, and format in the status bar |
+| **Image viewer** | Ctrl + wheel to zoom, Space + drag to pan, reset, fit-to-window, actual size, choose an external app; dimensions, file size, and format in the status bar |
 | **Find & replace** | Regex, case-sensitive, whole-word and cross-line search, with replace |
 | **Indent guides** | Faint vertical rules at each indent level; on by default, toggle in settings |
 | **Rainbow brackets** | Colour brackets by nesting depth; off by default, toggle in settings |
