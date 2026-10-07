@@ -70,7 +70,22 @@ Discover optional memory without loading it. Entries here are not default loads.
 - None enabled.
 
 ### Enabled areas
-- None enabled.
+- `areas/theme.md`
+  - activation: path-or-explicit
+  - paths: `src/lib/theme/**`, `src/app.css`, `src/lib/components/dialogs/**`
+  - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
+- `areas/data.md`
+  - activation: path-or-explicit
+  - paths: `src/lib/state/**`, `src/lib/ipc/**`, `src-tauri/**`
+  - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
+- `areas/ui.md`
+  - activation: path-or-explicit
+  - paths: `src/lib/components/layout/**`, `src/lib/components/dialogs/**`, `src/lib/components/common/**`, `src/lib/components/welcome/**`, `src/app.css`
+  - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
+- `areas/editor.md`
+  - activation: path-or-explicit
+  - paths: `src/lib/editor/**`, `src/lib/components/editor/**`
+  - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
 
 ## Optional rules
 `rules/` files load only through declared canonical tasks or explicit rule input.
