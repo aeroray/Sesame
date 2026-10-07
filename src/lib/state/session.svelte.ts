@@ -16,12 +16,20 @@ import * as ipc from '$lib/ipc/fs';
 import { settings } from '$lib/state/settings.svelte';
 import { tabs } from '$lib/state/tabs.svelte';
 import type { SessionSnapshot, SessionTab } from '$lib/state/types';
+import { KeyedTaskQueue } from '$lib/utils/async';
 import { logError } from '$lib/utils/log';
 
 /** 会话保存的防抖时长（毫秒）。 */
 const SAVE_DEBOUNCE = 800;
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let ready = false;
+const writes = new KeyedTaskQueue();
+
+export function resumeSessionSave(): void {
+  ready = true;
+  scheduleSessionSave();
+}
 
 /** 采集当前工作现场。 */
 export function snapshot(): SessionSnapshot {
@@ -44,17 +52,21 @@ export function snapshot(): SessionSnapshot {
 
 /** 立即写入会话。 */
 export async function saveSessionNow(): Promise<void> {
-  try {
-    await ipc.sessionSave(snapshot());
-  } catch (err) {
-    // 会话保存失败不该打扰用户，静默记录即可
-    logError('session', '保存会话失败', err);
-  }
+  if (saveTimer !== undefined) clearTimeout(saveTimer);
+  saveTimer = undefined;
+  return writes.run('session', async () => {
+    try {
+      await ipc.sessionSave(snapshot());
+    } catch (err) {
+      // 会话保存失败不该打扰用户，静默记录即可
+      logError('session', '保存会话失败', err);
+    }
+  });
 }
 
 /** 防抖保存。标签频繁切换时不会每次都写盘。 */
 export function scheduleSessionSave(): void {
-  if (!settings.restoreSession) return;
+  if (!ready || !settings.restoreSession) return;
   if (saveTimer !== undefined) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     saveTimer = undefined;

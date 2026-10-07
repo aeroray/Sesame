@@ -51,6 +51,7 @@ export const en = {
   },
 
   tab: {
+    recoveredFile: 'Recovered {name}',
     untitled: 'Untitled',
     new: 'New tab',
     newWithKey: 'New tab · Ctrl+N',
@@ -183,6 +184,7 @@ export const en = {
 
   /** 编辑器状态栏。 */
   editor: {
+    readonly: 'Read-only',
     binary: 'Binary file · read-only',
     /*
      * 行列拆成两条文案，中间的分隔符由 StatusBar 统一渲染
@@ -287,6 +289,13 @@ export const en = {
 
   /** 操作失败提示（标题栏状态栏里的一行字）。 */
   error: {
+    documentChangedDuringReload: 'The document changed while reloading. Your edits have been kept.',
+    draftDeleteFailed: 'Could not remove the draft backup. Please try closing again.',
+    lossyDecodeReadonly:
+      'Some bytes could not be decoded. This file is read-only; choose the correct encoding to edit it.',
+    draftBackupFailed: 'Draft backup failed. The window will stay open to protect your edits.',
+    saveTargetAlreadyOpen:
+      'The destination is already open in another tab. Choose a different file.',
     generic: 'Something went wrong',
     openFailed: 'Could not open the file',
     openImageFailed: 'Could not open the image',

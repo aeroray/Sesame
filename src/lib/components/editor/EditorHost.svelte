@@ -8,13 +8,14 @@
  * - 休眠（sleep 变回 'none'）会重建视图，内容从保留的正文恢复。
  */
 
-import type { Component } from 'svelte';
+import { type Component, untrack } from 'svelte';
 import { scheduleAutoSave } from '$lib/actions/autosave';
 import { scheduleDraft } from '$lib/actions/draft';
 import { reportError } from '$lib/actions/open-file';
 import { createEditorView, type EditorHandle } from '$lib/editor/create-view';
 import { getLanguageExtension } from '$lib/editor/languages';
 import { getProgress, loadNextChunk, programmaticAppend } from '$lib/editor/large-file.svelte';
+import { searchPhrases } from '$lib/editor/search-i18n';
 import { editorFontTheme } from '$lib/editor/themes';
 import { t } from '$lib/i18n';
 import { getPreviewText } from '$lib/state/layout.svelte';
@@ -98,7 +99,7 @@ $effect(() => {
   let disposed = false;
 
   (async () => {
-    const language = await getLanguageExtension(tab.language);
+    const language = await getLanguageExtension(untrack(() => tab.language));
     if (disposed) return;
 
     const created = createEditorView({
@@ -128,7 +129,7 @@ $effect(() => {
        * 这里禁掉编辑是为了让用户**当场**看出「这个文件改不了」，
        * 而不是改完保存时才发现。
        */
-      readOnly: tab.encoding === 'binary',
+      readOnly: tab.encoding === 'binary' || tab.decodeLossy === true,
       onChange: (update) => {
         // 分块追加是程序化写入，不能算作用户修改。
         // 用注解精确判断这一次事务，而不是查一个跨 await 的标志位——
@@ -256,10 +257,16 @@ $effect(() => {
     tabSize: settings.tabSize,
     showIndentGuides: settings.showIndentGuides,
     rainbowBrackets: settings.rainbowBrackets,
+    readOnly: tab.encoding === 'binary' || tab.decodeLossy === true,
   });
 });
 
 // 激活且处于编辑模式时把焦点交还编辑器
+$effect(() => {
+  const phrases = searchPhrases();
+  if (handle && ready) handle.reconfigure({ phrases });
+});
+
 $effect(() => {
   if (active && ready && handle && !preview) {
     handle.view.focus();

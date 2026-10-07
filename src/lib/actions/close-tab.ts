@@ -17,10 +17,14 @@ import {
   closeAllTabs,
   closeOtherTabs,
   closeTab,
+  editVersion,
   tabDisplayName,
   tabs,
 } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { documentTasks, KeyedTaskQueue } from '$lib/utils/async';
+
+const closeTasks = new KeyedTaskQueue();
 
 /** 用户对「未保存的修改」的选择。 */
 type Choice = 'save' | 'discard' | 'cancel';
@@ -81,7 +85,13 @@ async function askUnsaved(name: string): Promise<Choice> {
  *
  * 返回是否真的关闭了（取消或保存失败时为 `false`）。
  */
-export async function requestCloseTab(tab: Tab): Promise<boolean> {
+export function requestCloseTab(tab: Tab): Promise<boolean> {
+  return closeTasks.run('close', () => performCloseTab(tab));
+}
+
+async function performCloseTab(tab: Tab): Promise<boolean> {
+  await documentTasks.run(tab.id, async () => {});
+  if (!tabs.items.some((item) => item.id === tab.id)) return true;
   if (!tab.dirty) {
     cancelAutoSave(tab.id);
     void dropDraft(tab.id);
@@ -89,6 +99,7 @@ export async function requestCloseTab(tab: Tab): Promise<boolean> {
     return true;
   }
 
+  const version = editVersion(tab.id);
   const choice = await askUnsaved(tabDisplayName(tab));
 
   if (choice === 'cancel') return false;
@@ -96,10 +107,11 @@ export async function requestCloseTab(tab: Tab): Promise<boolean> {
   if (choice === 'save') {
     const ok = await saveTab(tab);
     // 保存失败（含用户取消另存为）时中止关闭，避免丢内容
-    if (!ok) return false;
+    if (!ok || tab.dirty) return false;
   } else {
+    if (editVersion(tab.id) !== version) return false;
     // 用户明确选择不保存：连同草稿一起丢弃，否则下次启动会又冒出来
-    await dropDraft(tab.id);
+    if (!(await dropDraft(tab.id))) return false;
   }
 
   cancelAutoSave(tab.id);
@@ -112,24 +124,41 @@ export async function requestCloseTab(tab: Tab): Promise<boolean> {
  *
  * 逐个处理未保存项；任一步取消则整体中止，不关闭任何标签。
  */
-export async function requestCloseOthers(tab: Tab): Promise<void> {
+export function requestCloseOthers(tab: Tab): Promise<void> {
+  return closeTasks.run('close', () => performCloseOthers(tab));
+}
+
+async function performCloseOthers(tab: Tab): Promise<void> {
+  await documentTasks.drain();
+  const versions = new Map(tabs.items.map((item) => [item.id, editVersion(item.id)]));
   const others = tabs.items.filter((t) => t.id !== tab.id && t.dirty);
 
+  const discard: Tab[] = [];
   for (const other of others) {
     const choice = await askUnsaved(tabDisplayName(other));
     if (choice === 'cancel') return;
 
     if (choice === 'save') {
       const ok = await saveTab(other);
-      if (!ok) return;
+      if (!ok || other.dirty) return;
     } else {
       // 用户明确选择不保存：连同草稿一起丢弃。
       // 漏掉这一步的话，下次启动会把这些内容又恢复出来——
       // 用户明明选了「不保存」，却看到内容复活（与 requestCloseTab 保持一致）。
-      await dropDraft(other.id);
+      discard.push(other);
     }
   }
 
+  if (
+    tabs.items.some(
+      (item) =>
+        item.id !== tab.id &&
+        item.dirty &&
+        (!discard.includes(item) || versions.get(item.id) !== editVersion(item.id)),
+    )
+  )
+    return;
+  if (!(await Promise.all(discard.map((other) => dropDraft(other.id)))).every(Boolean)) return;
   for (const other of tabs.items) {
     if (other.id !== tab.id) cancelAutoSave(other.id);
   }
@@ -142,24 +171,39 @@ export async function requestCloseOthers(tab: Tab): Promise<void> {
  * 任一步取消则整体中止。返回是否全部关闭成功——
  * 关闭窗口的流程依赖这个结果来决定要不要继续退出。
  */
-export async function requestCloseAll(): Promise<boolean> {
+export function requestCloseAll(removeTabs = true): Promise<boolean> {
+  return closeTasks.run('close', () => performCloseAll(removeTabs));
+}
+
+async function performCloseAll(removeTabs: boolean): Promise<boolean> {
+  await documentTasks.drain();
+  const versions = new Map(tabs.items.map((item) => [item.id, editVersion(item.id)]));
   const dirty = tabs.items.filter((t) => t.dirty);
 
+  const discard: Tab[] = [];
   for (const tab of dirty) {
     const choice = await askUnsaved(tabDisplayName(tab));
     if (choice === 'cancel') return false;
 
     if (choice === 'save') {
       const ok = await saveTab(tab);
-      if (!ok) return false;
+      if (!ok || tab.dirty) return false;
     } else {
       // 同 requestCloseOthers：明确放弃的内容必须把草稿一起删掉
-      await dropDraft(tab.id);
+      discard.push(tab);
     }
   }
 
+  if (
+    tabs.items.some(
+      (item) =>
+        item.dirty && (!discard.includes(item) || versions.get(item.id) !== editVersion(item.id)),
+    )
+  )
+    return false;
+  if (!(await Promise.all(discard.map((tab) => dropDraft(tab.id)))).every(Boolean)) return false;
   for (const tab of tabs.items) cancelAutoSave(tab.id);
-  closeAllTabs();
+  if (removeTabs) closeAllTabs();
   return true;
 }
 

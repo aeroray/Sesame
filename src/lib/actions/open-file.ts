@@ -19,6 +19,7 @@ import {
   createImageTab,
   createTabFromPayload,
   findByPath,
+  pathKey,
 } from '$lib/state/tabs.svelte';
 import { fileFilters, IMAGE_EXTENSIONS } from '$src/constants';
 /** 提示错误信息。 */
@@ -44,7 +45,18 @@ function isImagePath(path: string): boolean {
  *
  * 已打开的文件会直接激活，不重复开标签。
  */
-export async function openPath(path: string): Promise<void> {
+const opening = new Map<string, Promise<void>>();
+
+export function openPath(path: string): Promise<void> {
+  const key = pathKey(path);
+  const pending = opening.get(key);
+  if (pending) return pending;
+  const task = performOpen(path).finally(() => opening.delete(key));
+  opening.set(key, task);
+  return task;
+}
+
+async function performOpen(path: string): Promise<void> {
   const existing = findByPath(path);
   if (existing) {
     activateTab(existing.id);
@@ -59,7 +71,13 @@ export async function openPath(path: string): Promise<void> {
 
   try {
     const payload = await ipc.openFile(path);
+    const duplicate = findByPath(payload.meta.path);
+    if (duplicate) {
+      activateTab(duplicate.id);
+      return;
+    }
     const tab = createTabFromPayload(payload);
+    if (payload.decodeLossy) notify.warning(t('error.lossyDecodeReadonly'));
     await addRecent(payload.meta.path);
 
     // 记录体积供休眠策略判断，并标记为刚活动
@@ -85,6 +103,11 @@ export async function openPath(path: string): Promise<void> {
 async function openImagePath(path: string): Promise<void> {
   try {
     const meta = await ipc.statFile(path);
+    const duplicate = findByPath(meta.path);
+    if (duplicate) {
+      activateTab(duplicate.id);
+      return;
+    }
     const tab = createImageTab({
       path: meta.path,
       name: meta.name,

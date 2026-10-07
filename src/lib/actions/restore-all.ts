@@ -6,8 +6,9 @@
  * 两者不重叠：有草稿的标签不会再从会话里恢复一次。
  */
 
-import { dropDraft, loadDrafts } from '$lib/actions/draft';
+import { loadDrafts } from '$lib/actions/draft';
 import { restoreSession } from '$lib/actions/restore-session';
+import { initProgress } from '$lib/editor/large-file.svelte';
 import { settings } from '$lib/state/settings.svelte';
 import { activateTab, createTabFromDraft, findByPath, tabs } from '$lib/state/tabs.svelte';
 
@@ -28,8 +29,8 @@ export async function restoreAll(): Promise<RestoreReport> {
   let drafts = 0;
   let files = 0;
 
+  drafts = await restoreDrafts();
   if (settings.restoreSession) {
-    drafts = await restoreDrafts();
     files = await restoreSession();
   }
 
@@ -61,21 +62,41 @@ async function restoreDrafts(): Promise<number> {
 
   for (const draft of drafts) {
     // 已经有同路径标签（例如命令行传入）时跳过，避免重复
-    if (draft.path && findByPath(draft.path)) {
-      await dropDraft(draft.id);
-      continue;
-    }
-
-    createTabFromDraft({
+    // Legacy backups have neither a disk baseline nor a partial-file boundary.
+    // Keep their contents as a recovered unsaved document rather than risking
+    // overwriting a newer/longer file. Never delete a backup during restoration.
+    const safePath =
+      draft.schemaVersion === 2 &&
+      draft.baseline &&
+      (draft.prefixBytes == null ||
+        (draft.totalBytes != null &&
+          draft.prefixBytes >= 0 &&
+          draft.prefixBytes <= draft.totalBytes)) &&
+      !findByPath(draft.path ?? '')
+        ? draft.path
+        : null;
+    const tab = createTabFromDraft({
       id: draft.id,
-      path: draft.path,
+      path: safePath,
       name: draft.name,
       content: draft.content,
       language: draft.language,
       encoding: draft.encoding,
       lineEnding: draft.lineEnding,
       hasBom: draft.hasBom,
+      baseline: safePath ? (draft.baseline ?? undefined) : undefined,
+      truncated: !!safePath && draft.prefixBytes !== null && draft.prefixBytes !== undefined,
     });
+    if (!safePath && draft.path) tab.recoveredName = draft.name;
+    if (
+      safePath &&
+      draft.prefixBytes !== null &&
+      draft.prefixBytes !== undefined &&
+      draft.totalBytes !== null &&
+      draft.totalBytes !== undefined
+    ) {
+      initProgress(tab.id, draft.totalBytes, draft.prefixBytes);
+    }
     restored += 1;
   }
 

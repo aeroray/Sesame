@@ -64,9 +64,24 @@ fn navigation_guard<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 /// 第一个参数是可执行文件本身，跳过；其余参数中，
 /// 过滤掉以 `-` 开头的开关，只保留看起来是文件路径的项。
 fn startup_files_from_args() -> Vec<String> {
-    std::env::args()
+    files_from_args(
+        std::env::args(),
+        &std::env::current_dir().unwrap_or_default(),
+    )
+}
+
+fn files_from_args(args: impl IntoIterator<Item = String>, cwd: &std::path::Path) -> Vec<String> {
+    args.into_iter()
         .skip(1)
         .filter(|arg| !arg.starts_with('-'))
+        .map(|arg| {
+            let path = std::path::Path::new(&arg);
+            crate::core::paths::to_slash(&if path.is_absolute() {
+                path.to_path_buf()
+            } else {
+                cwd.join(path)
+            })
+        })
         .collect()
 }
 
@@ -138,7 +153,7 @@ pub fn run() {
          * 那些插件会先初始化一遍（包括建窗口），再被丢弃——
          * 既浪费又可能留下半初始化状态。
          */
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             /*
              * 第二个实例带着要打开的文件路径来了。
              *
@@ -146,11 +161,7 @@ pub fn run() {
              * 只把路径发给前端，由它走与「拖拽文件」完全相同的流程，
              * 保证两条入口的行为一致（去重、编码探测、最近文件都一致）。
              */
-            let files: Vec<String> = argv
-                .into_iter()
-                .skip(1)
-                .filter(|arg| !arg.starts_with('-'))
-                .collect();
+            let files = files_from_args(argv, std::path::Path::new(&cwd));
 
             // 把已有窗口带到前台，否则用户会以为程序没反应
             if let Some(window) = app.get_webview_window("main") {
@@ -160,7 +171,9 @@ pub fn run() {
 
             if !files.is_empty() {
                 use tauri::Emitter;
-                let _ = app.emit("open-files", files);
+                // Keep the payload until the frontend pulls it, including during startup.
+                app.state::<AppState>().set_startup_files(files);
+                let _ = app.emit("open-files", ());
             }
         }))
         // 记住窗口位置与大小，下次启动恢复
@@ -213,4 +226,21 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("启动 Sesame 失败");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn second_instance_resolves_relative_arguments_against_its_own_directory() {
+        let cwd = std::path::Path::new("D:/fixture");
+        let files = super::files_from_args(
+            vec![
+                "sesame.exe".into(),
+                "nested/test.txt".into(),
+                "--flag".into(),
+            ],
+            cwd,
+        );
+        assert_eq!(files, vec!["D:/fixture/nested/test.txt"]);
+    }
 }

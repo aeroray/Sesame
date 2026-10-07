@@ -48,51 +48,60 @@ fn save(app: &AppHandle, entries: &[RecentEntry]) -> AppResult<()> {
     let path = store_path(app)?;
     let text = serde_json::to_string_pretty(entries)
         .map_err(|e| AppError::Io(format!("序列化失败：{e}")))?;
-    std::fs::write(&path, text).map_err(|e| AppError::from_io(&paths::to_slash(&path), e))
+    crate::core::atomic::write_bytes(&path, text.as_bytes())
 }
 
 /// 获取最近文件列表。
 #[tauri::command]
 pub async fn recent_list(app: AppHandle) -> AppResult<Vec<RecentEntry>> {
-    Ok(load(&app))
+    crate::core::persistence::run(move || Ok(load(&app))).await
 }
 
 /// 记录一次打开。已存在的路径会移动到最前。
 #[tauri::command]
 pub async fn recent_add(app: AppHandle, path: String) -> AppResult<Vec<RecentEntry>> {
-    let resolved = paths::normalize(&path, None)?;
-    let slash = paths::to_slash(&resolved);
+    crate::core::persistence::run(move || {
+        let resolved = paths::normalize(&path, None)?;
+        let slash = paths::to_slash(&resolved);
 
-    let mut entries = load(&app);
-    entries.retain(|e| e.path != slash);
-    entries.insert(
-        0,
-        RecentEntry {
-            name: paths::display_name(&resolved),
-            path: slash,
-            opened_at: now_millis(),
-        },
-    );
-    entries.truncate(RECENT_LIMIT);
-    save(&app, &entries)?;
-    Ok(entries)
+        let mut entries = load(&app);
+        entries.retain(|e| e.path != slash);
+        entries.insert(
+            0,
+            RecentEntry {
+                name: paths::display_name(&resolved),
+                path: slash,
+                opened_at: now_millis(),
+            },
+        );
+        entries.truncate(RECENT_LIMIT);
+        save(&app, &entries)?;
+        Ok(entries)
+    })
+    .await
 }
 
 /// 清空最近文件列表。
 #[tauri::command]
 pub async fn recent_clear(app: AppHandle) -> AppResult<Vec<RecentEntry>> {
-    save(&app, &[])?;
-    Ok(Vec::new())
+    crate::core::persistence::run(move || {
+        save(&app, &[])?;
+        Ok(Vec::new())
+    })
+    .await
 }
 
 /// 移除单个条目。
 #[tauri::command]
 pub async fn recent_remove(app: AppHandle, path: String) -> AppResult<Vec<RecentEntry>> {
-    let resolved = paths::normalize(&path, None)?;
-    let slash = paths::to_slash(&resolved);
+    crate::core::persistence::run(move || {
+        let resolved = paths::normalize(&path, None)?;
+        let slash = paths::to_slash(&resolved);
 
-    let mut entries = load(&app);
-    entries.retain(|e| e.path != slash);
-    save(&app, &entries)?;
-    Ok(entries)
+        let mut entries = load(&app);
+        entries.retain(|e| e.path != slash);
+        save(&app, &entries)?;
+        Ok(entries)
+    })
+    .await
 }

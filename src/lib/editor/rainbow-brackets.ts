@@ -149,7 +149,7 @@ function scanBrackets(
 const depthField = StateField.define<number[] | null>({
   create: (state) => computeDepths(state),
   update(value, tr) {
-    if (!tr.docChanged) return value;
+    if (!tr.docChanged && syntaxTree(tr.startState) === syntaxTree(tr.state)) return value;
     return computeDepths(tr.state);
   },
 });
@@ -208,13 +208,13 @@ function buildMarks(view: EditorView): DecorationSet {
     const last = state.doc.lineAt(to).number;
 
     // 跳过区间只取可见范围，成本与屏幕高度相关
-    const skips = skipRanges(state, from, to);
+    const skips = skipRanges(state, state.doc.line(first).from, state.doc.line(last).to);
     let depth = depths[first - 1] ?? 0;
 
     for (let n = first; n <= last; n++) {
       const line = state.doc.line(n);
       depth = scanBrackets(line.text, depth, line.from, skips, (pos, d) => {
-        marks.push(bracketMark(d).range(pos, pos + 1));
+        if (pos >= from && pos < to) marks.push(bracketMark(d).range(pos, pos + 1));
       });
     }
   }
@@ -242,7 +242,11 @@ export function rainbowBrackets(): Extension {
 
         update(update: ViewUpdate) {
           // 文档变化会重算 depthField；视口变化要补画新进入视野的行
-          if (update.docChanged || update.viewportChanged) {
+          if (
+            update.docChanged ||
+            update.viewportChanged ||
+            syntaxTree(update.startState) !== syntaxTree(update.state)
+          ) {
             this.decorations = buildMarks(update.view);
           }
         }

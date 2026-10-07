@@ -83,7 +83,15 @@ const lineEndingLabel = $derived(
           后端已拒绝写入，这里说明原因，免得用户改了半天才发现存不了。
         -->
         <span class="px-1">{t('editor.binary')}</span>
+        {#if tab.path}
+          {@render separator()}
+          <EncodingPicker {tab} />
+        {/if}
       {:else}
+        {#if tab.decodeLossy}
+          <span class="px-1" title={t('error.lossyDecodeReadonly')}>{t('editor.readonly')}</span>
+          {@render separator()}
+        {/if}
         <!--
           行列用「行 N · 列 M」的写法，其中 `·` 与各项之间的分隔符
           **是同一个东西**——因此它不写进文案，而是作为一个独立的

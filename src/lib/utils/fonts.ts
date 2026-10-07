@@ -36,7 +36,7 @@ export const CJK_FALLBACK_STACK = CJK_FALLBACK.map(quoteFont).join(', ');
  * 不加引号 CSS 会把它拆成多个无效族名。
  */
 export function quoteFont(name: string): string {
-  return `"${name.replace(/"/g, '\\"')}"`;
+  return `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 /**

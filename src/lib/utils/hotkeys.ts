@@ -134,12 +134,12 @@ function matches(event: KeyboardEvent, keys: string): boolean {
  *
  * 返回注销函数，供组件在销毁时调用。
  */
-export function registerHotkeys(bindings: HotkeyBinding[]): () => void {
+export function registerHotkeys(bindings: HotkeyBinding[], enabled = () => true): () => void {
   const onKeyDown = (event: KeyboardEvent) => {
     // 编辑器已经处理过的按键不再重复触发应用快捷键。
     // 否则 Ctrl+/ 会既切换注释又打开快捷键面板——CodeMirror 绑定了 Mod-/，
     // 且它不调用 stopPropagation，事件仍会冒泡到这里。
-    if (event.defaultPrevented) return;
+    if (event.defaultPrevented || event.isComposing || !enabled()) return;
 
     for (const binding of bindings) {
       if (!matches(event, binding.keys)) continue;

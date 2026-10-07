@@ -40,10 +40,11 @@ pub async fn open_image_externally(
 
 /// 图片读取的同步实现。
 fn read_image_sync(resolved: std::path::PathBuf, mime: &'static str) -> AppResult<ImagePayload> {
+    use std::io::Read;
     let slash = paths::to_slash(&resolved);
     let meta = std::fs::metadata(&resolved).map_err(|e| AppError::from_io(&slash, e))?;
 
-    if meta.is_dir() {
+    if !meta.is_file() {
         return Err(AppError::NotAFile(slash));
     }
 
@@ -54,13 +55,22 @@ fn read_image_sync(resolved: std::path::PathBuf, mime: &'static str) -> AppResul
         });
     }
 
-    let bytes = std::fs::read(&resolved).map_err(|e| AppError::from_io(&slash, e))?;
+    let mut bytes = Vec::new();
+    std::fs::File::open(&resolved)
+        .and_then(|f| f.take(MAX_IMAGE_BYTES + 1).read_to_end(&mut bytes))
+        .map_err(|e| AppError::from_io(&slash, e))?;
+    if bytes.len() as u64 > MAX_IMAGE_BYTES {
+        return Err(AppError::TooLarge {
+            size: bytes.len() as u64,
+            limit: MAX_IMAGE_BYTES,
+        });
+    }
     let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
     Ok(ImagePayload {
         data_url: format!("data:{mime};base64,{encoded}"),
         mime: mime.to_string(),
-        size: meta.len(),
+        size: bytes.len() as u64,
         name: paths::display_name(&resolved),
         path: slash,
     })
@@ -88,7 +98,7 @@ pub async fn read_image(path: String, state: State<'_, AppState>) -> AppResult<I
             line_ending: "lf".to_string(),
             has_bom: false,
             baseline: crate::state::Fingerprint {
-                modified_ms: None,
+                modified_ns: None,
                 size: 0,
             },
         },

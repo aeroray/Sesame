@@ -9,10 +9,12 @@ import { load, type Store } from '@tauri-apps/plugin-store';
 import { applySystemLocale, resolveLocale, setLocale } from '$lib/i18n';
 import { applyTheme } from '$lib/state/theme.svelte';
 import type { Settings } from '$lib/state/types';
-import { DEFAULT_THEME } from '$lib/theme/palettes';
+import { DEFAULT_THEME, THEMES } from '$lib/theme/palettes';
+import { KeyedTaskQueue } from '$lib/utils/async';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
 import { logError } from '$lib/utils/log';
-import { SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
+import { validateSettings } from '$lib/utils/settings';
+import { FONT_SIZE_MAX, FONT_SIZE_MIN, SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {
@@ -53,12 +55,17 @@ export const settings = $state<Settings>({ ...DEFAULTS });
 
 let store: Store | null = null;
 let loaded = false;
+const writes = new KeyedTaskQueue();
 
 /** 首次加载时把持久化值与默认值合并。 */
 function merge(stored: Partial<Settings> | undefined): Settings {
-  if (!stored) return { ...DEFAULTS };
-  // 逐键合并，避免旧版本缺少新字段时出现 undefined
-  return { ...DEFAULTS, ...stored };
+  return validateSettings(
+    stored,
+    DEFAULTS,
+    THEMES.map((theme) => theme.id),
+    FONT_SIZE_MIN,
+    FONT_SIZE_MAX,
+  );
 }
 
 /**
@@ -110,14 +117,18 @@ export function applyLanguage(): void {
 
 /** 持久化当前设置。 */
 export async function persistSettings(): Promise<void> {
-  if (!store) return;
-  try {
-    // 传入普通对象而非响应式代理，避免序列化代理失败
-    await store.set(SETTINGS_KEY, { ...settings });
-    await store.save();
-  } catch (err) {
-    logError('settings', '保存设置失败', err);
-  }
+  const currentStore = store;
+  if (!currentStore) return;
+  const snapshot = { ...settings };
+  return writes.run('settings', async () => {
+    try {
+      // 传入普通对象而非响应式代理，避免序列化代理失败
+      await currentStore.set(SETTINGS_KEY, snapshot);
+      await currentStore.save();
+    } catch (err) {
+      logError('settings', '保存设置失败', err);
+    }
+  });
 }
 
 /** 更新单个设置项并落盘。 */
@@ -125,7 +136,7 @@ export async function updateSetting<K extends keyof Settings>(
   key: K,
   value: Settings[K],
 ): Promise<void> {
-  settings[key] = value;
+  settings[key] = merge({ ...settings, [key]: value })[key];
   applyFontVariables();
   // 主题变化要重算全部界面令牌，因此这里无条件调用（内部很便宜）
   applyTheme(settings.theme);

@@ -37,6 +37,7 @@ export interface CreateViewOptions {
   showIndentGuides: boolean;
   /** 是否启用括号彩虹。默认关闭。 */
   rainbowBrackets: boolean;
+  phrases?: Extension;
   /**
    * 要恢复的撤销历史（`exportHistory()` 的返回值）。
    *
@@ -71,6 +72,7 @@ export type ReconfigurableOptions = Partial<
     | 'readOnly'
     | 'showIndentGuides'
     | 'rainbowBrackets'
+    | 'phrases'
   >
 >;
 
@@ -143,7 +145,7 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
   if (options.history) {
     try {
       state = EditorState.fromJSON(
-        options.history as object,
+        { ...(options.history as object), doc: options.doc },
         { extensions },
         { history: historyField },
       );
@@ -216,6 +218,9 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
           compartments.rainbowBrackets.reconfigure(rainbowBracketsExtension(next.rainbowBrackets)),
         );
       }
+      if (next.phrases !== undefined) {
+        effects.push(compartments.phrases.reconfigure(next.phrases));
+      }
 
       if (effects.length > 0) {
         view.dispatch({ effects });
@@ -230,9 +235,13 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
     },
 
     setContent(content) {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: content },
-      });
+      // A disk reload starts a new history: Undo must not resurrect discarded edits.
+      view.setState(
+        EditorState.create({
+          doc: content,
+          extensions: [...buildExtensions(compartments, options), listenerExtension(options)],
+        }),
+      );
     },
 
     restoreScroll(scrollTop) {
@@ -246,7 +255,9 @@ export function createEditorView(options: CreateViewOptions): EditorHandle {
        * 重复带上反而可能与它们不一致。
        */
       try {
-        return view.state.toJSON({ history: historyField });
+        const serialized = view.state.toJSON({ history: historyField });
+        delete serialized.doc;
+        return serialized;
       } catch (err) {
         logError('editor', '导出撤销历史失败', err);
         return null;

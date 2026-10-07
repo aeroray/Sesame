@@ -21,8 +21,16 @@ import { reportError } from '$lib/actions/open-file';
 import { clearProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
-import { markDirty, renameTab, replaceTabContent, setTruncated } from '$lib/state/tabs.svelte';
+import { notify } from '$lib/state/status.svelte';
+import {
+  editVersion,
+  markDirty,
+  renameTab,
+  replaceTabContent,
+  setTruncated,
+} from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { documentTasks } from '$lib/utils/async';
 
 /**
  * 用指定编码重新读取该标签对应的文件。
@@ -30,10 +38,22 @@ import type { Tab } from '$lib/state/types';
  * 返回是否成功。失败时标签保持原样，不会变成空内容。
  */
 export async function reopenWithEncoding(tab: Tab, encoding: string): Promise<boolean> {
+  return documentTasks.run(tab.id, () => reopenNow(tab, encoding));
+}
+
+async function reopenNow(tab: Tab, encoding: string): Promise<boolean> {
   if (!tab.path) return false;
 
   try {
+    const version = editVersion(tab.id);
     const payload = await ipc.openFile(tab.path, encoding);
+    const first = payload.truncated
+      ? await ipc.readChunk(tab.path, 0, payload.encoding)
+      : undefined;
+    if (editVersion(tab.id) !== version) {
+      notify.warning(t('error.documentChangedDuringReload'));
+      return false;
+    }
 
     /*
      * 按**后端确认的**编码更新标签，而不是用户传进来的那个字符串。
@@ -42,14 +62,17 @@ export async function reopenWithEncoding(tab: Tab, encoding: string): Promise<bo
      * 若直接存用户输入，保存时 `encoding_for` 可能认不出而退回 UTF-8，
      * 把文件按错误编码写回去。
      */
-    replaceTabContent(tab.id, payload.content);
+    replaceTabContent(tab.id, first?.content ?? payload.content);
     renameTab(tab.id, payload.meta.path, payload.meta.name);
 
     // 编码、BOM、换行风格都可能随重新解码而变，全部以后端返回为准
     tab.encoding = payload.encoding;
+    tab.decodeLossy = payload.decodeLossy;
+    if (payload.decodeLossy) notify.warning(t('error.lossyDecodeReadonly'));
     tab.hasBom = payload.hasBom;
     tab.lineEnding = payload.lineEnding as Tab['lineEnding'];
     tab.language = payload.language as Tab['language'];
+    tab.baseline = { size: payload.meta.size, modifiedNs: payload.meta.modifiedNs };
 
     // 内容来自磁盘，不是未保存的修改
     markDirty(tab.id, false);
@@ -66,7 +89,7 @@ export async function reopenWithEncoding(tab: Tab, encoding: string): Promise<bo
     setTruncated(tab.id, payload.truncated);
     if (payload.truncated) {
       // 后端返回的编码与换行已探明，重新登记进度供分块加载使用
-      initProgress(tab.id, payload.meta.size, 0);
+      initProgress(tab.id, payload.meta.size, first?.nextOffset ?? 0);
     }
 
     return true;

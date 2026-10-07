@@ -90,12 +90,22 @@ mod tests {
 
     #[test]
     fn detects_python_shebang() {
-        assert_eq!(sniff_language("#!/usr/bin/env python3\nprint(1)").unwrap().0, "python");
+        assert_eq!(
+            sniff_language("#!/usr/bin/env python3\nprint(1)")
+                .unwrap()
+                .0,
+            "python"
+        );
     }
 
     #[test]
     fn detects_node_shebang() {
-        assert_eq!(sniff_language("#!/usr/bin/env node\nconsole.log(1)").unwrap().0, "javascript");
+        assert_eq!(
+            sniff_language("#!/usr/bin/env node\nconsole.log(1)")
+                .unwrap()
+                .0,
+            "javascript"
+        );
     }
 
     #[test]

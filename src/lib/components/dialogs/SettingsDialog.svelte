@@ -137,6 +137,31 @@ async function changeAutoSave(value: boolean) {
 async function handleReset() {
   await resetSettings();
 }
+
+function moveChoice(event: KeyboardEvent, selector: string) {
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+    return;
+  const current = event.currentTarget as HTMLElement;
+  const choices = [
+    ...(current.parentElement
+      ?.closest('[role="tablist"], [role="radiogroup"]')
+      ?.querySelectorAll<HTMLButtonElement>(selector) ?? []),
+  ];
+  if (!choices.length) return;
+  const index = choices.indexOf(current as HTMLButtonElement);
+  const next =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? choices.length - 1
+        : (index +
+            (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) +
+            choices.length) %
+          choices.length;
+  event.preventDefault();
+  choices[next]?.focus();
+  choices[next]?.click();
+}
 </script>
 
 <DialogRoot bind:open>
@@ -192,6 +217,9 @@ async function handleReset() {
           <button
             type="button"
             role="tab"
+            id={`settings-tab-${item.id}`}
+            aria-controls="settings-panel"
+            tabindex={tab === item.id ? 0 : -1}
             aria-selected={tab === item.id}
             class={cn(
               'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
@@ -200,6 +228,7 @@ async function handleReset() {
                 : 'text-content-muted hover:bg-secondary hover:text-content',
             )}
             onclick={() => (tab = item.id)}
+            onkeydown={(event) => moveChoice(event, '[role="tab"]')}
           >
             <Icon class="size-3.5 shrink-0" />
             <span class="truncate">{t(item.label)}</span>
@@ -215,7 +244,8 @@ async function handleReset() {
         auto，于是内容稍微超宽就冒出横向滚动条（用户反馈过）。
         显式禁掉 x 方向才干净。
       -->
-      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden pr-1">
+      <div id="settings-panel" role="tabpanel" aria-labelledby={`settings-tab-${tab}`}
+        class="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden pr-1">
         {#if tab === 'appearance'}
           <!-- 主题 -->
           <div class="flex flex-col gap-2">
@@ -244,6 +274,7 @@ async function handleReset() {
                     type="button"
                     role="radio"
                     aria-checked={settings.theme === item.id}
+                    tabindex={settings.theme === item.id ? 0 : -1}
                     class={cn(
                       'flex items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors',
                       settings.theme === item.id
@@ -251,6 +282,7 @@ async function handleReset() {
                         : 'hover:bg-secondary',
                     )}
                     onclick={() => updateSetting('theme', item.id)}
+                    onkeydown={(event) => moveChoice(event, '[role="radio"]')}
                   >
                     <ThemeThumbnail theme={item} />
                     <span class="min-w-0 flex-1 truncate text-sm font-normal">{item.name}</span>

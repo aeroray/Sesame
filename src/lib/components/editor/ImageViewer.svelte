@@ -20,6 +20,7 @@ import {
   getImage,
   getImageDimensions,
   isLoading,
+  retainImage,
   setImageDimensions,
 } from '$lib/state/images.svelte';
 import type { Tab } from '$lib/state/types';
@@ -180,8 +181,9 @@ const displayHeight = $derived(Math.max(1, Math.floor((natural?.height ?? 1) * e
 $effect(() => {
   const id = tab.id;
   const path = tab.path;
-  if (!path) return;
+  if (!path || !active) return;
   untrack(() => {
+    retainImage(id);
     ensureImage(id, path).catch((err) => reportError(err, t('error.readImageFailed')));
   });
 });
@@ -255,7 +257,8 @@ async function setView(nextFit: boolean, nextZoom = 1, point?: ZoomPoint) {
 
 function zoomBy(factor: number, point?: ZoomPoint) {
   // Start from the actual fitted scale, rather than jumping to 100%.
-  void setView(false, Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, effectiveZoom * factor)), point);
+  const minimum = Math.min(MIN_ZOOM, fitZoom / 10);
+  void setView(false, Math.min(MAX_ZOOM, Math.max(minimum, effectiveZoom * factor)), point);
 }
 
 function onWheel(event: WheelEvent) {
@@ -347,7 +350,9 @@ async function openExternally() {
     style:cursor={dragging ? 'grabbing' : spaceHeld ? 'grab' : undefined}
     style="overflow-anchor: none;"
   >
-    {#if loading && !payload}
+    {#if !active}
+      <!-- Release decoded bitmap surfaces for hidden tabs while retaining view state. -->
+    {:else if loading && !payload}
       <div class="flex h-full items-center justify-center gap-2 text-xs text-content-faint">
         <Loader2 class="size-4 animate-spin" />
         {t('image.loading')}

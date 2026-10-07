@@ -12,6 +12,7 @@
 //! 不做的：置信度评分、手动切换编码的 UI、以及为每种编码写专门逻辑。
 //! 这些都需要持续的维护与测试，换不来实际收益。
 
+use crate::model::{AppError, AppResult};
 use encoding_rs::Encoding;
 
 /// 判定「这根本不是文本」时允许的坏字节比例上限。
@@ -148,7 +149,7 @@ pub fn decode_as(bytes: &[u8], label: &str) -> Decoded {
     if bytes.is_empty() {
         return Decoded {
             text: String::new(),
-            label: "utf-8",
+            label: label_for(encoding_for(label)),
             has_bom: false,
         };
     }
@@ -158,7 +159,7 @@ pub fn decode_as(bytes: &[u8], label: &str) -> Decoded {
     // 内容带 BOM 且与所选编码一致时，剥掉 BOM 再解码
     if let Some((bom_enc, bom_len)) = Encoding::for_bom(bytes) {
         if bom_enc == enc {
-            let (cow, _, _) = enc.decode(&bytes[bom_len..]);
+            let (cow, _) = enc.decode_without_bom_handling(&bytes[bom_len..]);
             return Decoded {
                 text: cow.into_owned(),
                 label: label_of_bom(enc),
@@ -168,12 +169,22 @@ pub fn decode_as(bytes: &[u8], label: &str) -> Decoded {
     }
 
     // 用户指定的编码与 BOM 不符（或没有 BOM）：按用户所选整体解码
-    let (cow, _, _) = enc.decode(bytes);
+    let (cow, _) = enc.decode_without_bom_handling(bytes);
     Decoded {
         text: cow.into_owned(),
         label: label_for(enc),
         has_bom: false,
     }
+}
+
+/// Replacement characters introduced by decoding must never be written back silently.
+pub fn decoding_is_lossy(bytes: &[u8], label: &str) -> bool {
+    let enc = encoding_for(label);
+    let skip = Encoding::for_bom(bytes)
+        .filter(|(bom, _)| *bom == enc)
+        .map(|(_, len)| len)
+        .unwrap_or(0);
+    enc.decode_without_bom_handling(&bytes[skip..]).1
 }
 
 /// 探测并解码字节流。
@@ -190,7 +201,7 @@ pub fn decode(bytes: &[u8]) -> Decoded {
 
     // 1. BOM 优先，最可靠
     if let Some((enc, bom_len)) = Encoding::for_bom(bytes) {
-        let (cow, _, _) = enc.decode(&bytes[bom_len..]);
+        let (cow, _) = enc.decode_without_bom_handling(&bytes[bom_len..]);
         return Decoded {
             text: cow.into_owned(),
             label: label_of_bom(enc),
@@ -199,6 +210,15 @@ pub fn decode(bytes: &[u8]) -> Decoded {
     }
 
     // 2. 严格 UTF-8——绝大多数文件走这条路径
+    // UTF-16 BOMs were handled above; NUL-containing buffers are not ordinary text.
+    if bytes.contains(&0) {
+        return Decoded {
+            text: String::new(),
+            label: "binary",
+            has_bom: false,
+        };
+    }
+
     if let Ok(s) = std::str::from_utf8(bytes) {
         return Decoded {
             text: s.to_owned(),
@@ -250,10 +270,42 @@ pub fn decode(bytes: &[u8]) -> Decoded {
     }
 }
 
+/// A bounded probe may end in the middle of a valid UTF-8 sequence.
+pub fn decode_probe(bytes: &[u8]) -> Decoded {
+    if let Err(error) = std::str::from_utf8(bytes) {
+        if error.error_len().is_none() && error.valid_up_to() > 0 {
+            return decode(&bytes[..error.valid_up_to()]);
+        }
+    }
+    decode(bytes)
+}
+
 /// 把文本按目标编码编码为字节，并按需补 BOM。
-pub fn encode(text: &str, label: &str, with_bom: bool) -> Vec<u8> {
+pub fn encode(text: &str, label: &str, with_bom: bool) -> AppResult<Vec<u8>> {
     let enc = encoding_for(label);
-    let (body, _, _) = enc.encode(text);
+    // encoding_rs deliberately encodes UTF-16 output as UTF-8. Use Rust's
+    // standard UTF-16 conversion and serialize code units in the required order.
+    if enc == encoding_rs::UTF_16LE || enc == encoding_rs::UTF_16BE {
+        let little = enc == encoding_rs::UTF_16LE;
+        let mut out = Vec::with_capacity(text.len().saturating_mul(2) + 2);
+        if with_bom {
+            out.extend_from_slice(if little { &[0xFF, 0xFE] } else { &[0xFE, 0xFF] });
+        }
+        for unit in text.encode_utf16() {
+            out.extend_from_slice(&if little {
+                unit.to_le_bytes()
+            } else {
+                unit.to_be_bytes()
+            });
+        }
+        return Ok(out);
+    }
+    let (body, _, had_errors) = enc.encode(text);
+    if had_errors {
+        return Err(AppError::Unsupported(format!(
+            "编码 {label} 无法表示部分字符，请选择 UTF-8 后保存"
+        )));
+    }
     let mut out = Vec::with_capacity(body.len() + 3);
 
     if with_bom {
@@ -266,7 +318,7 @@ pub fn encode(text: &str, label: &str, with_bom: bool) -> Vec<u8> {
     }
 
     out.extend_from_slice(&body);
-    out
+    Ok(out)
 }
 
 /// 探测换行风格。以第一个出现的换行符为准，与主流编辑器一致。
@@ -312,6 +364,57 @@ mod tests {
     use super::*;
 
     #[test]
+    fn audit_double_bom_preserves_literal_leading_character() {
+        let bytes = b"\xef\xbb\xbf\xef\xbb\xbftext";
+        let decoded = decode(bytes);
+        assert_eq!(decoded.text, "\u{feff}text");
+        assert_eq!(
+            encode(&decoded.text, decoded.label, decoded.has_bom).unwrap(),
+            bytes
+        );
+    }
+
+    #[test]
+    fn audit_probe_keeps_utf8_with_truncated_final_character() {
+        let mut bytes = "普通 UTF8 文本".repeat(40).into_bytes();
+        bytes.extend_from_slice(&[0xf0, 0x9f]);
+        let decoded = decode_probe(&bytes);
+        assert_eq!(decoded.label, "utf-8");
+        assert!(!decoded.text.contains('\u{fffd}'));
+    }
+
+    #[test]
+    fn audit_utf16_round_trip_preserves_bytes() {
+        let text = "中文🙂\r\nsecond line";
+        for (label, bom) in [("utf-16le", [0xFF, 0xFE]), ("utf-16be", [0xFE, 0xFF])] {
+            let mut expected = bom.to_vec();
+            for unit in text.encode_utf16() {
+                expected.extend_from_slice(&if label == "utf-16le" {
+                    unit.to_le_bytes()
+                } else {
+                    unit.to_be_bytes()
+                });
+            }
+            assert_eq!(
+                encode(text, label, true).unwrap(),
+                expected,
+                "{label} writeback changed encoding"
+            );
+        }
+    }
+
+    #[test]
+    fn audit_nul_binary_is_not_writable_text() {
+        assert_eq!(decode(b"MZ\0\0binary header").label, "binary");
+    }
+
+    #[test]
+    fn audit_unmappable_characters_are_rejected() {
+        assert!(encode("emoji 🙂", "gbk", false).is_err());
+        assert!(encode("中文", "windows-1252", false).is_err());
+    }
+
+    #[test]
     fn detects_utf8_without_bom() {
         let d = decode("你好，世界".as_bytes());
         assert_eq!(d.label, "utf-8");
@@ -354,7 +457,9 @@ mod tests {
     fn genuinely_binary_data_is_not_claimed_as_gbk() {
         // 大量随机高位字节：GBK 解码会产生大量替换字符，
         // 比例远超阈值，不应被判成 gbk。
-        let bytes: Vec<u8> = (0..512u32).map(|i| (i.wrapping_mul(97) % 256) as u8).collect();
+        let bytes: Vec<u8> = (0..512u32)
+            .map(|i| (i.wrapping_mul(97) % 256) as u8)
+            .collect();
         let d = decode(&bytes);
         assert_ne!(d.label, "gbk");
     }
@@ -368,7 +473,7 @@ mod tests {
 
     #[test]
     fn round_trips_gbk() {
-        let bytes = encode("中文", "gbk", false);
+        let bytes = encode("中文", "gbk", false).unwrap();
         assert_eq!(bytes, vec![0xD6, 0xD0, 0xCE, 0xC4]);
     }
 
@@ -453,8 +558,11 @@ mod tests {
         for (name, original) in cases {
             let d = decode(&original);
             assert_eq!(d.label, "gbk", "{name} 的判定前提变了，请重新评估本测试");
-            let written = encode(&d.text, d.label, d.has_bom);
-            assert_eq!(written, original, "{name} 误判后写回字节不一致，属于数据损坏");
+            let written = encode(&d.text, d.label, d.has_bom).unwrap();
+            assert_eq!(
+                written, original,
+                "{name} 误判后写回字节不一致，属于数据损坏"
+            );
         }
     }
 
@@ -476,7 +584,10 @@ mod tests {
         assert_eq!(fixed.text, "中文測試");
 
         // 按同一编码写回，字节与原文一致（不会损坏文件）
-        assert_eq!(encode(&fixed.text, fixed.label, fixed.has_bom), big5);
+        assert_eq!(
+            encode(&fixed.text, fixed.label, fixed.has_bom).unwrap(),
+            big5
+        );
     }
 
     /// `decode_as` 返回的 label 必须能被 `encoding_for` 认回来。

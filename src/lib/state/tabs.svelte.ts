@@ -15,8 +15,9 @@ import * as ipc from '$lib/ipc/fs';
 import { rememberClosed } from '$lib/state/closed-tabs.svelte';
 import { releaseImage } from '$lib/state/images.svelte';
 import { clearPreview } from '$lib/state/layout.svelte';
-import type { LanguageId, LineEnding, Tab } from '$lib/state/types';
+import type { DiskBaseline, LanguageId, LineEnding, Tab } from '$lib/state/types';
 import { logError } from '$lib/utils/log';
+import { IS_WINDOWS } from '$lib/utils/platform';
 
 /** 视图句柄表。故意不是响应式的。 */
 const views = new Map<string, EditorHandle>();
@@ -168,8 +169,13 @@ export function normalizePath(path: string): string {
 
 /** 按路径查找已打开的标签页。 */
 export function findByPath(path: string): Tab | null {
-  const key = normalizePath(path);
-  return tabs.items.find((t) => t.path !== null && normalizePath(t.path) === key) ?? null;
+  const key = pathKey(path);
+  return tabs.items.find((t) => t.path !== null && pathKey(t.path) === key) ?? null;
+}
+
+export function pathKey(path: string): string {
+  const normalized = normalizePath(path);
+  return IS_WINDOWS ? normalized.toLowerCase() : normalized;
 }
 
 /** 注册视图句柄。 */
@@ -226,13 +232,14 @@ export function createBlankTab(): Tab {
 
 /** 由已打开的文件创建标签页。 */
 export function createTabFromPayload(payload: {
-  meta: { path: string; name: string };
+  meta: { path: string; name: string; size: number; modifiedNs: string | null };
   content: string;
   language: string;
   encoding: string;
   lineEnding: string;
   hasBom: boolean;
   truncated: boolean;
+  decodeLossy?: boolean;
 }): Tab {
   const tab: Tab = {
     id: newId(),
@@ -245,11 +252,13 @@ export function createTabFromPayload(payload: {
     hasBom: payload.hasBom,
     dirty: false,
     truncated: payload.truncated,
+    decodeLossy: payload.decodeLossy,
     scrollTop: 0,
     cursorLine: 1,
     cursorColumn: 1,
     lastActiveAt: Date.now(),
     sleep: 'none',
+    baseline: { size: payload.meta.size, modifiedNs: payload.meta.modifiedNs },
   };
   setTabContent(tab.id, payload.content);
   tabs.items.unshift(tab);
@@ -272,6 +281,8 @@ export function createTabFromDraft(draft: {
   encoding: string;
   lineEnding: string;
   hasBom: boolean;
+  baseline?: DiskBaseline;
+  truncated?: boolean;
 }): Tab {
   const tab: Tab = {
     id: draft.id,
@@ -284,12 +295,13 @@ export function createTabFromDraft(draft: {
     hasBom: draft.hasBom,
     // 草稿意味着「有内容尚未落盘」，因此是脏的
     dirty: true,
-    truncated: false,
+    truncated: draft.truncated ?? false,
     scrollTop: 0,
     cursorLine: 1,
     cursorColumn: 1,
     lastActiveAt: Date.now(),
     sleep: 'none',
+    baseline: draft.baseline,
   };
   setTabContent(tab.id, draft.content);
   tabs.items.push(tab);
@@ -411,6 +423,7 @@ export function renameTab(id: string, path: string, name: string): void {
  * 会自动跟随语言切换。
  */
 export function tabDisplayName(tab: Tab): string {
+  if (!tab.path && tab.recoveredName) return t('tab.recoveredFile', { name: tab.recoveredName });
   return tab.path === null ? t('tab.untitled') : tab.name;
 }
 
@@ -441,6 +454,9 @@ function teardown(id: string, path: string | null): void {
   detachView(id);
   clearPreview(id);
   releaseImage(id);
+  pendingHistory.delete(id);
+  restoreTargets.delete(id);
+  editVersions.delete(id);
 
   // 清理后端的状态记录
   if (path) {

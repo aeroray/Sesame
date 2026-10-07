@@ -7,7 +7,8 @@
 
 import { autoSaveTab } from '$lib/actions/save-file';
 import { settings } from '$lib/state/settings.svelte';
-import { tabs } from '$lib/state/tabs.svelte';
+import { editVersion, tabs } from '$lib/state/tabs.svelte';
+import { documentTasks } from '$lib/utils/async';
 import { AUTOSAVE_DEBOUNCE } from '$src/constants';
 
 /** tab id → 待触发的定时器。 */
@@ -38,13 +39,15 @@ async function runAutoSave(tabId: string): Promise<void> {
 
   const tab = tabs.items.find((t) => t.id === tabId);
   // 标签已被关闭，或已不再需要保存
-  if (!tab || !tab.dirty) return;
+  if (!tab?.dirty) return;
 
   running.add(tabId);
+  const version = editVersion(tabId);
   try {
     await autoSaveTab(tab);
   } finally {
     running.delete(tabId);
+    if (tab.dirty && editVersion(tabId) !== version) scheduleAutoSave(tabId);
   }
 }
 
@@ -76,8 +79,11 @@ export function cancelAllAutoSave(): void {
 export async function flushAutoSave(): Promise<void> {
   if (!settings.autoSave) return;
 
-  const pending = [...timers.keys()];
+  const pending = tabs.items
+    .filter((tab) => tab.dirty && tab.path && tab.kind === 'text')
+    .map((tab) => tab.id);
   cancelAllAutoSave();
 
   await Promise.all(pending.map((id) => runAutoSave(id)));
+  await documentTasks.drain();
 }

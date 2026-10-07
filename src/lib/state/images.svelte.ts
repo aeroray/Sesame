@@ -50,6 +50,24 @@ let loading = $state.raw<Record<string, boolean>>({});
  * 而该标签再也不会被访问——这份数据（可达数十 MB）就永久驻留了。
  */
 const cancelled = new Set<string>();
+const pending = new Map<string, Promise<void>>();
+const touched = new Map<string, number>();
+const MAX_CACHE_CHARACTERS = 128 * 1024 * 1024;
+let retained: string | undefined;
+
+function trimCache(): void {
+  let total = Object.values(images).reduce((sum, image) => sum + image.dataUrl.length, 0);
+  for (const id of [...Object.keys(images)].sort(
+    (a, b) => (touched.get(a) ?? 0) - (touched.get(b) ?? 0),
+  )) {
+    if (total <= MAX_CACHE_CHARACTERS) break;
+    if (id === retained) continue;
+    total -= images[id]?.dataUrl.length ?? 0;
+    const { [id]: _removed, ...rest } = images;
+    images = rest;
+    touched.delete(id);
+  }
+}
 
 /** 读取某个标签页的图片。 */
 export function getImage(tabId: string): ImagePayload | undefined {
@@ -67,14 +85,39 @@ export function isLoading(tabId: string): boolean {
  * 同一个标签重复调用只会真正读取一次。
  */
 export async function ensureImage(tabId: string, path: string): Promise<void> {
-  if (images[tabId] || loading[tabId]) return;
+  touched.set(tabId, Date.now());
+  if (images[tabId]) return;
+  const previous = pending.get(tabId);
+  if (previous) {
+    // A sleeping tab may be reactivated before its original read finishes.
+    cancelled.delete(tabId);
+    return previous;
+  }
 
   loading = { ...loading, [tabId]: true };
+  const task = loadImage(tabId, path);
+  pending.set(tabId, task);
+  try {
+    await task;
+  } finally {
+    if (pending.get(tabId) === task) pending.delete(tabId);
+  }
+}
+
+/** Only the visible viewer pins its cache entry; background reads cannot evict it. */
+export function retainImage(tabId: string): void {
+  retained = tabId;
+  touched.set(tabId, Date.now());
+  trimCache();
+}
+
+async function loadImage(tabId: string, path: string): Promise<void> {
   try {
     const payload = await ipc.readImage(path);
     // 期间标签已被关闭：丢弃结果，不写入缓存
     if (cancelled.has(tabId)) return;
     images = { ...images, [tabId]: payload };
+    trimCache();
   } finally {
     const { [tabId]: _done, ...rest } = loading;
     loading = rest;
@@ -85,7 +128,9 @@ export async function ensureImage(tabId: string, path: string): Promise<void> {
 /** 释放某个标签的图片。 */
 export function releaseImage(tabId: string): void {
   // 标记取消，防止在途请求回来后重新写入
-  cancelled.add(tabId);
+  if (loading[tabId]) cancelled.add(tabId);
+  else cancelled.delete(tabId);
+  touched.delete(tabId);
   const { [tabId]: _dimensions, ...remainingDimensions } = dimensions;
   dimensions = remainingDimensions;
 

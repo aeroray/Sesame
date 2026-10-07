@@ -63,7 +63,7 @@ export function togglePreview(tabId: string, content: string): void {
 
 /** 关闭标签页时清理预览状态与快照。 */
 export function clearPreview(tabId: string): void {
-  if (preview.tabs[tabId]) {
+  if (Object.hasOwn(preview.tabs, tabId)) {
     const { [tabId]: _flag, ...restFlags } = preview.tabs;
     preview.tabs = restFlags;
   }

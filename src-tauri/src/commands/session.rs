@@ -29,32 +29,41 @@ fn store_path(app: &AppHandle) -> AppResult<PathBuf> {
 /// 一个坏掉的 json 不该让应用启动失败。
 #[tauri::command]
 pub async fn session_load(app: AppHandle) -> AppResult<SessionSnapshot> {
-    let Ok(path) = store_path(&app) else {
-        return Ok(SessionSnapshot::default());
-    };
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return Ok(SessionSnapshot::default());
-    };
-    Ok(serde_json::from_str(&text).unwrap_or_default())
+    crate::core::persistence::run(move || {
+        let Ok(path) = store_path(&app) else {
+            return Ok(SessionSnapshot::default());
+        };
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            return Ok(SessionSnapshot::default());
+        };
+        Ok(serde_json::from_str(&text).unwrap_or_default())
+    })
+    .await
 }
 
 /// 保存会话快照。
 #[tauri::command]
 pub async fn session_save(app: AppHandle, snapshot: SessionSnapshot) -> AppResult<()> {
-    let path = store_path(&app)?;
-    let text = serde_json::to_string_pretty(&snapshot)
-        .map_err(|e| AppError::Io(format!("序列化失败：{e}")))?;
-    std::fs::write(&path, text).map_err(|e| AppError::from_io(&paths::to_slash(&path), e))
+    crate::core::persistence::run(move || {
+        let path = store_path(&app)?;
+        let text = serde_json::to_string_pretty(&snapshot)
+            .map_err(|e| AppError::Io(format!("序列化失败：{e}")))?;
+        crate::core::atomic::write_bytes(&path, text.as_bytes())
+    })
+    .await
 }
 
 /// 清空会话。
 #[tauri::command]
 pub async fn session_clear(app: AppHandle) -> AppResult<()> {
-    let path = store_path(&app)?;
-    // 文件不存在时视为已清空，不算错误
-    match std::fs::remove_file(&path) {
-        Ok(()) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(AppError::from_io(&paths::to_slash(&path), e)),
-    }
+    crate::core::persistence::run(move || {
+        let path = store_path(&app)?;
+        // 文件不存在时视为已清空，不算错误
+        match std::fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(AppError::from_io(&paths::to_slash(&path), e)),
+        }
+    })
+    .await
 }

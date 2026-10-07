@@ -10,7 +10,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { flushAutoSave } from '$lib/actions/autosave';
 import { requestCloseActive, requestCloseAll } from '$lib/actions/close-tab';
-import { clearAllDrafts, flushDrafts } from '$lib/actions/draft';
+import { flushDrafts } from '$lib/actions/draft';
 import { copyPath } from '$lib/actions/file-actions';
 import { newTab } from '$lib/actions/new-tab';
 import { openPath, openViaDialog, reportError } from '$lib/actions/open-file';
@@ -30,10 +30,11 @@ import * as ipc from '$lib/ipc/fs';
 import { startHibernationLoop } from '$lib/state/hibernation.svelte';
 import { isPreviewing, layout, toggleSidebar } from '$lib/state/layout.svelte';
 import { refreshRecents } from '$lib/state/recents.svelte';
-import { saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
+import { resumeSessionSave, saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
 import { loadSettings, settings } from '$lib/state/settings.svelte';
 import { notify } from '$lib/state/status.svelte';
 import { activateTab, tabs } from '$lib/state/tabs.svelte';
+import { documentTasks } from '$lib/utils/async';
 import { registerHotkeys } from '$lib/utils/hotkeys';
 import { logError } from '$lib/utils/log';
 import Sidebar from './Sidebar.svelte';
@@ -42,6 +43,14 @@ import TitleBar from './TitleBar.svelte';
 
 let settingsOpen = $state(false);
 let shortcutsOpen = $state(false);
+let closing = $state(false);
+let startupComplete = false;
+
+async function openQueuedFiles() {
+  await documentTasks.run('startup-files', async () => {
+    for (const path of await ipc.takeStartupFiles()) await openPath(path);
+  });
+}
 
 /** 当前激活的标签页。 */
 const active = $derived(tabs.items.find((t) => t.id === tabs.activeId) ?? null);
@@ -51,7 +60,7 @@ const chunkProgress = $derived(active ? getProgress(active.id) : undefined);
 
 /** 是否显示大文件提示条：有进度且尚未加载完。 */
 const showLargeBanner = $derived(
-  active !== null && active.truncated && chunkProgress !== undefined && !chunkProgress.complete,
+  active?.truncated && chunkProgress !== undefined && !chunkProgress.complete,
 );
 
 /** 当前标签页能否预览（仅 Markdown）。 */
@@ -60,37 +69,41 @@ const canPreview = $derived(active?.language === 'markdown');
 /** 启动：加载设置 → 还原草稿与会话 → 打开命令行文件 → 刷新最近文件。 */
 $effect(() => {
   (async () => {
-    await loadSettings();
-    await refreshRecents();
+    try {
+      await loadSettings();
+      await refreshRecents();
 
-    /*
-     * 先还原草稿，再还原会话。
-     *
-     * `restoreAll` 内部已经按这个顺序做完两件事，**不要在这里再调一次
-     * `restoreSession`**——那会把所有文件打开两遍。
-     *
-     * 草稿排在前是因为它是「上次没保存的正文」，最可能被用户以为已经丢了。
-     * 草稿恢复成带脏标记的标签，用户想丢弃就关掉它，不需要额外的确认框。
-     */
-    const { drafts, files } = await restoreAll();
+      /*
+       * 先还原草稿，再还原会话。
+       *
+       * `restoreAll` 内部已经按这个顺序做完两件事，**不要在这里再调一次
+       * `restoreSession`**——那会把所有文件打开两遍。
+       *
+       * 草稿排在前是因为它是「上次没保存的正文」，最可能被用户以为已经丢了。
+       * 草稿恢复成带脏标记的标签，用户想丢弃就关掉它，不需要额外的确认框。
+       */
+      const { drafts, files } = await restoreAll();
 
-    // 命令行传入的文件优先于会话恢复
-    const startup = await ipc.takeStartupFiles().catch(() => [] as string[]);
+      // 命令行传入的文件优先于会话恢复
+      startupComplete = true;
+      await openQueuedFiles();
 
-    if (startup.length > 0) {
-      for (const path of startup) await openPath(path);
-    }
-
-    /*
-     * 只在确实恢复了内容时提示一句。
-     *
-     * 用 toast 而不是模态框：它不打断操作、几秒后自动消失，
-     * 但能解释「为什么一打开就多了个标签」——否则用户会困惑。
-     */
-    if (drafts > 0) {
-      notify.info(t('status.restoredDrafts', { count: drafts }));
-    } else if (files > 0) {
-      notify.info(t('status.restoredSession', { count: files }));
+      /*
+       * 只在确实恢复了内容时提示一句。
+       *
+       * 用 toast 而不是模态框：它不打断操作、几秒后自动消失，
+       * 但能解释「为什么一打开就多了个标签」——否则用户会困惑。
+       */
+      if (drafts > 0) {
+        notify.info(t('status.restoredDrafts', { count: drafts }));
+      } else if (files > 0) {
+        notify.info(t('status.restoredSession', { count: files }));
+      }
+    } catch (err) {
+      reportError(err, t('error.openFailed'));
+    } finally {
+      startupComplete = true;
+      resumeSessionSave();
     }
   })();
 });
@@ -113,89 +126,92 @@ $effect(() => {
 
 /** 注册全局快捷键。 */
 $effect(() => {
-  const unregister = registerHotkeys([
-    { keys: 'Ctrl+N', label: t('tab.new'), group: t('shortcuts.groupFile'), handler: newTab },
-    {
-      keys: 'Ctrl+O',
-      label: t('command.openFile'),
-      group: t('shortcuts.groupFile'),
-      handler: () => void openViaDialog(),
-    },
-    {
-      keys: 'Ctrl+S',
-      label: t('action.save'),
-      group: t('shortcuts.groupFile'),
-      handler: () => {
-        if (active) void saveTab(active);
+  const unregister = registerHotkeys(
+    [
+      { keys: 'Ctrl+N', label: t('tab.new'), group: t('shortcuts.groupFile'), handler: newTab },
+      {
+        keys: 'Ctrl+O',
+        label: t('command.openFile'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void openViaDialog(),
       },
-    },
-    {
-      keys: 'Ctrl+Shift+S',
-      label: t('action.saveAs'),
-      group: t('shortcuts.groupFile'),
-      handler: () => {
-        if (active) void saveTabAs(active);
+      {
+        keys: 'Ctrl+S',
+        label: t('action.save'),
+        group: t('shortcuts.groupFile'),
+        handler: () => {
+          if (active) void saveTab(active);
+        },
       },
-    },
-    {
-      keys: 'Ctrl+W',
-      label: t('command.closeTab'),
-      group: t('shortcuts.groupFile'),
-      handler: () => void requestCloseActive(),
-    },
-    {
-      keys: 'Ctrl+Shift+T',
-      label: t('action.reopenClosed'),
-      group: t('shortcuts.groupFile'),
-      handler: () => void reopenClosedTab(),
-    },
-    {
-      keys: 'Ctrl+Shift+C',
-      label: t('action.copyPath'),
-      group: t('shortcuts.groupFile'),
-      handler: () => void copyPath(),
-    },
-    {
-      keys: 'Ctrl+B',
-      label: t('command.toggleSidebar'),
-      group: t('shortcuts.groupView'),
-      handler: toggleSidebar,
-    },
-    {
-      // 用 Ctrl+Shift+M 而不是 Ctrl+Shift+V：后者是通行的「粘贴为纯文本」，
-      // 占用它会破坏编辑器里最基本的粘贴习惯。
-      keys: 'Ctrl+Shift+M',
-      label: t('editor.preview'),
-      group: t('shortcuts.groupView'),
-      handler: () => {
-        if (active && canPreview) requestTogglePreview(active);
+      {
+        keys: 'Ctrl+Shift+S',
+        label: t('action.saveAs'),
+        group: t('shortcuts.groupFile'),
+        handler: () => {
+          if (active) void saveTabAs(active);
+        },
       },
-    },
-    {
-      keys: 'Ctrl+,',
-      label: t('menu.settings'),
-      group: t('shortcuts.groupView'),
-      handler: () => (settingsOpen = true),
-    },
-    {
-      keys: 'Ctrl+/',
-      label: t('menu.shortcuts'),
-      group: t('shortcuts.groupView'),
-      handler: () => (shortcutsOpen = true),
-    },
-    {
-      keys: 'Ctrl+Tab',
-      label: t('tab.next'),
-      group: t('shortcuts.groupView'),
-      handler: () => cycleTab(1),
-    },
-    {
-      keys: 'Ctrl+Shift+Tab',
-      label: t('tab.previous'),
-      group: t('shortcuts.groupView'),
-      handler: () => cycleTab(-1),
-    },
-  ]);
+      {
+        keys: 'Ctrl+W',
+        label: t('command.closeTab'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void requestCloseActive(),
+      },
+      {
+        keys: 'Ctrl+Shift+T',
+        label: t('action.reopenClosed'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void reopenClosedTab(),
+      },
+      {
+        keys: 'Ctrl+Shift+C',
+        label: t('action.copyPath'),
+        group: t('shortcuts.groupFile'),
+        handler: () => void copyPath(),
+      },
+      {
+        keys: 'Ctrl+B',
+        label: t('command.toggleSidebar'),
+        group: t('shortcuts.groupView'),
+        handler: toggleSidebar,
+      },
+      {
+        // 用 Ctrl+Shift+M 而不是 Ctrl+Shift+V：后者是通行的「粘贴为纯文本」，
+        // 占用它会破坏编辑器里最基本的粘贴习惯。
+        keys: 'Ctrl+Shift+M',
+        label: t('editor.preview'),
+        group: t('shortcuts.groupView'),
+        handler: () => {
+          if (active && canPreview) requestTogglePreview(active);
+        },
+      },
+      {
+        keys: 'Ctrl+,',
+        label: t('menu.settings'),
+        group: t('shortcuts.groupView'),
+        handler: () => (settingsOpen = true),
+      },
+      {
+        keys: 'Ctrl+/',
+        label: t('menu.shortcuts'),
+        group: t('shortcuts.groupView'),
+        handler: () => (shortcutsOpen = true),
+      },
+      {
+        keys: 'Ctrl+Tab',
+        label: t('tab.next'),
+        group: t('shortcuts.groupView'),
+        handler: () => cycleTab(1),
+      },
+      {
+        keys: 'Ctrl+Shift+Tab',
+        label: t('tab.previous'),
+        group: t('shortcuts.groupView'),
+        handler: () => cycleTab(-1),
+      },
+    ],
+    () => !closing,
+  );
   return unregister;
 });
 
@@ -217,7 +233,7 @@ $effect(() => {
 
   getCurrentWebview()
     .onDragDropEvent((event) => {
-      if (event.payload.type !== 'drop') return;
+      if (closing || event.payload.type !== 'drop') return;
       const paths = event.payload.paths ?? [];
       if (paths.length === 0) return;
       // 并行打开：拖入多个大文件时不必串行等待
@@ -229,7 +245,8 @@ $effect(() => {
       } else {
         unlisten = fn;
       }
-    });
+    })
+    .catch((err) => logError('shell', '监听拖拽失败', err));
 
   return () => {
     disposed = true;
@@ -257,13 +274,19 @@ $effect(() => {
   let unlisten: (() => void) | undefined;
   let disposed = false;
 
-  listen<string[]>('open-files', (event) => {
-    const paths = event.payload ?? [];
-    for (const path of paths) void openPath(path);
+  listen('open-files', () => {
+    if (startupComplete && !closing) {
+      void openQueuedFiles().catch((err) => reportError(err, t('error.openFailed')));
+    }
   })
     .then((fn) => {
       if (disposed) fn();
-      else unlisten = fn;
+      else {
+        unlisten = fn;
+        if (startupComplete && !closing) {
+          void openQueuedFiles().catch((err) => reportError(err, t('error.openFailed')));
+        }
+      }
     })
     .catch((err) => logError('shell', '监听 open-files 失败', err));
 
@@ -300,48 +323,62 @@ $effect(() => {
  */
 $effect(() => {
   let unlisten: (() => void) | undefined;
-  let closing = false;
+  let disposed = false;
 
   getCurrentWindow()
     .onCloseRequested(async (event) => {
-      // 已经在关闭流程里就放行，避免递归
+      // Repeated close requests must remain blocked while persistence is pending.
+      event.preventDefault();
       if (closing) return;
 
       // 无论如何都要拦截一次：需要时间写完自动保存、草稿与会话，再主动销毁窗口
-      event.preventDefault();
       closing = true;
+      try {
+        await documentTasks.drain();
 
-      // 先把草稿冲刷到磁盘。这一步不依赖自动保存开关——
-      // 它是未命名标签唯一的保命手段，也是崩溃/误关的兜底。
-      await flushDrafts();
-
-      if (settings.autoSave) {
-        // 自动保存开启：把防抖中的写入立刻落盘，不必再问用户
-        await flushAutoSave();
-      } else if (tabs.items.some((t) => t.dirty)) {
-        // 未开自动保存且有未保存内容：走确认流程
-        const closed = await requestCloseAll();
-        // 用户取消或保存失败时中止关闭
-        if (!closed) {
+        // 先把草稿冲刷到磁盘。这一步不依赖自动保存开关——
+        // 它是未命名标签唯一的保命手段，也是崩溃/误关的兜底。
+        if (!(await flushDrafts())) {
+          notify.error(t('error.draftBackupFailed'));
           closing = false;
           return;
         }
-        /*
-         * 用户已逐个处理完所有标签，草稿没有存在意义了。
-         * 若不清理，下次启动会把刚处理过的内容又恢复一遍，
-         * 造成「明明保存过却还提示有未保存内容」的困惑。
-         */
-        await clearAllDrafts();
-      }
 
-      await saveSessionNow();
-      await getCurrentWindow().destroy();
+        if (settings.autoSave) {
+          // 自动保存开启：把防抖中的写入立刻落盘，不必再问用户
+          await flushAutoSave();
+        } else if (tabs.items.some((t) => t.dirty)) {
+          // 未开自动保存且有未保存内容：走确认流程
+          const closed = await requestCloseAll(false);
+          // 用户取消或保存失败时中止关闭
+          if (!closed) {
+            closing = false;
+            return;
+          }
+          /*
+           * 用户已逐个处理完所有标签，草稿没有存在意义了。
+           * 若不清理，下次启动会把刚处理过的内容又恢复一遍，
+           * 造成「明明保存过却还提示有未保存内容」的困惑。
+           */
+        }
+
+        await saveSessionNow();
+        await getCurrentWindow().destroy();
+      } catch (err) {
+        closing = false;
+        reportError(err, t('error.saveFailed'));
+      }
     })
     .then((fn) => {
-      unlisten = fn;
-    });
+      if (disposed) fn();
+      else unlisten = fn;
+    })
+    .catch((err) => logError('shell', '监听关闭事件失败', err));
 
-  return () => unlisten?.();
+  return () => {
+    disposed = true;
+    unlisten?.();
+  };
 });
 
 /**
@@ -359,7 +396,7 @@ $effect(() => {
 });
 </script>
 
-<div class="flex h-full flex-col overflow-hidden bg-surface text-content">
+<div class="flex h-full flex-col overflow-hidden bg-surface text-content" inert={closing}>
   <TitleBar onOpenSettings={() => (settingsOpen = true)} onOpenShortcuts={() => (shortcutsOpen = true)} />
 
   <div class="flex min-h-0 flex-1">

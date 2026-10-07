@@ -22,6 +22,7 @@
 
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use crate::core::paths;
@@ -33,11 +34,16 @@ const RENAME_BACKOFF_MS: u64 = 40;
 
 /// 临时文件后缀。带上进程号，避免同一文件被并发保存时互相覆盖。
 fn temp_path(target: &Path) -> std::path::PathBuf {
+    static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
     let mut name = target
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "file".to_string());
-    name.push_str(&format!(".sesame-{}.tmp", std::process::id()));
+    name.push_str(&format!(
+        ".sesame-{}-{}.tmp",
+        std::process::id(),
+        NEXT_TEMP.fetch_add(1, Ordering::Relaxed)
+    ));
     target.with_file_name(name)
 }
 
@@ -48,12 +54,36 @@ fn commit<F>(target: &Path, writer: F) -> AppResult<()>
 where
     F: FnOnce(&mut std::fs::File) -> AppResult<()>,
 {
+    let actual_target = if std::fs::symlink_metadata(target)
+        .is_ok_and(|meta| meta.file_type().is_symlink())
+    {
+        std::fs::canonicalize(target).map_err(|e| AppError::from_io(&paths::to_slash(target), e))?
+    } else {
+        target.to_path_buf()
+    };
+    let target = actual_target.as_path();
     let slash = paths::to_slash(target);
     let tmp = temp_path(target);
+    let mut created = false;
 
     // 用闭包包住，确保任何一步失败都会清理临时文件
     let result = (|| -> AppResult<()> {
-        let mut file = std::fs::File::create(&tmp).map_err(|e| AppError::from_io(&slash, e))?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)
+            .map_err(|e| AppError::from_io(&slash, e))?;
+        created = true;
+        if let Ok(existing) = std::fs::metadata(target) {
+            if existing.permissions().readonly() {
+                return Err(AppError::PermissionDenied(slash.clone()));
+            }
+            // In particular, preserve executable/private permission bits on macOS.
+            file.set_permissions(existing.permissions())
+                .map_err(|e| AppError::from_io(&slash, e))?;
+            #[cfg(windows)]
+            copy_security(target, &tmp, &file).map_err(|e| AppError::from_io(&slash, e))?;
+        }
 
         writer(&mut file)?;
 
@@ -68,7 +98,7 @@ where
         rename_with_retry(&tmp, target).map_err(|e| AppError::from_io(&slash, e))
     })();
 
-    if result.is_err() {
+    if result.is_err() && created {
         // 失败时清理临时文件，避免在用户目录里留垃圾
         let _ = std::fs::remove_file(&tmp);
     }
@@ -84,7 +114,7 @@ fn rename_with_retry(from: &Path, to: &Path) -> std::io::Result<()> {
     let mut last_err = None;
 
     for attempt in 0..RENAME_RETRIES {
-        match std::fs::rename(from, to) {
+        match replace_file(from, to) {
             Ok(()) => return Ok(()),
             Err(e) => {
                 last_err = Some(e);
@@ -98,6 +128,129 @@ fn rename_with_retry(from: &Path, to: &Path) -> std::io::Result<()> {
     }
 
     Err(last_err.unwrap_or_else(|| std::io::Error::other("rename 失败")))
+}
+
+#[cfg(windows)]
+fn replace_file(from: &Path, to: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::{
+        core::PCWSTR,
+        Win32::Storage::FileSystem::{ReplaceFileW, REPLACE_FILE_FLAGS},
+    };
+    if !to.exists() {
+        return std::fs::rename(from, to);
+    }
+    let source: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let target: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
+    unsafe {
+        ReplaceFileW(
+            PCWSTR(target.as_ptr()),
+            PCWSTR(source.as_ptr()),
+            PCWSTR::null(),
+            REPLACE_FILE_FLAGS(0),
+            None,
+            None,
+        )
+    }
+    .map_err(|err| std::io::Error::from_raw_os_error((err.code().0 as u32 & 0xFFFF) as i32))
+}
+
+#[cfg(windows)]
+fn file_security(path: &Path) -> std::io::Result<Vec<u64>> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::{
+        core::PCWSTR,
+        Win32::Security::{GetFileSecurityW, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR},
+    };
+    let name: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut needed = 0;
+    unsafe {
+        let _ = GetFileSecurityW(
+            PCWSTR(name.as_ptr()),
+            DACL_SECURITY_INFORMATION.0,
+            None,
+            0,
+            &mut needed,
+        );
+    }
+    if needed == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // Aligned, bounded storage for a self-relative Windows security descriptor.
+    if needed > 1024 * 1024 {
+        return Err(std::io::Error::other("文件安全描述符过大"));
+    }
+    let mut buffer = vec![0u64; (needed as usize).div_ceil(8)];
+    if !unsafe {
+        GetFileSecurityW(
+            PCWSTR(name.as_ptr()),
+            DACL_SECURITY_INFORMATION.0,
+            Some(PSECURITY_DESCRIPTOR(buffer.as_mut_ptr().cast())),
+            needed,
+            &mut needed,
+        )
+    }
+    .as_bool()
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(buffer)
+}
+
+#[cfg(windows)]
+fn copy_security(source: &Path, temporary: &Path, file: &std::fs::File) -> std::io::Result<()> {
+    use std::os::windows::{ffi::OsStrExt, io::AsRawHandle};
+    use windows::{
+        core::PCWSTR,
+        Win32::{
+            Foundation::HANDLE,
+            Security::{
+                SetFileSecurityW, DACL_SECURITY_INFORMATION, PROTECTED_DACL_SECURITY_INFORMATION,
+                PSECURITY_DESCRIPTOR,
+            },
+            Storage::FileSystem::GetVolumeInformationByHandleW,
+        },
+    };
+    // FAT/exFAT do not persist ACLs. A failed volume query falls back to copying
+    // the descriptor, so NTFS/SMB permission errors never silently widen access.
+    const FILE_PERSISTENT_ACLS: u32 = 8;
+    let mut flags = 0;
+    if unsafe {
+        GetVolumeInformationByHandleW(
+            HANDLE(file.as_raw_handle()),
+            None,
+            None,
+            None,
+            Some(&mut flags),
+            None,
+        )
+    }
+    .is_ok()
+        && flags & FILE_PERSISTENT_ACLS == 0
+    {
+        return Ok(());
+    }
+    let mut descriptor = file_security(source)?;
+    let name: Vec<u16> = temporary.as_os_str().encode_wide().chain(Some(0)).collect();
+    // Disable inheritance on the temporary file, preserving the source's exact
+    // DACL until ReplaceFileW merges the original metadata during commit.
+    if !unsafe {
+        SetFileSecurityW(
+            PCWSTR(name.as_ptr()),
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            PSECURITY_DESCRIPTOR(descriptor.as_mut_ptr().cast()),
+        )
+    }
+    .as_bool()
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn replace_file(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::rename(from, to)
 }
 
 /// 原子地把一段字节写入目标文件。
@@ -164,6 +317,110 @@ pub fn write_bytes_then_copy(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn audit_private_acl_is_retained_during_and_after_atomic_write() {
+        use windows::{
+            core::BOOL,
+            Win32::Security::{GetSecurityDescriptorDacl, PSECURITY_DESCRIPTOR},
+        };
+        fn dacl(path: &Path) -> Vec<u8> {
+            let mut descriptor = file_security(path).unwrap();
+            let mut present = BOOL::default();
+            let mut defaulted = BOOL::default();
+            let mut acl = std::ptr::null_mut();
+            unsafe {
+                GetSecurityDescriptorDacl(
+                    PSECURITY_DESCRIPTOR(descriptor.as_mut_ptr().cast()),
+                    &mut present,
+                    &mut acl,
+                    &mut defaulted,
+                )
+                .unwrap();
+                assert!(present.as_bool() && !acl.is_null());
+                std::slice::from_raw_parts(acl.cast::<u8>(), (*acl).AclSize as usize).to_vec()
+            }
+        }
+        let dir = temp_dir("audit-private-acl");
+        let target = dir.join("private.txt");
+        std::fs::write(&target, b"private original").unwrap();
+        let account = format!(
+            "{}\\{}:(F)",
+            std::env::var("USERDOMAIN").unwrap(),
+            std::env::var("USERNAME").unwrap()
+        );
+        let result = std::process::Command::new("icacls")
+            .arg(&target)
+            .args(["/inheritance:r", "/grant:r"])
+            .arg(account)
+            .output()
+            .unwrap();
+        assert!(result.status.success(), "private fixture ACL setup failed");
+        let original = dacl(&target);
+        commit(&target, |file| {
+            let temporary = std::fs::read_dir(&dir)
+                .unwrap()
+                .flatten()
+                .map(|entry| entry.path())
+                .find(|path| path.extension().is_some_and(|ext| ext == "tmp"))
+                .unwrap();
+            assert!(
+                dacl(&temporary) == original,
+                "temporary content must not inherit a broader ACL"
+            );
+            file.write_all(b"private replacement").unwrap();
+            Ok(())
+        })
+        .unwrap();
+        assert!(
+            dacl(&target) == original,
+            "committed file must preserve the original ACL"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn audit_readonly_save_preserves_original_and_cleans_temp() {
+        let dir = temp_dir("audit-readonly");
+        let target = dir.join("readonly.txt");
+        std::fs::write(&target, b"original").unwrap();
+        let original_permissions = std::fs::metadata(&target).unwrap().permissions();
+        let mut permissions = original_permissions.clone();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&target, permissions).unwrap();
+        assert!(write_bytes(&target, b"replacement").is_err());
+        assert_eq!(std::fs::read(&target).unwrap(), b"original");
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        std::fs::set_permissions(&target, original_permissions).unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn audit_concurrent_atomic_writes_have_separate_temp_files() {
+        let dir = temp_dir("audit-concurrent");
+        let target = dir.join("a.txt");
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (continue_tx, continue_rx) = std::sync::mpsc::channel();
+        let first_target = target.clone();
+        let first = std::thread::spawn(move || {
+            commit(&first_target, |file| {
+                ready_tx.send(()).unwrap();
+                continue_rx.recv().unwrap();
+                file.write_all(b"first")
+                    .map_err(|e| AppError::Io(e.to_string()))
+            })
+        });
+        ready_rx.recv().unwrap();
+        write_bytes(&target, b"second").unwrap();
+        continue_tx.send(()).unwrap();
+        assert!(
+            first.join().unwrap().is_ok(),
+            "One writer consumed another writer's temporary file"
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"first");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     /// 建一个临时目录，测试结束由调用方清理。
     fn temp_dir(tag: &str) -> std::path::PathBuf {

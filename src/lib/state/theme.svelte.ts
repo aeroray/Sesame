@@ -21,7 +21,7 @@ import { DEFAULT_THEME, THEMES, type ThemeDefinition, themeById } from '$lib/the
 import { deriveTokens } from '$lib/theme/theme-tokens';
 
 /** 当前生效的主题。 */
-let currentTheme: ThemeDefinition = themeById(DEFAULT_THEME);
+let currentTheme = $state.raw<ThemeDefinition>(themeById(DEFAULT_THEME));
 
 /** 取当前主题。 */
 export function getTheme(): ThemeDefinition {

@@ -67,9 +67,7 @@ fn split_name(path: &str) -> (&str, Option<String>) {
 
     let ext = match name.rfind('.') {
         // dot > 0：排除以点开头的隐藏文件；dot + 1 < len：排除末尾的点
-        Some(dot) if dot > 0 && dot + 1 < name.len() => {
-            Some(name[dot + 1..].to_ascii_lowercase())
-        }
+        Some(dot) if dot > 0 && dot + 1 < name.len() => Some(name[dot + 1..].to_ascii_lowercase()),
         _ => None,
     };
 
@@ -190,7 +188,10 @@ mod tests {
     fn split_name_agrees_between_the_two_callers() {
         // 两个调用方共用同一个 basename / 扩展名判定，
         // 这里把容易分歧的边界情况固定下来。
-        assert_eq!(split_name(r"C:\a\b\notes.md"), ("notes.md", Some("md".into())));
+        assert_eq!(
+            split_name(r"C:\a\b\notes.md"),
+            ("notes.md", Some("md".into()))
+        );
         assert_eq!(split_name("/a/b/Main.RS"), ("Main.RS", Some("rs".into())));
         // 点开头的文件：那个点不是扩展名分隔符
         assert_eq!(split_name(".gitignore"), (".gitignore", None));

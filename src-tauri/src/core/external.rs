@@ -51,13 +51,13 @@ pub async fn open_image(
                 let _ = sender.send(show_windows_chooser(&parent, &path));
             })
             .map_err(|err| AppError::Io(err.to_string()))?;
-        return tauri::async_runtime::spawn_blocking(move || {
+        tauri::async_runtime::spawn_blocking(move || {
             receiver
                 .recv()
                 .map_err(|err| AppError::Io(err.to_string()))?
         })
         .await
-        .map_err(AppError::from_join)?;
+        .map_err(AppError::from_join)?
     }
 
     #[cfg(target_os = "macos")]
@@ -65,7 +65,7 @@ pub async fn open_image(
         let _ = window;
         let application =
             application.ok_or_else(|| AppError::InvalidPath("没有选择应用程序".into()))?;
-        return tauri::async_runtime::spawn_blocking(move || {
+        tauri::async_runtime::spawn_blocking(move || {
             let application = crate::core::paths::normalize(&application, None)?;
             if !application.is_dir()
                 || !application
@@ -89,6 +89,6 @@ pub async fn open_image(
             }
         })
         .await
-        .map_err(AppError::from_join)?;
+        .map_err(AppError::from_join)?
     }
 }

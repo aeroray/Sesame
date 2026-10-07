@@ -29,6 +29,7 @@ export interface FileMeta {
   size: number;
   /** Unix 毫秒时间戳。 */
   modified: number | null;
+  modifiedNs: string | null;
   /**
    * 文件是否带「只读」属性。
    *
@@ -75,6 +76,7 @@ export interface FilePayload {
   lineEnding: LineEnding;
   /** 内容是否被截断（超大文件未内联读取）。 */
   truncated: boolean;
+  decodeLossy?: boolean;
 }
 
 /** 分块读取结果。 */
@@ -90,6 +92,7 @@ export interface SaveResult {
   path: string;
   size: number;
   modified: number | null;
+  modifiedNs: string | null;
   /**
    * 大文件保存时**实际写入的前缀字节数**；普通保存为 `null`。
    *
@@ -149,6 +152,15 @@ export interface Draft {
   hasBom: boolean;
   /** 备份时间，Unix 毫秒。 */
   savedAt: number;
+  baseline?: DiskBaseline | null;
+  prefixBytes?: number | null;
+  totalBytes?: number | null;
+  schemaVersion?: number;
+}
+
+export interface DiskBaseline {
+  modifiedNs: string | null;
+  size: number;
 }
 
 /** 一个可选字体。 */
@@ -184,11 +196,14 @@ export interface Tab {
   dirty: boolean;
   /** 是否为大文件分块模式。 */
   truncated: boolean;
+  decodeLossy?: boolean;
   scrollTop: number;
   cursorLine: number;
   cursorColumn: number;
   lastActiveAt: number;
   sleep: SleepState;
+  baseline?: DiskBaseline;
+  recoveredName?: string;
 }
 
 /**

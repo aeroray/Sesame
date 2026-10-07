@@ -84,6 +84,7 @@ export interface EditorCompartments {
   indentGuides: Compartment;
   /** 括号彩虹。单独一段，默认关闭。 */
   rainbowBrackets: Compartment;
+  phrases: Compartment;
 }
 
 export function createCompartments(): EditorCompartments {
@@ -97,6 +98,7 @@ export function createCompartments(): EditorCompartments {
     readOnly: new Compartment(),
     indentGuides: new Compartment(),
     rainbowBrackets: new Compartment(),
+    phrases: new Compartment(),
   };
 }
 
@@ -125,7 +127,6 @@ function baseExtensions(): Extension[] {
     sesameUiTheme,
     // 官方搜索面板 + 中文文案：正则、大小写、整词、替换都已由它处理
     search({ top: true }),
-    searchPhrases(),
     keymap.of([
       ...closeBracketsKeymap,
       ...defaultKeymap,
@@ -251,6 +252,7 @@ export function buildExtensions(
     readOnly: boolean;
     showIndentGuides: boolean;
     rainbowBrackets: boolean;
+    phrases?: Extension;
   },
 ): Extension[] {
   return [
@@ -260,6 +262,7 @@ export function buildExtensions(
      */
     compartments.gutter.of(gutterExtension(options.showLineNumbers)),
     ...baseExtensions(),
+    compartments.phrases.of(options.phrases ?? searchPhrases()),
     compartments.language.of(options.language),
     compartments.theme.of(options.theme),
     compartments.font.of(options.font),

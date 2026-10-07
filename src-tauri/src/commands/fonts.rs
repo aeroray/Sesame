@@ -35,12 +35,10 @@ fn scan() -> Vec<FontFamily> {
     let mut families: Vec<FontFamily> = db
         .faces()
         .filter_map(|face| {
-            face.families
-                .first()
-                .map(|(name, _)| FontFamily {
-                    name: name.clone(),
-                    monospaced: face.monospaced,
-                })
+            face.families.first().map(|(name, _)| FontFamily {
+                name: name.clone(),
+                monospaced: face.monospaced,
+            })
         })
         .collect();
 

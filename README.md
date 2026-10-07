@@ -171,6 +171,12 @@ If the file changed on disk since you opened it, Sesame tells you and offers to
 **overwrite**, **reload from disk**, or **save as** — it will not silently discard
 someone else's changes.
 
+Save As also preserves the unread tail of a partially loaded file. Files that cannot
+be decoded without losing bytes stay read-only until you select a suitable encoding;
+characters that the selected output encoding cannot represent are rejected before writing.
+Draft recovery remains enabled even when session restoration is turned off. Older drafts
+without a disk baseline recover as untitled documents so they cannot overwrite newer files.
+
 ## Configuration
 
 Settings are stored in your platform's app data directory:

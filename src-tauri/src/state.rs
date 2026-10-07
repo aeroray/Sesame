@@ -3,8 +3,9 @@
 //! 只保存「已打开文件的关键属性」，用于保存时沿用原编码与换行风格、
 //! 以及拦住对二进制文件的文本写入。不缓存文件内容。
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, Weak};
 
 /// 文件指纹，用于检测外部修改。
 ///
@@ -14,10 +15,11 @@ use std::sync::Mutex;
 ///
 /// 理论上的漏网场景是「外部改动后 mtime 与大小都恰好没变」——
 /// 实际几乎不可能，因为任何真实写入都会更新 mtime。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Fingerprint {
-    /// Unix 毫秒。文件系统缺失 mtime 时为 `None`。
-    pub modified_ms: Option<u64>,
+    /// Unix 纳秒字符串。文件系统缺失 mtime 时为 `None`。
+    pub modified_ns: Option<String>,
     pub size: u64,
 }
 
@@ -45,6 +47,7 @@ pub struct AppState {
     /// 由前端在挂载后主动拉取，而不是由后端推送事件——
     /// 推送需要猜测前端何时就绪，拉取则没有竞态。
     startup_files: Mutex<Vec<String>>,
+    gates: Mutex<HashMap<String, Weak<Mutex<()>>>>,
 }
 
 impl AppState {
@@ -52,13 +55,14 @@ impl AppState {
         Self {
             open: Mutex::new(HashMap::new()),
             startup_files: Mutex::new(Vec::new()),
+            gates: Mutex::new(HashMap::new()),
         }
     }
 
     /// 记录启动参数中的文件路径。
     pub fn set_startup_files(&self, files: Vec<String>) {
         if let Ok(mut slot) = self.startup_files.lock() {
-            *slot = files;
+            slot.extend(files);
         }
     }
 
@@ -73,19 +77,49 @@ impl AppState {
     /// 记录一次成功打开/保存后的文件状态。
     pub fn remember(&self, path: String, file: OpenFile) {
         if let Ok(mut map) = self.open.lock() {
-            map.insert(path, file);
+            map.insert(Self::key(&path), file);
         }
     }
 
     /// 取出已知状态。
     pub fn recall(&self, path: &str) -> Option<OpenFile> {
-        self.open.lock().ok()?.get(path).cloned()
+        self.open.lock().ok()?.get(&Self::key(path)).cloned()
     }
 
     /// 关闭文件时移除记录。
     pub fn forget(&self, path: &str) {
         if let Ok(mut map) = self.open.lock() {
-            map.remove(path);
+            map.remove(&Self::key(path));
         }
+    }
+
+    fn key(path: &str) -> String {
+        if cfg!(windows) {
+            path.replace('\\', "/").to_lowercase()
+        } else {
+            path.to_owned()
+        }
+    }
+
+    pub fn file_gate(&self, path: &std::path::Path) -> crate::model::AppResult<Arc<Mutex<()>>> {
+        let identity = std::fs::canonicalize(path).unwrap_or_else(|_| {
+            path.parent()
+                .and_then(|parent| std::fs::canonicalize(parent).ok())
+                .zip(path.file_name())
+                .map(|(parent, name)| parent.join(name))
+                .unwrap_or_else(|| path.to_path_buf())
+        });
+        let key = Self::key(&identity.to_string_lossy());
+        let mut gates = self
+            .gates
+            .lock()
+            .map_err(|_| crate::model::AppError::Io("文件写入锁失效".into()))?;
+        gates.retain(|_, weak| weak.strong_count() > 0);
+        if let Some(existing) = gates.get(&key).and_then(Weak::upgrade) {
+            return Ok(existing);
+        }
+        let gate = Arc::new(Mutex::new(()));
+        gates.insert(key, Arc::downgrade(&gate));
+        Ok(gate)
     }
 }

@@ -46,6 +46,14 @@ pub struct Draft {
     pub has_bom: bool,
     /// 备份时间，Unix 毫秒。
     pub saved_at: u64,
+    #[serde(default)]
+    pub baseline: Option<crate::state::Fingerprint>,
+    #[serde(default)]
+    pub prefix_bytes: Option<u64>,
+    #[serde(default)]
+    pub total_bytes: Option<u64>,
+    #[serde(default)]
+    pub schema_version: u32,
 }
 
 /// 草稿目录路径，不存在时创建。
@@ -65,38 +73,38 @@ fn draft_dir(app: &AppHandle) -> AppResult<PathBuf> {
 /// 若放任 `../` 之类的字符进入，就能写到草稿目录之外。
 /// 单独抽成函数是为了能直接对它做测试。
 fn sanitize_id(id: &str) -> Option<String> {
-    let safe: String = id
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-
-    if safe.is_empty() {
-        None
-    } else {
-        Some(safe)
-    }
+    (!id.is_empty()
+        && id.len() <= 128
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+    .then(|| id.to_owned())
 }
 
 /// 单个草稿的文件路径。
 fn draft_path(app: &AppHandle, id: &str) -> AppResult<PathBuf> {
-    let safe =
-        sanitize_id(id).ok_or_else(|| AppError::InvalidPath("草稿 id 非法".into()))?;
+    let safe = sanitize_id(id).ok_or_else(|| AppError::InvalidPath("草稿 id 非法".into()))?;
     Ok(draft_dir(app)?.join(format!("{safe}.json")))
 }
 
 /// 写入一份草稿。
 #[tauri::command]
 pub async fn draft_save(app: AppHandle, draft: Draft) -> AppResult<()> {
-    let path = draft_path(&app, &draft.id)?;
-    let text = serde_json::to_string(&draft).map_err(|e| AppError::Io(format!("序列化失败：{e}")))?;
+    crate::core::persistence::run(move || {
+        let path = draft_path(&app, &draft.id)?;
+        let text =
+            serde_json::to_string(&draft).map_err(|e| AppError::Io(format!("序列化失败：{e}")))?;
 
-    // 先写临时文件再改名，避免写到一半崩溃留下半个 json
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, text).map_err(|e| AppError::from_io(&paths::to_slash(&tmp), e))?;
-    std::fs::rename(&tmp, &path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        AppError::from_io(&paths::to_slash(&path), e)
+        // 先写临时文件再改名，避免写到一半崩溃留下半个 json
+        if text.len() > crate::constants::MAX_WRITE_BYTES {
+            return Err(AppError::TooLarge {
+                size: text.len() as u64,
+                limit: crate::constants::MAX_WRITE_BYTES as u64,
+            });
+        }
+        crate::core::atomic::write_bytes(&path, text.as_bytes())
     })
+    .await
 }
 
 /// 删除一份草稿。
@@ -104,13 +112,16 @@ pub async fn draft_save(app: AppHandle, draft: Draft) -> AppResult<()> {
 /// 内容已保存、用户选择不保存、或标签被关闭时调用。
 #[tauri::command]
 pub async fn draft_delete(app: AppHandle, id: String) -> AppResult<()> {
-    let path = draft_path(&app, &id)?;
-    match std::fs::remove_file(&path) {
-        Ok(()) => Ok(()),
-        // 不存在即视为已删除
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(AppError::from_io(&paths::to_slash(&path), e)),
-    }
+    crate::core::persistence::run(move || {
+        let path = draft_path(&app, &id)?;
+        match std::fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            // 不存在即视为已删除
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(AppError::from_io(&paths::to_slash(&path), e)),
+        }
+    })
+    .await
 }
 
 /// 读出全部草稿。
@@ -118,45 +129,51 @@ pub async fn draft_delete(app: AppHandle, id: String) -> AppResult<()> {
 /// 单个草稿损坏时跳过它而不是整体失败——一个坏文件不该让用户丢掉其余草稿。
 #[tauri::command]
 pub async fn draft_list(app: AppHandle) -> AppResult<Vec<Draft>> {
-    let Ok(dir) = draft_dir(&app) else {
-        return Ok(Vec::new());
-    };
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Ok(Vec::new());
-    };
+    crate::core::persistence::run(move || {
+        let Ok(dir) = draft_dir(&app) else {
+            return Ok(Vec::new());
+        };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            return Ok(Vec::new());
+        };
 
-    let mut out = Vec::new();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
-            continue;
-        }
-        if let Ok(text) = std::fs::read_to_string(&path) {
-            if let Ok(draft) = serde_json::from_str::<Draft>(&text) {
-                out.push(draft);
+        let mut out = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                if let Ok(draft) = serde_json::from_str::<Draft>(&text) {
+                    out.push(draft);
+                }
             }
         }
-    }
 
-    // 按备份时间排序，恢复时顺序稳定
-    out.sort_by_key(|d| d.saved_at);
-    Ok(out)
+        // 按备份时间排序，恢复时顺序稳定
+        out.sort_by_key(|d| d.saved_at);
+        Ok(out)
+    })
+    .await
 }
 
 /// 清空全部草稿。
 #[tauri::command]
 pub async fn draft_clear(app: AppHandle) -> AppResult<()> {
-    let Ok(dir) = draft_dir(&app) else {
-        return Ok(());
-    };
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Ok(());
-    };
+    crate::core::persistence::run(move || {
+        let Ok(dir) = draft_dir(&app) else {
+            return Ok(());
+        };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            return Ok(());
+        };
 
-    for entry in entries.flatten() {
-        let _ = std::fs::remove_file(entry.path());
-    }
-    Ok(())
+        for entry in entries.flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+        Ok(())
+    })
+    .await
 }
 
 #[cfg(test)]
@@ -173,11 +190,7 @@ mod tests {
     #[test]
     fn sanitize_strips_path_traversal() {
         // 路径分隔符与点号必须被剔除，否则能写到草稿目录之外
-        let got = sanitize_id("../../evil").unwrap();
-        assert!(!got.contains('/'));
-        assert!(!got.contains('\\'));
-        assert!(!got.contains('.'));
-        assert_eq!(got, "evil");
+        assert!(sanitize_id("../../evil").is_none());
     }
 
     #[test]

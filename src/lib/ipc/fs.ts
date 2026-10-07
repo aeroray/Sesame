@@ -9,6 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { t } from '$lib/i18n';
 import type {
   AppError,
+  DiskBaseline,
   Draft,
   FileMeta,
   FilePayload,
@@ -80,6 +81,8 @@ export function saveFile(
     lineEnding?: string;
     hasBom?: boolean;
     prefixBytes?: number;
+    sourcePath?: string;
+    expected?: DiskBaseline;
     /**
      * 用户已确认「覆盖磁盘」时传 true。
      *
@@ -92,11 +95,15 @@ export function saveFile(
   return call<SaveResult>('save_file', {
     path,
     content,
-    encodingLabel: options?.encoding ?? null,
-    lineEnding: options?.lineEnding ?? null,
-    hasBom: options?.hasBom ?? null,
-    prefixBytes: options?.prefixBytes ?? null,
-    force: options?.force ?? false,
+    options: {
+      encodingLabel: options?.encoding ?? null,
+      lineEnding: options?.lineEnding ?? null,
+      hasBom: options?.hasBom ?? null,
+      prefixBytes: options?.prefixBytes ?? null,
+      sourcePath: options?.sourcePath ?? null,
+      expected: options?.expected ?? null,
+      force: options?.force ?? false,
+    },
   });
 }
 
@@ -116,12 +123,14 @@ export function readChunk(
   offset: number,
   encodingLabel: string,
   length?: number,
+  expected?: DiskBaseline,
 ): Promise<TextChunk> {
   return call<TextChunk>('read_chunk', {
     path,
     offset,
     length: length ?? null,
     encodingLabel,
+    expected: expected ?? null,
   });
 }
 

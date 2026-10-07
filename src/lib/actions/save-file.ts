@@ -12,16 +12,20 @@ import { addRecent } from '$lib/state/recents.svelte';
 import { notify } from '$lib/state/status.svelte';
 import {
   editVersion,
+  findByPath,
   getView,
   hasTabContent,
   markDirty,
+  pathKey,
   peekTabContent,
   renameTab,
   replaceTabContent,
   setTruncated,
   tabDisplayName,
+  tabs,
 } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { documentTasks } from '$lib/utils/async';
 import { fileFilters } from '$src/constants';
 
 /**
@@ -34,7 +38,7 @@ import { fileFilters } from '$src/constants';
  */
 function currentText(tab: Tab): string | null {
   // 图片是二进制，永远不由文本编辑器保存
-  if (tab.kind !== 'text') return null;
+  if (tab.kind !== 'text' || tab.decodeLossy || tab.encoding === 'binary') return null;
 
   const handle = getView(tab.id);
   if (handle) return handle.getContent();
@@ -62,7 +66,7 @@ function prefixBytesFor(tab: Tab): number | undefined {
  * 未命名标签会先走「另存为」。
  */
 export async function saveTab(tab: Tab): Promise<boolean> {
-  return performSave(tab, { silent: false });
+  return documentTasks.run(tab.id, () => performSave(tab, { silent: false }));
 }
 
 /**
@@ -75,11 +79,12 @@ export async function saveTab(tab: Tab): Promise<boolean> {
  */
 export async function autoSaveTab(tab: Tab): Promise<boolean> {
   if (!tab.path) return false;
-  return performSave(tab, { silent: true });
+  return documentTasks.run(tab.id, () => performSave(tab, { silent: true }));
 }
 
 /** 保存的共用实现。 */
 async function performSave(tab: Tab, opts: { silent: boolean }): Promise<boolean> {
+  if (!tabs.items.some((item) => item.id === tab.id)) return false;
   // 图片标签：明确告知不支持，而不是静默失败
   if (tab.kind !== 'text') {
     if (!opts.silent) notify.error(t('error.notWritable'));
@@ -91,16 +96,18 @@ async function performSave(tab: Tab, opts: { silent: boolean }): Promise<boolean
     if (!opts.silent) notify.error(t('error.nothingToSave'));
     return false;
   }
+  const version = editVersion(tab.id);
 
   if (!tab.path) {
     // 自动保存不会替用户选路径
     if (opts.silent) return false;
-    return saveTabAs(tab, content);
+    return performSaveAs(tab, content, version);
   }
 
   const saved = await writeToPath(tab, tab.path, content, {
     silent: opts.silent,
     force: false,
+    version,
   });
 
   return saved;
@@ -116,12 +123,12 @@ async function writeToPath(
   tab: Tab,
   target: string,
   content: string,
-  opts: { silent: boolean; force: boolean },
+  opts: { silent: boolean; force: boolean; version: number },
 ): Promise<boolean> {
   try {
     // 记下写入前的编辑版本：写入期间若用户又敲了字，版本号会变，
     // 此时不能清除脏标记，否则那部分改动会被当成已保存而丢失。
-    const versionBefore = editVersion(tab.id);
+    const versionBefore = opts.version;
 
     const result = await ipc.saveFile(target, content, {
       encoding: tab.encoding,
@@ -130,6 +137,7 @@ async function writeToPath(
       // 大文件只加载了一部分时，让后端把磁盘上的尾部拼回来
       prefixBytes: prefixBytesFor(tab),
       force: opts.force,
+      expected: tab.baseline,
     });
 
     if (editVersion(tab.id) === versionBefore) {
@@ -154,16 +162,17 @@ async function writeToPath(
     if (progress && !progress.complete) {
       initProgress(tab.id, result.size, result.prefixBytes ?? progress.loadedBytes);
     }
+    tab.baseline = { size: result.size, modifiedNs: result.modifiedNs };
 
     return true;
   } catch (err) {
     if (isConflict(err)) {
-      return resolveConflict(tab, target, content);
+      return resolveConflict(tab, target, content, opts.version);
     }
 
     // 写不进去（只读、被占用、无权限）时给一条出路，而不是只报错就结束
     if (isWriteBlocked(err)) {
-      return handleWriteBlocked(tab, content, err);
+      return handleWriteBlocked(tab, content, err, opts.version);
     }
 
     // 自动保存失败时也要报错：静默失败会让用户以为改动已经落盘
@@ -186,7 +195,12 @@ function isWriteBlocked(err: unknown): boolean {
  * 但**用户的修改绝不能因此丢掉**。这里不弹「保存失败」就结束，
  * 而是给出可执行的下一步。
  */
-async function handleWriteBlocked(tab: Tab, content: string, err: unknown): Promise<boolean> {
+async function handleWriteBlocked(
+  tab: Tab,
+  content: string,
+  err: unknown,
+  version: number,
+): Promise<boolean> {
   const reason =
     typeof err === 'object' && err !== null && 'message' in err
       ? String((err as { message: unknown }).message)
@@ -207,7 +221,7 @@ async function handleWriteBlocked(tab: Tab, content: string, err: unknown): Prom
 
   if (answer === btnSaveAs) {
     // 内容仍在编辑器里，另存为不会丢
-    return saveTabAs(tab, content);
+    return performSaveAs(tab, content, version);
   }
 
   // 用户选择稍后处理：保持脏状态，改动仍在，不会静默丢失
@@ -228,7 +242,12 @@ function isConflict(err: unknown): boolean {
  * - **加载磁盘**：放弃我的修改，用磁盘上的最新内容重新打开
  * - **另存为**：两边都保留，最安全，也是默认推荐
  */
-async function resolveConflict(tab: Tab, target: string, content: string): Promise<boolean> {
+async function resolveConflict(
+  tab: Tab,
+  target: string,
+  content: string,
+  version: number,
+): Promise<boolean> {
   const name = target.split('/').pop() ?? tab.name;
 
   // 三个按钮文案先取到局部变量，弹框与比对共用（见 askUnsaved 的说明）
@@ -248,7 +267,7 @@ async function resolveConflict(tab: Tab, target: string, content: string): Promi
 
   // 与 close-tab 同理：自定义按钮文案时，返回值是按钮文字本身
   if (answer === btnOverwrite) {
-    return writeToPath(tab, target, content, { silent: false, force: true });
+    return writeToPath(tab, target, content, { silent: false, force: true, version });
   }
 
   if (answer === btnReload) {
@@ -257,22 +276,37 @@ async function resolveConflict(tab: Tab, target: string, content: string): Promi
 
   // 其余情况（含另存为与直接关掉对话框）都走另存为：
   // 内容不丢，也不会覆盖别人的改动。
-  return saveTabAs(tab, content);
+  return performSaveAs(tab, content, version);
 }
 
 /** 放弃本地修改，重新从磁盘加载。 */
 async function reloadFromDisk(tab: Tab, target: string): Promise<boolean> {
   try {
+    const version = editVersion(tab.id);
     const payload = await ipc.openFile(target);
+    const first = payload.truncated ? await ipc.readChunk(target, 0, payload.encoding) : undefined;
+    if (editVersion(tab.id) !== version) {
+      notify.warning(t('error.documentChangedDuringReload'));
+      return false;
+    }
     /*
      * 必须用 `replaceTabContent` 而不是 `setTabContent`：
      * 后者只更新「待用正文」，而那个 Map 只在创建视图时读一次。
      * 视图已经挂载时，只调它屏幕上不会有任何变化——用户以为没反应，
      * 随后一次 Ctrl+S 就会把旧内容写回磁盘，把刚加载的新内容覆盖掉。
      */
-    replaceTabContent(tab.id, payload.content);
+    replaceTabContent(tab.id, first?.content ?? payload.content);
     renameTab(tab.id, payload.meta.path, payload.meta.name);
     markDirty(tab.id, false);
+    tab.encoding = payload.encoding;
+    tab.decodeLossy = payload.decodeLossy;
+    tab.hasBom = payload.hasBom;
+    tab.lineEnding = payload.lineEnding as Tab['lineEnding'];
+    tab.language = payload.language as Tab['language'];
+    tab.baseline = { size: payload.meta.size, modifiedNs: payload.meta.modifiedNs };
+    setTruncated(tab.id, payload.truncated);
+    if (first) initProgress(tab.id, payload.meta.size, first.nextOffset);
+    else clearProgress(tab.id);
     void dropDraft(tab.id);
     notify.info(t('status.loadedFromDisk'));
     return true;
@@ -284,6 +318,15 @@ async function reloadFromDisk(tab: Tab, target: string): Promise<boolean> {
 
 /** 另存为。 */
 export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
+  return documentTasks.run(tab.id, () => performSaveAs(tab, content, editVersion(tab.id)));
+}
+
+async function performSaveAs(
+  tab: Tab,
+  content?: string,
+  version = editVersion(tab.id),
+): Promise<boolean> {
+  if (!tabs.items.some((item) => item.id === tab.id)) return false;
   if (tab.kind !== 'text') {
     notify.error(t('error.notWritable'));
     return false;
@@ -304,9 +347,13 @@ export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
     });
 
     if (!target) return false;
+    const other = findByPath(target);
+    if (other && other.id !== tab.id) {
+      notify.error(t('error.saveTargetAlreadyOpen'));
+      return false;
+    }
 
-    // 另存为到新路径时不能追加旧文件的尾部——那是另一个文件的内容。
-    // 因此这里只写编辑器持有的部分，并明确告知用户大文件会被截断。
+    // Preserve the unread tail from the original source even for a different destination.
     const progress = getProgress(tab.id);
     const truncated = progress !== undefined && !progress.complete;
 
@@ -314,29 +361,35 @@ export async function saveTabAs(tab: Tab, content?: string): Promise<boolean> {
       encoding: tab.encoding,
       lineEnding: tab.lineEnding,
       hasBom: tab.hasBom,
+      prefixBytes: truncated ? progress.loadedBytes : undefined,
+      sourcePath: truncated && tab.path ? tab.path : undefined,
+      expected:
+        truncated || (tab.path && pathKey(target) === pathKey(tab.path)) ? tab.baseline : undefined,
     });
 
     // 后端会规范化路径，用返回值更新标签，保证路径与磁盘一致
     const name = result.path.split('/').pop() ?? tab.name;
     renameTab(tab.id, result.path, name);
-    markDirty(tab.id, false);
+    const unchanged = editVersion(tab.id) === version;
+    if (unchanged) {
+      markDirty(tab.id, false);
+      await dropDraft(tab.id);
+    }
+    tab.baseline = { size: result.size, modifiedNs: result.modifiedNs };
     await addRecent(result.path);
 
-    /*
-     * 清掉大文件进度并复位「大文件模式」标记。
-     *
-     * 新文件里只有编辑器持有的那部分内容，它与旧文件的「已加载字节数」
-     * 没有任何关系。若把旧进度留着，下次保存会拿旧偏移去追加新文件的尾部，
-     * 从错误位置开始复制，内容被重复。
-     *
-     * 复位 `truncated` 是为了让状态栏不再显示「大文件模式」——
-     * 新文件就是完整内容，留着徽标会与磁盘实际情况不符。
-     */
-    clearProgress(tab.id);
-    setTruncated(tab.id, false);
+    // The new file contains both the edited prefix and original unread tail.
+    // Keep partial loading anchored to the backend's newly encoded prefix length.
+    if (result.prefixBytes !== null) {
+      initProgress(tab.id, result.size, result.prefixBytes);
+      setTruncated(tab.id, result.prefixBytes < result.size);
+    } else {
+      clearProgress(tab.id);
+      setTruncated(tab.id, false);
+    }
 
-    if (truncated) {
-      notify.warning(t('status.savedAsPartial'));
+    if (!unchanged) {
+      notify.info(t('status.savedWithNewEdits'));
     } else {
       notify.success(t('status.saved'));
     }

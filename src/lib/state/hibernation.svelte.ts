@@ -7,8 +7,16 @@
  */
 
 import { pruneProgress } from '$lib/editor/large-file.svelte';
+import { releaseImage } from '$lib/state/images.svelte';
 import { settings } from '$lib/state/settings.svelte';
-import { detachView, getView, setRestoreTarget, setTabContent, tabs } from '$lib/state/tabs.svelte';
+import {
+  detachView,
+  getView,
+  setRestoreTarget,
+  setTabContent,
+  setTabHistory,
+  tabs,
+} from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import {
   HIBERNATE_DEEP_AFTER,
@@ -66,11 +74,13 @@ function targetSleepState(tab: Tab, now: number): Tab['sleep'] {
  * 所以必须先销毁视图、再写回正文，否则刚保存的内容会被立刻删掉。
  */
 function hibernate(tab: Tab): void {
+  if (tab.kind === 'image') releaseImage(tab.id);
   const handle = getView(tab.id);
 
   if (handle) {
     // 1. 先把正文与位置取出来
     const content = handle.getContent();
+    const history = handle.exportHistory();
     const scrollTop = handle.view.scrollDOM.scrollTop;
     tab.scrollTop = scrollTop;
 
@@ -79,6 +89,7 @@ function hibernate(tab: Tab): void {
 
     // 3. 再写回正文，供重新激活时重建视图
     setTabContent(tab.id, content);
+    setTabHistory(tab.id, history);
 
     // 4. 登记光标与滚动位置，由重建时的 EditorHost 消费。
     //    直接改 tab 字段是无效的——视图创建后不会再读它们。

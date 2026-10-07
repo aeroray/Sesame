@@ -7,10 +7,11 @@
  * （那会引入大量难以验证的边界情况）。
  */
 
-import { Annotation } from '@codemirror/state';
+import { Annotation, Transaction } from '@codemirror/state';
 import * as ipc from '$lib/ipc/fs';
-import { getView } from '$lib/state/tabs.svelte';
+import { getView, tabs } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { documentTasks } from '$lib/utils/async';
 import { CHUNK_SIZE, MAX_LOAD_ALL_BYTES } from '$src/constants';
 
 /**
@@ -104,6 +105,10 @@ export function clearProgress(tabId: string): void {
  * 返回是否真的追加了内容（已加载完、正在加载或视图不存在时返回 false）。
  */
 export async function loadNextChunk(tab: Tab): Promise<boolean> {
+  return documentTasks.run(tab.id, () => loadNextChunkNow(tab));
+}
+
+async function loadNextChunkNow(tab: Tab): Promise<boolean> {
   const current = progress.get(tab.id);
   if (!current || !tab.path || current.complete || current.loading) return false;
 
@@ -115,13 +120,32 @@ export async function loadNextChunk(tab: Tab): Promise<boolean> {
   publish(tab.id, { ...current, loading: true });
 
   try {
-    const chunk = await ipc.readChunk(tab.path, current.loadedBytes, tab.encoding, CHUNK_SIZE);
+    const chunk = await ipc.readChunk(
+      tab.path,
+      current.loadedBytes,
+      tab.encoding,
+      CHUNK_SIZE,
+      tab.baseline,
+    );
+    if (
+      !tabs.items.some((t) => t.id === tab.id) ||
+      getView(tab.id) !== handle ||
+      progress.get(tab.id)?.loadedBytes !== current.loadedBytes
+    ) {
+      if (
+        tabs.items.some((item) => item.id === tab.id) &&
+        progress.get(tab.id)?.loadedBytes === current.loadedBytes
+      ) {
+        publish(tab.id, { ...current, loading: false });
+      }
+      return false;
+    }
 
     const doc = handle.view.state.doc;
     handle.view.dispatch({
       changes: { from: doc.length, insert: chunk.content },
       // 打上注解，让 change 回调知道这是程序化追加而非用户输入
-      annotations: programmaticAppend.of(true),
+      annotations: [programmaticAppend.of(true), Transaction.addToHistory.of(false)],
     });
 
     const nextLoaded = chunk.nextOffset;
@@ -133,7 +157,9 @@ export async function loadNextChunk(tab: Tab): Promise<boolean> {
     });
     return true;
   } catch (err) {
-    publish(tab.id, { ...current, loading: false });
+    if (tabs.items.some((item) => item.id === tab.id)) {
+      publish(tab.id, { ...current, loading: false });
+    }
     throw err;
   }
 }

@@ -43,7 +43,11 @@ let query = $state('');
 const RENDER_LIMIT = 60;
 
 /** 过滤后的列表。 */
-const filtered = $derived(filterFonts(query));
+const filtered = $derived(
+  preferMonospace
+    ? [...filterFonts(query)].sort((a, b) => Number(b.monospaced) - Number(a.monospaced))
+    : filterFonts(query),
+);
 
 /** 实际渲染的列表（截断后）。 */
 const results = $derived(filtered.slice(0, RENDER_LIMIT));

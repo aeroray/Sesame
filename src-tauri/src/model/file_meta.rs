@@ -9,6 +9,7 @@ pub struct FileMeta {
     pub size: u64,
     /// 修改时间，Unix 毫秒时间戳。
     pub modified: Option<u64>,
+    pub modified_ns: Option<String>,
     pub readonly: bool,
 }
 
@@ -29,6 +30,7 @@ pub struct FilePayload {
     pub line_ending: String,
     /// 内容是否被截断（超大文件未内联读取）。
     pub truncated: bool,
+    pub decode_lossy: bool,
 }
 
 /// 分块读取结果。
@@ -51,6 +53,7 @@ pub struct SaveResult {
     pub path: String,
     pub size: u64,
     pub modified: Option<u64>,
+    pub modified_ns: Option<String>,
     /// 大文件保存时**实际写入的前缀字节数**；普通保存为 `None`。
     ///
     /// 前端必须用它更新「已加载字节数」，**不能沿用保存前的旧值**。

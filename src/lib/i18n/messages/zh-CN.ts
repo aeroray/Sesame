@@ -48,6 +48,7 @@ export const zhCN: Messages = {
   },
 
   tab: {
+    recoveredFile: '已恢复 {name}',
     untitled: '未命名',
     new: '新建标签页',
     newWithKey: '新建标签页 · Ctrl+N',
@@ -181,6 +182,7 @@ export const zhCN: Messages = {
   },
 
   editor: {
+    readonly: '只读',
     binary: '二进制文件 · 不可编辑保存',
     /*
      * 行列拆成两条文案，中间的分隔符由 StatusBar 统一渲染。
@@ -286,6 +288,11 @@ export const zhCN: Messages = {
   },
 
   error: {
+    documentChangedDuringReload: '重新加载时正文发生变化，已保留当前编辑。',
+    draftDeleteFailed: '无法删除草稿备份，请重试关闭。',
+    lossyDecodeReadonly: '部分字节无法解码，已设为只读。请选择正确编码后再编辑。',
+    draftBackupFailed: '草稿备份失败，窗口将保持打开以保护未保存内容。',
+    saveTargetAlreadyOpen: '目标文件已在其他标签页中打开，请选择其他文件。',
     generic: '操作失败',
     openFailed: '无法打开文件',
     openImageFailed: '无法打开图片',
