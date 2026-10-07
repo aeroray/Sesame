@@ -17,6 +17,7 @@ import {
   closeAllTabs,
   closeOtherTabs,
   closeTab,
+  closeTabsToRight,
   editVersion,
   tabDisplayName,
   tabs,
@@ -163,6 +164,56 @@ async function performCloseOthers(tab: Tab): Promise<void> {
     if (other.id !== tab.id) cancelAutoSave(other.id);
   }
   closeOtherTabs(tab.id);
+}
+
+/**
+ * 关闭指定标签右侧的所有标签。
+ *
+ * 与 `requestCloseOthers` 同一套编排：逐个处理未保存项，
+ * 任一步取消则整体中止，不关闭任何标签。
+ */
+export function requestCloseToRight(tab: Tab): Promise<void> {
+  return closeTasks.run('close', () => performCloseToRight(tab));
+}
+
+async function performCloseToRight(tab: Tab): Promise<void> {
+  await documentTasks.drain();
+  const index = tabs.items.findIndex((t) => t.id === tab.id);
+  if (index === -1) return;
+
+  const doomed = tabs.items.slice(index + 1);
+  if (doomed.length === 0) return;
+
+  const versions = new Map(doomed.map((item) => [item.id, editVersion(item.id)]));
+  const discard: Tab[] = [];
+
+  for (const item of doomed) {
+    if (!item.dirty) continue;
+    const choice = await askUnsaved(tabDisplayName(item));
+    if (choice === 'cancel') return;
+
+    if (choice === 'save') {
+      const ok = await saveTab(item);
+      if (!ok || item.dirty) return;
+    } else {
+      discard.push(item);
+    }
+  }
+
+  // 复核：确认期间用户又改了内容，或已有标签被关闭，则中止
+  if (
+    tabs.items.some(
+      (item) =>
+        doomed.includes(item) &&
+        item.dirty &&
+        (!discard.includes(item) || versions.get(item.id) !== editVersion(item.id)),
+    )
+  )
+    return;
+  if (!(await Promise.all(discard.map((item) => dropDraft(item.id)))).every(Boolean)) return;
+
+  for (const item of doomed) cancelAutoSave(item.id);
+  closeTabsToRight(tab.id);
 }
 
 /**

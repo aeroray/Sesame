@@ -8,10 +8,20 @@
  * - 休眠（sleep 变回 'none'）会重建视图，内容从保留的正文恢复。
  */
 
+import { gotoLine, openSearchPanel } from '@codemirror/search';
+import { Copy, CornerDownRight, FolderOpen, Search, TextSelect } from '@lucide/svelte';
 import { type Component, untrack } from 'svelte';
 import { scheduleAutoSave } from '$lib/actions/autosave';
 import { scheduleDraft } from '$lib/actions/draft';
+import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import { reportError } from '$lib/actions/open-file';
+import {
+  Content as ContextMenuContent,
+  Item as ContextMenuItem,
+  Root as ContextMenuRoot,
+  Separator as ContextMenuSeparator,
+  Trigger as ContextMenuTrigger,
+} from '$lib/components/ui/context-menu';
 import { createEditorView, type EditorHandle } from '$lib/editor/create-view';
 import { getLanguageExtension } from '$lib/editor/languages';
 import { getProgress, loadNextChunk, programmaticAppend } from '$lib/editor/large-file.svelte';
@@ -36,6 +46,7 @@ import {
 } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { themeById } from '$lib/theme/palettes';
+import { formatKeys } from '$lib/utils/hotkeys';
 import ImageViewer from './ImageViewer.svelte';
 
 interface Props {
@@ -272,6 +283,37 @@ $effect(() => {
     handle.view.focus();
   }
 });
+
+/**
+ * 内容区右键菜单的命令。
+ *
+ * 调 CodeMirror 自己的命令而不是另写一套：查找面板、转到行、全选
+ * 都由它实现，自己再做一遍必然与快捷键的行为不一致
+ * （比如查找面板的选项状态、转到行对话框的焦点行为）。
+ *
+ * `openSearchPanel` 与 `gotoLine` 都是 `@codemirror/search` 的公开导出；
+ * `gotoLine` 会自行弹出「转到行」对话框并把焦点送进输入框。
+ */
+function runFind() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+  openSearchPanel(view);
+}
+
+function runGotoLine() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+  gotoLine(view);
+}
+
+function runSelectAll() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+  view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+}
 </script>
 
 <div class="relative h-full w-full" class:hidden={!active}>
@@ -286,9 +328,74 @@ $effect(() => {
       </div>
     {/if}
   {:else}
-    <div
-      bind:this={container}
-      class="h-full w-full overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:overflow-auto"
-    ></div>
+    <!--
+      内容区右键菜单。
+
+      **用 `preventDefault` 拦掉浏览器/WebView 的原生菜单再自绘**：
+      原生菜单里的剪切/复制/粘贴 WebView 已经提供，但「复制文件路径」
+      「在文件夹中显示」这类针对文件的操作它没有，而这两项正是用户
+      在正文上右键时最想找的。
+
+      拦掉的代价是失去原生菜单的书写建议、拼写检查等项；
+      本项目是代码/文本编辑器，那些本就不适用。
+    -->
+    <ContextMenuRoot>
+      <ContextMenuTrigger>
+        {#snippet child({ props })}
+          <div
+            {...props}
+            bind:this={container}
+            class="h-full w-full overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:overflow-auto"
+          ></div>
+        {/snippet}
+      </ContextMenuTrigger>
+
+      <ContextMenuContent class="w-56">
+        <ContextMenuItem
+          class="gap-2"
+          disabled={!tab.path}
+          onSelect={() => void copyPath(tab)}
+        >
+          <Copy class="size-3.5 shrink-0" />
+          <span class="truncate">{t('action.copyPath')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">
+            {formatKeys('Ctrl+Shift+C')}
+          </span>
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          class="gap-2"
+          disabled={!tab.path}
+          onSelect={() => void revealInFolder(tab)}
+        >
+          <FolderOpen class="size-3.5 shrink-0" />
+          <span class="truncate">{t('action.revealInFolder')}</span>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        <ContextMenuItem class="gap-2" onSelect={runFind}>
+          <Search class="size-3.5 shrink-0" />
+          <span class="truncate">{t('command.find')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+F')}</span>
+        </ContextMenuItem>
+
+        <ContextMenuItem class="gap-2" onSelect={runGotoLine}>
+          <CornerDownRight class="size-3.5 shrink-0" />
+          <span class="truncate">{t('search.goToLine')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">
+            {formatKeys('Ctrl+Alt+G')}
+          </span>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        <ContextMenuItem class="gap-2" onSelect={runSelectAll}>
+          <TextSelect class="size-3.5 shrink-0" />
+          <span class="truncate">{t('command.selectAll')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+A')}</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenuRoot>
   {/if}
 </div>

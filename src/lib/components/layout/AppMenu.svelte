@@ -1,24 +1,38 @@
 <script lang="ts">
 /**
- * 标题栏右侧的应用菜单。
+ * 标题栏左侧的应用菜单。
  *
  * 快捷键可能被输入法或系统占用，因此每个功能都必须有可点击的入口，
  * 不能只依赖快捷键。
+ *
+ * ## 为什么只剩两项
+ *
+ * 这里原先是八项平铺：设置、快捷键、复制路径、在文件夹中显示、
+ * 重开已关闭标签、版本号。问题不是「项太多」，而是**混了三种归属**——
+ * 有的属于整个应用，有的针对具体文件，有的只是一个版本号。
+ * 混在一起的结果是用户每次都要通读全表才能找到想要的那个。
+ *
+ * 按归属重新分配后：
+ *
+ * - **针对文件的**（复制路径、在文件夹中显示）→ 标签的右键菜单。
+ *   右键的对象就是操作对象，不必先激活标签再回左上角找菜单。
+ * - **重开已关闭标签** → 标签栏空白处与内容区的右键菜单，
+ *   并保留 Ctrl+Shift+T。用户想「找回刚关掉的标签」时视线在标签栏，
+ *   不该要求他去左上角的菜单里翻。
+ * - **版本号** → 设置面板的「关于」分类。原先那一行是**置灰的**，
+ *   放一个点不动的条目在菜单里，除了占地方没有别的作用。
+ *
+ * 留下的两项都是「与具体文件无关、且不在别处」的应用级入口。
  */
-import { Copy, FolderOpen, Keyboard, Menu, Settings, Undo2 } from '@lucide/svelte';
-import { copyPath, revealInFolder } from '$lib/actions/file-actions';
-import { reopenClosedTab } from '$lib/actions/reopen-tab';
-import AppLogo from '$lib/components/common/AppLogo.svelte';
+import { Keyboard, Menu, Settings } from '@lucide/svelte';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DropdownMenuContent,
   Item as DropdownMenuItem,
   Root as DropdownMenuRoot,
-  Separator as DropdownMenuSeparator,
   Trigger as DropdownMenuTrigger,
 } from '$lib/components/ui/dropdown-menu';
 import { t } from '$lib/i18n';
-import { activeTab } from '$lib/state/tabs.svelte';
 import { formatKeys } from '$lib/utils/hotkeys';
 
 interface Props {
@@ -27,9 +41,6 @@ interface Props {
 }
 
 let { onOpenSettings, onOpenShortcuts }: Props = $props();
-
-/** 当前是否有带路径的文件——决定「复制路径」等项是否可用。 */
-const hasFile = $derived(activeTab()?.path != null);
 </script>
 
 <DropdownMenuRoot>
@@ -47,12 +58,11 @@ const hasFile = $derived(activeTab()?.path != null);
     {/snippet}
   </DropdownMenuTrigger>
 
-  <DropdownMenuContent align="end" class="w-60">
+  <DropdownMenuContent align="start" class="w-60">
     <!--
       快捷键提示必须走 `formatKeys()`，不能写死 "Ctrl+"。
       macOS 上实际按键是 Cmd，`formatKeys` 会把它转成 `⌘`；
       写死会让 macOS 用户看到「Ctrl+,」而按 ⌘ 才有效——提示与事实不符。
-      （这个文件早先就是硬编码的，改掉。）
     -->
     <DropdownMenuItem class="gap-2" onSelect={onOpenSettings}>
       <Settings class="size-3.5 shrink-0" />
@@ -64,53 +74,6 @@ const hasFile = $derived(activeTab()?.path != null);
       <Keyboard class="size-3.5 shrink-0" />
       <span class="truncate">{t('menu.shortcuts')}</span>
       <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+/')}</span>
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator />
-
-    <!--
-      针对「当前文件」的操作。
-      没有激活标签时置灰，而不是点了才发现没有路径——
-      置灰能让用户一眼看出「现在没有文件可操作」。
-
-      所有文字都套 `truncate` 且不换行：英文文案比中文长得多
-      （「Reopen closed tab」是「重新打开已关闭的标签」的等长译法），
-      不截断就会折成两行，把菜单项撑高、失去对齐。
-    -->
-    <DropdownMenuItem
-      class="gap-2"
-      disabled={!hasFile}
-      onSelect={() => void copyPath()}
-    >
-      <Copy class="size-3.5 shrink-0" />
-      <span class="truncate">{t('action.copyPath')}</span>
-    </DropdownMenuItem>
-
-    <DropdownMenuItem
-      class="gap-2"
-      disabled={!hasFile}
-      onSelect={() => void revealInFolder()}
-    >
-      <FolderOpen class="size-3.5 shrink-0" />
-      <span class="truncate">{t('action.revealInFolder')}</span>
-    </DropdownMenuItem>
-
-    <DropdownMenuItem class="gap-2" onSelect={() => void reopenClosedTab()}>
-      <Undo2 class="size-3.5 shrink-0" />
-      <span class="truncate">{t('action.reopenClosed')}</span>
-      <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+Shift+T')}</span>
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator />
-
-    <!--
-      主题三项**不在这里**——它们已独立成标题栏右侧的 `ThemeMenu`。
-      两处都放会让用户猜「哪个才是真的」，而单一入口更清楚。
-    -->
-
-    <DropdownMenuItem class="gap-2 text-content-faint" disabled>
-      <AppLogo class="size-4" />
-      <span class="truncate">Sesame 0.1.0</span>
     </DropdownMenuItem>
   </DropdownMenuContent>
 </DropdownMenuRoot>

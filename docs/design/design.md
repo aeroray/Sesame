@@ -840,14 +840,31 @@ Split by **scope of effect**, not frequency:
 | **Left** | operations affecting the **UI skeleton** | sidebar toggle, app menu (hamburger) |
 | **Right** | **window-level** operations | theme switch, minimise/maximise/close |
 
-Hamburger moved right → left (UI-skeleton class).
-
 **Theme switch is its own button** ([ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)), not inside the hamburger: high-frequency; 3 options. Rejected: duplicating it — users guess which is real.
 
 Two judgements in `ThemeMenu`; do not merge:
 
 - **Icon: `mode.current`** (resolved theme) — under follow-system `settings.theme` is `'system'`, not a drawable icon.
 - **Checkmark: `settings.theme`.** System dark → `mode.current === 'dark'` and `settings.theme === 'system'` both true, so `mode.current` marks both "Dark" and "Follow system" current.
+
+### Menus are split by *what the action belongs to*, not collected into one list
+
+Rule: **app-level → the hamburger; document-level → the tab's context menu; text-level → the editor's context menu.** Rejected: a single flat app menu — it forces the user to read the whole list on every visit, and it hides actions behind an unrelated object.
+
+| Owner | Home | Contents |
+| --- | --- | --- |
+| Whole app | Hamburger (`AppMenu.svelte`) | Settings, Shortcuts |
+| A specific file | Tab context menu (`TabItem.svelte`) | Copy path, Show in folder, Close, Close others, Close to the right |
+| The tab strip | Blank area right of the tabs (`TabBar.svelte`) | Reopen closed tab, Recently closed ▸, New tab |
+| Text content | Editor context menu (`EditorHost.svelte`) | Copy path, Show in folder, Find, Go to line, Select all |
+| App info | Settings → About | Version, platform, engine, licence |
+
+Precedent: VS Code registers `copyFilePath` / `revealInExplorer` in six menus and **`MenuId.EditorContext` is not one of them**; Notepad++ ships `contextMenu.xml` (content) and `tabContextMenu.xml` (tab) as separate files; Sublime documents `Context.sublime-menu` vs `Tab Context.sublime-menu`.
+
+- **Settings and Shortcuts are one surface.** `Ctrl+,` lands on Appearance, `Ctrl+/` on Shortcuts; both open `SettingsDialog`. Rejected: a separate shortcuts dialog — two dialogs imply they are unrelated features (JetBrains and Notepad++ both nest the keymap inside Settings).
+- **The version number is read at runtime** via `getVersion()`, never hard-coded. Rejected: the disabled "Sesame 0.1.0" row that used to sit at the bottom of the hamburger — a row that cannot be clicked has no precedent, and a hand-written copy drifts from `package.json` / `Cargo.toml` / `tauri.conf.json`.
+- **Unavailable items are disabled, not hidden**, and an empty submenu shows one greyed line rather than collapsing.
+- **Tab-strip blank area keeps `min-w-6`**: with many tabs it must stay clickable, or "recently closed" becomes unreachable.
 
 ### Status bar: no placeholder text in the empty state
 

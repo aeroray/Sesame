@@ -19,7 +19,6 @@ import { reopenClosedTab } from '$lib/actions/reopen-tab';
 import { restoreAll } from '$lib/actions/restore-all';
 import { saveTab, saveTabAs } from '$lib/actions/save-file';
 import SettingsDialog from '$lib/components/dialogs/SettingsDialog.svelte';
-import ShortcutsDialog from '$lib/components/dialogs/ShortcutsDialog.svelte';
 import EditorHost from '$lib/components/editor/EditorHost.svelte';
 import LargeFileBanner from '$lib/components/editor/LargeFileBanner.svelte';
 import TabBar from '$lib/components/tabs/TabBar.svelte';
@@ -42,9 +41,25 @@ import StatusBar from './StatusBar.svelte';
 import TitleBar from './TitleBar.svelte';
 
 let settingsOpen = $state(false);
-let shortcutsOpen = $state(false);
+/**
+ * 设置面板打开时落到哪个分类。
+ *
+ * 快捷键与设置现在共用一个界面（`Ctrl+/` 与 `Ctrl+,` 都打开设置，
+ * 只是落在不同分类）。这是主流做法：JetBrains 与 Notepad++ 都把
+ * 快捷键列表放在设置对话框里，VS Code 与 Zed 也是同一界面的两个视图。
+ * 两份独立对话框会让用户以为「快捷键」是另一个东西。
+ */
+let settingsTab = $state<'appearance' | 'editor' | 'files' | 'general' | 'shortcuts' | 'about'>(
+  'appearance',
+);
 let closing = $state(false);
 let startupComplete = false;
+
+/** 打开设置面板并落到指定分类。 */
+function openSettings(tab: typeof settingsTab = 'appearance') {
+  settingsTab = tab;
+  settingsOpen = true;
+}
 
 async function openQueuedFiles() {
   await documentTasks.run('startup-files', async () => {
@@ -189,13 +204,13 @@ $effect(() => {
         keys: 'Ctrl+,',
         label: t('menu.settings'),
         group: t('shortcuts.groupView'),
-        handler: () => (settingsOpen = true),
+        handler: () => openSettings('appearance'),
       },
       {
         keys: 'Ctrl+/',
         label: t('menu.shortcuts'),
         group: t('shortcuts.groupView'),
-        handler: () => (shortcutsOpen = true),
+        handler: () => openSettings('shortcuts'),
       },
       {
         keys: 'Ctrl+Tab',
@@ -397,7 +412,10 @@ $effect(() => {
 </script>
 
 <div class="flex h-full flex-col overflow-hidden bg-surface text-content" inert={closing}>
-  <TitleBar onOpenSettings={() => (settingsOpen = true)} onOpenShortcuts={() => (shortcutsOpen = true)} />
+  <TitleBar
+    onOpenSettings={() => openSettings('appearance')}
+    onOpenShortcuts={() => openSettings('shortcuts')}
+  />
 
   <div class="flex min-h-0 flex-1">
     <Sidebar open={layout.sidebarOpen} />
@@ -433,5 +451,8 @@ $effect(() => {
   </div>
 </div>
 
-<SettingsDialog bind:open={settingsOpen} onOpenChange={(v) => (settingsOpen = v)} />
-<ShortcutsDialog bind:open={shortcutsOpen} onOpenChange={(v) => (shortcutsOpen = v)} />
+<SettingsDialog
+  bind:open={settingsOpen}
+  initialTab={settingsTab}
+  onOpenChange={(v) => (settingsOpen = v)}
+/>

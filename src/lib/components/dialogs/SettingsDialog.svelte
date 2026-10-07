@@ -21,9 +21,12 @@
  * 行为更直白，也没有额外的可访问性坑（`role="tablist"` 该有的
  * aria 属性都手写了）。
  */
-import { Check, Code2, Palette, RotateCcw, Save, Settings2 } from '@lucide/svelte';
+import { Check, Code2, Info, Keyboard, Palette, RotateCcw, Save, Settings2 } from '@lucide/svelte';
+import { getVersion } from '@tauri-apps/api/app';
 import { cancelAllAutoSave } from '$lib/actions/autosave';
+import AppLogo from '$lib/components/common/AppLogo.svelte';
 import FontPicker from '$lib/components/common/FontPicker.svelte';
+import ShortcutsList from '$lib/components/common/ShortcutsList.svelte';
 import ThemeThumbnail from '$lib/components/common/ThemeThumbnail.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
@@ -48,17 +51,32 @@ import { resetSettings, settings, updateSetting } from '$lib/state/settings.svel
 import type { LanguageSetting } from '$lib/state/types';
 import { THEMES } from '$lib/theme/palettes';
 import { cn } from '$lib/utils/cn';
+import { IS_MAC, IS_WINDOWS } from '$lib/utils/platform';
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '$src/constants';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 打开时直接落到哪个分类。不传则保持上次的分类。 */
+  initialTab?: 'appearance' | 'editor' | 'files' | 'general' | 'shortcuts' | 'about';
 }
 
-let { open = $bindable(), onOpenChange }: Props = $props();
+let { open = $bindable(), onOpenChange, initialTab }: Props = $props();
 
 /** 当前分类。 */
-let tab = $state<'appearance' | 'editor' | 'files' | 'general'>('appearance');
+let tab = $state<'appearance' | 'editor' | 'files' | 'general' | 'shortcuts' | 'about'>(
+  'appearance',
+);
+
+/*
+ * 外部指定了初始分类时跟随它。
+ *
+ * 只在 `open` 变为 true 的那一刻生效——不能写成无条件同步，
+ * 否则用户在面板里点别的分类会被立刻弹回去。
+ */
+$effect(() => {
+  if (open && initialTab) tab = initialTab;
+});
 
 /**
  * 分类定义。
@@ -71,11 +89,37 @@ const TABS: { id: typeof tab; label: MessageKey; icon: typeof Palette }[] = [
   { id: 'editor', label: 'settings.groupEditor', icon: Code2 },
   { id: 'files', label: 'settings.groupFiles', icon: Save },
   { id: 'general', label: 'settings.groupSystem', icon: Settings2 },
+  { id: 'shortcuts', label: 'settings.groupShortcuts', icon: Keyboard },
+  { id: 'about', label: 'settings.groupAbout', icon: Info },
 ];
 
 /** 主题按亮暗分组。 */
 const lightThemes = $derived(THEMES.filter((item) => item.mode === 'light'));
 const darkThemes = $derived(THEMES.filter((item) => item.mode === 'dark'));
+
+/**
+ * 版本号。
+ *
+ * **从 Tauri 读取，不写死在界面里。** 早先汉堡菜单里硬编码了
+ * "Sesame 0.1.0"，而 `package.json`、`Cargo.toml`、`tauri.conf.json`
+ * 各有一份版本号——第四份手写副本迟早与实际版本不一致。
+ *
+ * 读不到时留空而不是显示占位符：`getVersion` 只在 Tauri 运行时可用，
+ * 浏览器里跑（如样式验证）会抛错，那时显示 "v" 比显示假的版本号好。
+ */
+let version = $state('');
+
+$effect(() => {
+  if (!open || version) return;
+  getVersion()
+    .then((v) => (version = v))
+    .catch(() => {
+      // 非 Tauri 环境：保持空字符串
+    });
+});
+
+/** 平台名，用于「关于」。 */
+const platformName = IS_MAC ? 'macOS' : IS_WINDOWS ? 'Windows' : 'Unknown';
 
 /** 语言选项。`system` 表示跟随系统。 */
 const languages: { value: LanguageSetting; label: MessageKey }[] = [
@@ -448,6 +492,44 @@ function moveChoice(event: KeyboardEvent, selector: string) {
               onCheckedChange={(v) => updateSetting('restoreSession', v)}
             />
           </div>
+        {:else if tab === 'shortcuts'}
+          <!--
+            快捷键列表复用 `ShortcutsList`——独立的快捷键对话框用的是同一份，
+            两处各写一份迟早不一致。
+          -->
+          <ShortcutsList scroll={false} />
+
+        {:else if tab === 'about'}
+          <!--
+            关于。原先这些信息散在汉堡菜单底部（只有一行硬编码版本号），
+            现在集中到这里，且版本号运行时读取。
+          -->
+          <div class="flex items-center gap-3">
+            <AppLogo class="size-10 shrink-0" />
+            <div class="flex min-w-0 flex-col gap-0.5">
+              <span class="text-sm font-medium">Sesame</span>
+              <span class="text-[11px] text-content-faint">
+                {version ? t('settings.aboutVersion', { version }) : ''}
+              </span>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-content-muted">{t('settings.aboutTagline')}</p>
+
+          <dl class="flex flex-col gap-1.5 border-t border-border-subtle pt-3 text-[11px]">
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-content-faint">{t('settings.aboutPlatform')}</dt>
+              <dd class="text-content-muted">{platformName}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-content-faint">{t('settings.aboutEngine')}</dt>
+              <dd class="text-content-muted">{t('settings.aboutEngineValue')}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-content-faint">{t('settings.aboutLicense')}</dt>
+              <dd class="text-content-muted">{t('settings.aboutLicenseValue')}</dd>
+            </div>
+          </dl>
         {:else}
           <div class="flex items-center justify-between gap-4">
             <Label for="setting-language" class="text-sm font-normal">{t('settings.language')}</Label>

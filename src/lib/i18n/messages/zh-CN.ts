@@ -35,8 +35,17 @@ export const zhCN: Messages = {
     copyPath: '复制文件路径',
     revealInFolder: '在文件夹中显示',
     reopenClosed: '重新打开已关闭的标签',
+    closeOthers: '关闭其他标签',
+    closeToRight: '关闭右侧标签',
     done: '完成',
     gotIt: '知道了',
+  },
+
+  contextMenu: {
+    fileTab: '标签操作',
+    editor: '编辑器操作',
+    recentlyClosed: '最近关闭',
+    noClosedTabs: '没有可重开的标签',
   },
 
   menu: {
@@ -147,6 +156,8 @@ export const zhCN: Messages = {
     groupEditor: '编辑器',
     groupFiles: '文件与保存',
     groupSystem: '通用',
+    groupShortcuts: '快捷键',
+    groupAbout: '关于',
 
     language: '语言',
 
@@ -179,6 +190,14 @@ export const zhCN: Messages = {
     hibernateHint: '长时间未用的大文件释放内存',
     restoreSession: '恢复上次会话',
     restoreSessionHint: '启动时重新打开上次的文件',
+
+    aboutVersion: '版本 {version}',
+    aboutTagline: '轻量文本编辑器与文件查看器。',
+    aboutPlatform: '平台',
+    aboutEngine: '技术栈',
+    aboutEngineValue: 'Tauri 2 · Svelte 5 · CodeMirror 6',
+    aboutLicense: '许可',
+    aboutLicenseValue: 'MIT',
   },
 
   editor: {

@@ -34,6 +34,22 @@ Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B).
 Reason:
 Three compact rows express the lightweight positioning.
 
+## MC-AREA-20261102-c3d4e5f6 — Menus split by owner
+
+Status: active
+Scope: area:ui
+Entry-Type: decision
+Subject: MC-SUBJ-20261003-b2c3d4e5
+Facet: architecture
+Evidence:
+- repo:src/lib/components/layout/AppMenu.svelte
+
+Decision:
+Hamburger holds app-level items only. File actions go to the tab menu, text actions to the editor menu, reopen-closed to the tab strip, version to Settings > About.
+
+Reason:
+One flat list mixed three ownerships.
+
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
 Status: active
@@ -64,7 +80,7 @@ Decision:
 Active toggles differ by text colour only, icon unchanged. Hover actions overlap neighbouring info via `opacity`.
 
 Reason:
-Swapping the icon makes one toggle look like two features.
+A swapped icon makes one toggle look like two features.
 
 ## MC-AREA-20261011-a1b2c3d4 — `leading-none` between icon buttons
 

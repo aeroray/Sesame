@@ -502,6 +502,26 @@ export function closeOtherTabs(id: string): void {
 }
 
 /**
+ * 关闭指定标签**右侧**的所有标签。
+ *
+ * 与 `closeOtherTabs` 一样记入历史栈，因此误触后可用 Ctrl+Shift+T 逐个恢复。
+ * 若目标标签本身不在列表里则什么都不做。
+ */
+export function closeTabsToRight(id: string): void {
+  const index = tabs.items.findIndex((t) => t.id === id);
+  if (index === -1) return;
+
+  const doomed = tabs.items.slice(index + 1);
+  if (doomed.length === 0) return;
+
+  for (const tab of doomed) {
+    rememberClosed(tab);
+    teardown(tab.id, tab.path);
+  }
+  tabs.items = tabs.items.slice(0, index + 1);
+}
+
+/**
  * 关闭全部标签页。
  *
  * 会记入历史栈，因此「关闭全部」之后仍可用 Ctrl+Shift+T 逐个恢复——

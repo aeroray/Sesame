@@ -38,8 +38,18 @@ export const en = {
     copyPath: 'Copy file path',
     revealInFolder: 'Show in folder',
     reopenClosed: 'Reopen closed tab',
+    closeOthers: 'Close other tabs',
+    closeToRight: 'Close tabs to the right',
     done: 'Done',
     gotIt: 'Got it',
+  },
+
+  /** 右键菜单。 */
+  contextMenu: {
+    fileTab: 'Tab actions',
+    editor: 'Editor actions',
+    recentlyClosed: 'Recently closed',
+    noClosedTabs: 'Nothing to reopen',
   },
 
   menu: {
@@ -147,6 +157,8 @@ export const en = {
     groupEditor: 'Editor',
     groupFiles: 'Files & Saving',
     groupSystem: 'General',
+    groupShortcuts: 'Shortcuts',
+    groupAbout: 'About',
 
     language: 'Language',
 
@@ -180,6 +192,15 @@ export const en = {
     hibernateHint: 'Release memory for large files left idle',
     restoreSession: 'Restore last session',
     restoreSessionHint: 'Reopen your files on launch',
+
+    /* 关于面板。版本号运行时从 Tauri 读取，不写死在字典里。 */
+    aboutVersion: 'Version {version}',
+    aboutTagline: 'A lightweight text editor and file viewer.',
+    aboutPlatform: 'Platform',
+    aboutEngine: 'Engine',
+    aboutEngineValue: 'Tauri 2 · Svelte 5 · CodeMirror 6',
+    aboutLicense: 'License',
+    aboutLicenseValue: 'MIT',
   },
 
   /** 编辑器状态栏。 */
