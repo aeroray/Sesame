@@ -13,7 +13,7 @@ Evidence:
 - repo:src/lib/state/status.svelte.ts
 
 Decision:
-Informational feedback shows one line in the title-bar centre and auto-dismisses; decisions use a native dialog.
+Informational feedback shows one line in the title-bar centre and auto-dismisses; decisions use a dialog.
 
 ## MC-AREA-20261009-b2c3d4e5 — Window skeleton
 
@@ -30,7 +30,6 @@ Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B).
 
 Reason:
 Three compact rows express the lightweight positioning.
-
 ## MC-AREA-20261102-c3d4e5f6 — Menus split by owner
 
 Status: active
@@ -42,7 +41,7 @@ Evidence:
 - repo:src/lib/components/layout/TitleBar.svelte
 
 Decision:
-Settings is a title-bar gear, not a hamburger. File actions go to the tab menu, text actions to the editor menu, reopen-closed to the tab strip, version to Settings > About.
+Settings is a title-bar gear, not a hamburger. File actions to the tab menu, text actions to the editor menu, reopen-closed to the tab strip.
 
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
@@ -60,21 +59,22 @@ Decision:
 Reason:
 Input methods rewrite `event.key`.
 
-## MC-AREA-20261009-f6a7b8c9 — Toggles and hover action columns
+## MC-AREA-20261009-f6a7b8c9 — File rows in lists
 
 Status: active
 Scope: area:ui
 Entry-Type: decision
-Subject: MC-SUBJ-20261003-b2c3d4e5
+Subject: MC-SUBJ-20261110-c5d6e7f8
 Facet: lifecycle
 Evidence:
-- repo:src/lib/components/layout/Sidebar.svelte
+- repo:src/lib/utils/file-icon.ts
 
 Decision:
-Active toggles differ by text colour only, icon unchanged. Hover actions overlap neighbouring info via `opacity`.
+All lists resolve icons via `fileIcon(kind, language)`, fields from the backend; Markdown ≠ plain text. Recents show two path segments, swapping for "show in folder".
 
 Reason:
-A swapped icon makes one toggle look like two.
+Per-list icon logic made one `.png` look like text in three of four places.
+
 
 ## MC-AREA-20261011-a1b2c3d4 — Image toolbar: grouped, no reflow
 
@@ -91,4 +91,5 @@ Four groups split by 1px rules: zoom | view mode | rotate/flip/reset | external.
 
 Reason:
 A conditional "reset" shifted neighbours and misdirected clicks; unconditional marking prompted to save an unchanged image.
+
 

@@ -1,4 +1,4 @@
-# Sesame Design Spec
+﻿# Sesame Design Spec
 
 Sole authoritative source for Sesame's appearance. **Read before any UI change.** No second set of rules inside components.
 
@@ -567,6 +567,29 @@ Four groups separated by 1px rules, in order of use: **zoom** | **view mode** | 
 
 **No two toolbar buttons may share an icon.** `resetZoom` and `rotateCCW` both used `RotateCcw`; a duplicate is checked for whenever this toolbar changes.
 
+### A file's icon must be the same everywhere it appears
+
+**Rule: every list that shows a file resolves its icon through `utils/file-icon.ts`.** Tab strip, sidebar, and the welcome page's recents all use it.
+
+The tab strip, the sidebar's open list, the sidebar's recents and the welcome page's recents previously each decided icons separately — the welcome page and sidebar hardcoded `FileText` for everything, and the tab strip drew an icon only for images. The same `.png` therefore looked like a text file in two of the four places.
+
+**`kind` and `language` come from the backend, not from the extension in the frontend.** `commands/recent.rs` classifies with the same `lang_map` calls that opening a file uses, so a recents entry can never disagree with the tab it opens. This follows the rule already recorded for the encoding list: a classification owned by Rust must not be re-implemented in the frontend, because the two copies drift.
+
+Image detection is checked **before** language: `image_mime` recognises `.svg`, while `detect_language` calls it `xml` — technically true, but the user should see an image icon.
+
+**Markdown must not share an icon with plain text.** Both mapped to `FileText` at first, which made a `.md` and a `.txt` indistinguishable — the exact problem the icons exist to solve. Markdown now uses `FilePen`. Measured across 12 cases: 10 distinct icons, with image / Markdown / plain text / JSON / HTML all different from each other and similar languages deliberately sharing (`Rust` = `Python`).
+
+`FileJson` is **not exported** by `@lucide/svelte` (the file exists but is absent from `icons/index.js`); JSON uses `FileBraces`.
+
+### Recents rows show where a file is, and reveal it on hover
+
+**Rule: the path column shows the last two directory segments, and turns into a "show in folder" button on hover.** The sidebar shows one segment (it is narrower).
+
+Showing only `basename(dirname(path))` was too terse — two files named `notes.md` in different projects looked identical. The full path is still in `title`; only the tail is shown because the drive and top-level directories are the same on every machine and carry no information. A `…` prefix marks truncation.
+
+Rejected: revealing on hover of the **whole row**. The row-wide `group` covers the path column too, so the path would be replaced by the icon the moment the pointer entered the row — hiding the very thing that column exists to show. A named group (`group/path`) scopes the reveal to that column, so the path stays readable while the pointer is on the filename.
+
+The column keeps a **fixed width** and overlays the two states, so nothing shifts on hover. Measured: `name`, path column and time keep identical left edges with and without hover.
 
 ### Decorative feature defaults
 

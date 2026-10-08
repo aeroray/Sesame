@@ -6,6 +6,7 @@
  * 新建/打开两个动作在上方按钮与标题栏都能触达。
  */
 import { Clock, FileText, FolderOpen, X } from '@lucide/svelte';
+import { revealPath } from '$lib/actions/file-actions';
 import { newTab } from '$lib/actions/new-tab';
 import { openPath, openViaDialog } from '$lib/actions/open-file';
 import AppLogo from '$lib/components/common/AppLogo.svelte';
@@ -13,7 +14,8 @@ import { Button } from '$lib/components/ui/button';
 import { ScrollArea } from '$lib/components/ui/scroll-area';
 import { t } from '$lib/i18n';
 import { clearRecents, recents, removeRecent } from '$lib/state/recents.svelte';
-import { basename, dirname, formatRelativeTime } from '$lib/utils/format';
+import { fileIcon } from '$lib/utils/file-icon';
+import { dirname, formatRelativeTime, tailSegments } from '$lib/utils/format';
 import { RECENT_DISPLAY_LIMIT } from '$src/constants';
 
 /** 只展示前若干条，避免首屏过长。 */
@@ -86,6 +88,12 @@ const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
         <ScrollArea class="max-h-64">
           <div class="flex flex-col gap-0.5 pr-3">
             {#each visible as entry (entry.path)}
+              <!--
+                `{@const}` 必须是 `{#each}` 的直接子元素，不能放进 `<button>` 里
+                （Svelte 的语法限制，实测报 const_tag_invalid_placement）。
+                因此图标在这里解析，下面直接用。
+              -->
+              {@const Icon = fileIcon(entry.kind, entry.language)}
               <div
                 class="group flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-surface-sunken"
               >
@@ -104,12 +112,58 @@ const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
                   onclick={() => openPath(entry.path)}
                   title={entry.path}
                 >
-                  <FileText class="size-3.5 shrink-0 text-content-faint" />
+                  <Icon class="size-3.5 shrink-0 text-content-faint" />
                   <span class="min-w-0 flex-1 truncate text-xs text-content">{entry.name}</span>
-                  <span class="shrink-0 truncate text-[10px] text-content-faint">
-                    {basename(dirname(entry.path))}
-                  </span>
                 </button>
+
+                <!--
+                  位置列：显示文件所在的末尾两级目录，悬停时变成
+                  「在文件夹中显示」按钮。
+
+                  三个设计点：
+
+                  1. **宽度固定**（`w-32`），与旁边的「移除」同一套路数——
+                     悬停时文字与图标重叠、不改变布局，行内其他元素不会跳动。
+
+                  2. **用嵌套的 `group/path`，而不是外层的 `group`**：
+                     外层 `group` 覆盖整行，用它的话鼠标一进这一行位置就被
+                     图标盖住，用户根本读不到路径——而显示路径正是这一列的目的。
+                     用命名分组让图标**只在悬停这一列时**出现，
+                     路径在鼠标位于文件名上时仍然可读。
+
+                  3. **不需要处理「点了文字没反应」**：鼠标一旦移到这一列，
+                     文字就已经被图标替换了，所以文字从来不是可点状态，
+                     不存在死区。
+
+                  `title` 给出完整路径——列里只显示末尾两级，
+                  盘符与上层目录对定位没帮助（每台机器都一样）。
+                -->
+                <span
+                  class="group/path relative flex w-32 shrink-0 justify-end"
+                  title={entry.path}
+                >
+                  <span
+                    class="truncate text-[10px] text-content-faint transition-opacity group-hover/path:opacity-0"
+                  >
+                    {tailSegments(dirname(entry.path), 2)}
+                  </span>
+
+                  <span
+                    role="button"
+                    tabindex="0"
+                    class="absolute inset-y-0 right-0 flex w-5 cursor-pointer items-center justify-center rounded-xs text-content-faint opacity-0 transition-opacity hover:text-content focus-visible:opacity-100 group-hover/path:opacity-100"
+                    onclick={() => void revealPath(entry.path)}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void revealPath(entry.path);
+                      }
+                    }}
+                    aria-label={t('action.revealInFolder')}
+                  >
+                    <FolderOpen class="size-3" />
+                  </span>
+                </span>
 
                 <span class="relative flex w-16 shrink-0 justify-end">
                   <span

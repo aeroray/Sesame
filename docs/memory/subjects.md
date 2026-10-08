@@ -253,3 +253,17 @@ Evidence:
 Aliases:
 - Image viewer
 - image preview
+
+## MC-SUBJ-20261110-c5d6e7f8 — File lists
+
+Status: active
+Kind: concept
+Canonical-Ref: feature:sesame-file-lists
+Evidence:
+- repo:src/lib/utils/file-icon.ts
+- repo:src/lib/components/welcome/WelcomePage.svelte
+
+Aliases:
+- File lists
+- recents list
+- file rows

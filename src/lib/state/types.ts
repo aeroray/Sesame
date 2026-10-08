@@ -109,6 +109,16 @@ export interface RecentEntry {
   name: string;
   /** Unix 毫秒时间戳。 */
   openedAt: number;
+  /**
+   * 文件类别：`text` / `image`。由后端判定，用于选图标。
+   *
+   * 为什么不让前端按扩展名猜：那样就得再维护一份扩展名表，
+   * 与 Rust 侧的 `lang_map` 迟早漂移（编码选择器吃过这个亏）。
+   * 后端用的是**与打开文件相同**的判定，因此列表图标与标签图标必然一致。
+   */
+  kind: string;
+  /** 文本文件的语言标识（如 `markdown`）；图片为空串。 */
+  language: string;
 }
 
 /** 上次会话中的一个标签页。 */

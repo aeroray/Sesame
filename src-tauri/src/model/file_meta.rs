@@ -71,6 +71,19 @@ pub struct RecentEntry {
     pub name: String,
     /// 最近一次打开时间，Unix 毫秒时间戳。
     pub opened_at: u64,
+    /// 文件类别：`text` 或 `image`。前端据此选图标。
+    ///
+    /// 与打开文件时用的是**同一套判定**（`lang_map`），因此列表里的图标
+    /// 与实际打开后的标签图标一定一致。若让前端自己按扩展名猜，
+    /// 两边迟早漂移（编码列表就吃过这个亏，见 `state/encodings.svelte.ts`）。
+    ///
+    /// `serde(default)`：老版本的 `recent.json` 里没有这两个字段，
+    /// 读取时不能因为缺字段就整份丢掉。
+    #[serde(default)]
+    pub kind: String,
+    /// 文本文件的语言标识（如 `markdown` / `rust`）；图片为空串。
+    #[serde(default)]
+    pub language: String,
 }
 
 /// 上次会话中的一个标签页。

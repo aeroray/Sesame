@@ -55,24 +55,36 @@ export async function copyPath(tab: Tab | null = activeTab()): Promise<void> {
 }
 
 /**
- * 在系统文件管理器中定位该文件。
+ * 在系统文件管理器中定位某个路径。
  *
  * 用 `revealItemInDir` 而不是「打开所在目录」：前者会选中文件本身，
  * 后者只打开目录、用户还得自己找——文件多的时候很费事。
  *
  * 同样传原生分隔符：这个路径会交给 Windows Shell，
  * 正斜杠虽然多数情况能被容忍，但没有理由冒险。
+ *
+ * 直接收路径而不是 `Tab`：最近文件列表里的条目**还不是标签**，
+ * 拿不到 `Tab` 对象（见 `WelcomePage` / `Sidebar` 的调用）。
  */
-export async function revealInFolder(tab: Tab | null = activeTab()): Promise<void> {
-  if (!tab?.path) {
+export async function revealPath(path: string): Promise<void> {
+  if (!path) {
     notify.info(t('status.noPathToReveal'));
     return;
   }
 
   try {
-    await revealItemInDir(toDisplayPath(tab.path));
+    await revealItemInDir(toDisplayPath(path));
   } catch (err) {
     notify.error(t('error.revealFailed'));
     logError('file-actions', '在文件夹中显示失败', err);
   }
+}
+
+/** 在系统文件管理器中定位该文件。 */
+export async function revealInFolder(tab: Tab | null = activeTab()): Promise<void> {
+  if (!tab?.path) {
+    notify.info(t('status.noPathToReveal'));
+    return;
+  }
+  await revealPath(tab.path);
 }

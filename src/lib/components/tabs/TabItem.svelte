@@ -14,7 +14,7 @@
  * 而不是应用菜单——用户右键的对象就是操作对象，不必先激活标签
  * 再去左上角找菜单。
  */
-import { Copy, FileText, FolderOpen, Image as ImageIcon, X } from '@lucide/svelte';
+import { Copy, FileText, FolderOpen, X } from '@lucide/svelte';
 import { requestCloseOthers, requestCloseTab, requestCloseToRight } from '$lib/actions/close-tab';
 import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import {
@@ -29,6 +29,7 @@ import { t } from '$lib/i18n';
 import { tabs } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { cn } from '$lib/utils/cn';
+import { fileIcon } from '$lib/utils/file-icon';
 import { formatKeys } from '$lib/utils/hotkeys';
 
 interface Props {
@@ -60,6 +61,9 @@ let {
 }: Props = $props();
 
 let hovering = $state(false);
+
+/** 该标签的文件类型图标，与侧栏、首屏共用同一套映射。 */
+const TabIcon = $derived(fileIcon(tab.kind, tab.language));
 
 /** 是否显示关闭按钮：悬停时始终显示。 */
 const showClose = $derived(hovering || !tab.dirty);
@@ -140,10 +144,16 @@ const hasOtherTabs = $derived(tabs.items.length > 1);
           <span class="absolute inset-x-0 top-0 h-0.5 bg-brand-500"></span>
         {/if}
 
-        <!-- 内容类型图标：图片与文本一眼可分 -->
-        {#if tab.kind === 'image'}
-          <ImageIcon class="size-3 shrink-0 opacity-60" />
-        {/if}
+        <!--
+          文件类型图标。
+
+          早先**只有图片**显示图标，文本标签什么都不显示——于是同一份文件
+          在标签栏、侧栏、首屏三处各是一个样子。现在统一走 `fileIcon()`，
+          三处用同一套映射（类别与语言由后端判定）。
+
+          尺寸比侧栏小一号（size-3 对 size-3.5）：标签栏更紧凑。
+        -->
+        <TabIcon class="size-3 shrink-0 opacity-60" />
 
         <span class="min-w-0 flex-1 truncate" title={tab.path ?? LANGUAGE_LABELS[tab.language]}>
           {tab.name}

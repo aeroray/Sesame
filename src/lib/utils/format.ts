@@ -41,16 +41,6 @@ export function formatRelativeTime(timestamp: number, now = Date.now()): string 
   return new Date(timestamp).toLocaleDateString(locale.current);
 }
 
-/**
- * 取路径中的文件名。
- * 同时兼容 Windows 与 POSIX 分隔符。
- */
-export function basename(path: string): string {
-  const normalized = path.replace(/\\/g, '/');
-  const idx = normalized.lastIndexOf('/');
-  return idx === -1 ? normalized : normalized.slice(idx + 1);
-}
-
 /** 取路径中的目录部分。 */
 export function dirname(path: string): string {
   const normalized = path.replace(/\\/g, '/');
@@ -58,4 +48,24 @@ export function dirname(path: string): string {
   // 没有分隔符时没有目录可言，返回空串而不是整个路径
   if (idx < 0) return '';
   return normalized.slice(0, idx);
+}
+
+/**
+ * 取路径末尾的若干段，用于列表里显示「文件在哪」。
+ *
+ * 只取**末尾**几段是刻意的：`D:/a/b/c/d/e/file.txt` 里能帮用户定位的是
+ * `d/e`，而开头的盘符和顶层目录每台机器都一样、没有信息量。
+ * 被截断时前面加 `…`，让用户知道还有更多层级（完整路径在悬停提示里给）。
+ *
+ * @param path     原始路径（正反斜杠都接受）
+ * @param segments 保留末尾几段，默认 2
+ */
+export function tailSegments(path: string, segments = 2): string {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (!normalized) return '';
+
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length <= segments) return parts.join('/');
+
+  return `…/${parts.slice(-segments).join('/')}`;
 }
