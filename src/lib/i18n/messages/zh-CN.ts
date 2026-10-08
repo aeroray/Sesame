@@ -253,6 +253,11 @@ export const zhCN: Messages = {
     copyImage: '复制图片',
     imageCopied: '已复制图片',
     copyImageFailed: '无法复制图片',
+    saveAs: '图片另存为…',
+    saveAsTitle: '图片另存为',
+    savedAs: '已另存为 {name}',
+    setWallpaper: '设为桌面壁纸',
+    wallpaperSet: '已更新桌面壁纸',
   },
 
   fontPicker: {
@@ -327,6 +332,8 @@ export const zhCN: Messages = {
     copyFailed: '无法复制到剪贴板',
     revealFailed: '无法在文件夹中显示',
     encodingFailed: '无法用该编码重新打开',
+    saveImageFailed: '无法保存图片',
+    wallpaperFailed: '无法设置桌面壁纸',
   },
 
   time: {

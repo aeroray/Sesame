@@ -261,6 +261,11 @@ export const en = {
     copyImage: 'Copy image',
     imageCopied: 'Image copied',
     copyImageFailed: 'Could not copy the image',
+    saveAs: 'Save image as…',
+    saveAsTitle: 'Save image as',
+    savedAs: 'Saved as {name}',
+    setWallpaper: 'Set as desktop wallpaper',
+    wallpaperSet: 'Desktop wallpaper updated',
   },
 
   fontPicker: {
@@ -332,6 +337,8 @@ export const en = {
     copyFailed: 'Could not copy to the clipboard',
     revealFailed: 'Could not show the file in its folder',
     encodingFailed: 'Could not reopen with that encoding',
+    saveImageFailed: 'Could not save the image',
+    wallpaperFailed: 'Could not set the desktop wallpaper',
   },
 
   /** 相对时间（最近文件列表）。 */

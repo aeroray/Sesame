@@ -65,3 +65,19 @@ The state layer must not depend on the actions layer. Path, encoding, and all IO
 
 Reason:
 Inverted dependencies make the state layer untestable in isolation.
+
+## MC-AREA-20261106-a7b8c9d0 — Image save-as and wallpaper
+
+Status: active
+Scope: area:data
+Entry-Type: decision
+Subject: MC-SUBJ-20261018-f6a7b8c9
+Facet: workflow
+Evidence:
+- repo:src-tauri/src/core/wallpaper.rs
+
+Decision:
+`save_image_as` copies bytes via `atomic::write_bytes`, never re-encoding. `set_as_wallpaper` (Windows only) converts to BMP via .NET, keeping the temp file.
+
+Reason:
+Re-encoding drops EXIF. `SPI_SETDESKWALLPAPER` ignores non-BMP silently; deleting the BMP reverts the wallpaper.

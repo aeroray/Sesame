@@ -263,6 +263,8 @@ pub fn run() {
             commands::fs::list_encodings,
             commands::media::read_image,
             commands::media::open_image_externally,
+            commands::media::save_image_as,
+            commands::media::set_as_wallpaper,
             commands::fonts::list_fonts,
             commands::recent::recent_list,
             commands::recent::recent_add,

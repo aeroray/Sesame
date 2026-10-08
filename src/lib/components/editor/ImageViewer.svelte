@@ -4,15 +4,17 @@ import {
   Copy,
   ExternalLink,
   FolderOpen,
+  HardDriveDownload,
   ImageOff,
   Loader2,
   Maximize,
+  Monitor,
   RotateCcw,
   SquareDot,
   ZoomIn,
   ZoomOut,
 } from '@lucide/svelte';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { tick, untrack } from 'svelte';
 import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import { reportError } from '$lib/actions/open-file';
@@ -25,7 +27,7 @@ import {
   Trigger as ContextMenuTrigger,
 } from '$lib/components/ui/context-menu';
 import { t } from '$lib/i18n';
-import { openImageExternally } from '$lib/ipc/fs';
+import { openImageExternally, saveImageAs, setAsWallpaper } from '$lib/ipc/fs';
 import {
   ensureImage,
   getImage,
@@ -37,7 +39,7 @@ import {
 import { notify } from '$lib/state/status.svelte';
 import type { Tab } from '$lib/state/types';
 import { writeClipboardImage } from '$lib/utils/clipboard';
-import { IS_MAC } from '$lib/utils/platform';
+import { IS_MAC, IS_WINDOWS } from '$lib/utils/platform';
 
 interface Props {
   tab: Tab;
@@ -344,6 +346,44 @@ async function copyImage() {
     copyingImage = false;
   }
 }
+
+/**
+ * 另存为。
+ *
+ * 默认文件名与扩展名取自**原文件**——用户另存一张 PNG 时，
+ * 最可能想要的还是一张 PNG（这里不做格式转换，见 Rust 侧说明）。
+ */
+async function saveAs() {
+  if (!tab.path) return;
+  const name = payload?.name ?? tab.name;
+  const dot = name.lastIndexOf('.');
+  const extension = dot > 0 ? name.slice(dot + 1) : undefined;
+
+  try {
+    const target = await save({
+      title: t('image.saveAsTitle'),
+      defaultPath: name,
+      filters: extension ? [{ name: extension.toUpperCase(), extensions: [extension] }] : undefined,
+    });
+    if (!target) return;
+
+    const saved = await saveImageAs(tab.path, target);
+    notify.success(t('image.savedAs', { name: saved.split('/').pop() ?? name }));
+  } catch (err) {
+    reportError(err, t('error.saveImageFailed'));
+  }
+}
+
+/** 设为桌面壁纸（仅 Windows 显示此项）。 */
+async function setWallpaper() {
+  if (!tab.path) return;
+  try {
+    await setAsWallpaper(tab.path);
+    notify.success(t('image.wallpaperSet'));
+  } catch (err) {
+    reportError(err, t('error.wallpaperFailed'));
+  }
+}
 </script>
 
 <div class="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface-sunken">
@@ -457,6 +497,11 @@ async function copyImage() {
         <span class="truncate">{t('image.copyImage')}</span>
       </ContextMenuItem>
 
+      <ContextMenuItem class="gap-2" disabled={!tab.path} onSelect={() => void saveAs()}>
+        <HardDriveDownload class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.saveAs')}</span>
+      </ContextMenuItem>
+
       <ContextMenuSeparator />
 
       <ContextMenuItem
@@ -487,6 +532,19 @@ async function copyImage() {
         <ExternalLink class="size-3.5 shrink-0" />
         <span class="truncate">{t('image.openExternal')}</span>
       </ContextMenuItem>
+
+      <!--
+        「设为壁纸」只在 Windows 出现。
+        macOS 没有等价的公开 API（要写 com.apple.wallpaper 或走
+        AppleScript，都不可靠），Rust 侧会返回不支持——
+        既然点了必定失败，不如**不显示**，而不是显示一个永远报错的项。
+      -->
+      {#if IS_WINDOWS}
+        <ContextMenuItem class="gap-2" disabled={!tab.path} onSelect={() => void setWallpaper()}>
+          <Monitor class="size-3.5 shrink-0" />
+          <span class="truncate">{t('image.setWallpaper')}</span>
+        </ContextMenuItem>
+      {/if}
     </ContextMenuContent>
   </ContextMenuRoot>
 </div>

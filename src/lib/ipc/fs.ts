@@ -177,6 +177,21 @@ export function openImageExternally(path: string, application?: string): Promise
   return call<void>('open_image_externally', { path, application: application ?? null });
 }
 
+/**
+ * 把图片复制一份到 `target`。
+ *
+ * 目标路径由调用方从系统对话框取得，Rust 侧不再弹任何 UI。
+ * 返回实际写入的路径（内部用正斜杠，展示前需自行转换）。
+ */
+export function saveImageAs(source: string, target: string): Promise<string> {
+  return call<string>('save_image_as', { source, target });
+}
+
+/** 把图片设为桌面壁纸（仅 Windows）。 */
+export function setAsWallpaper(path: string): Promise<void> {
+  return call<void>('set_as_wallpaper', { path });
+}
+
 /** 读取上次会话快照。 */
 export function sessionLoad(): Promise<SessionSnapshot> {
   return call<SessionSnapshot>('session_load');

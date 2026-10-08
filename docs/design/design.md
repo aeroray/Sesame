@@ -517,13 +517,21 @@ Text and images get **different** menus, because they support different actions.
 | Menu | Contents |
 | --- | --- |
 | Editor (text) | Cut, Copy, Paste, Copy path, Show in folder, Find, Go to line, Select all |
-| Image viewer | Copy image, Copy path, Show in folder, Open with external app |
+| Image viewer | Copy image, Save image as…, Copy path, Show in folder, Open with external app, Set as desktop wallpaper (Windows only) |
 
 **Copy image copies pixels, not a path** — the two are one row apart and produce completely different results, so they are separated by a rule and use distinguishable icons.
 
 Implementation: `writeImage` accepts a path, PNG bytes, or RGBA. Only **RGBA** works here — the path and bytes branches both need tauri's `image-png` / `image-ico` features, which this project does not enable (`tauri = { features = [] }`). The data URL is therefore drawn to a canvas and read back with `getImageData` (straight, non-premultiplied alpha — exactly what the clipboard wants), wrapped as a `Uint8Array` sharing the same buffer (no copy), registered via `Image.new`, then released with `image.close()` — skipping that leaks the resource table.
 
 Permission: `clipboard-manager:allow-write-image`. `Image.new` needs none of its own — `core:image:default` already includes `allow-new`.
+
+**Save image as copies bytes; it never re-encodes.** The default filename keeps the original extension. Converting formats would need image codecs (a heavy dependency this project deliberately avoids) and would silently discard quality or EXIF data — that should not be a side effect of "save as". The copy goes through `atomic::write_bytes`, not `fs::copy`, so a failed write cannot leave a truncated file.
+
+**Set as desktop wallpaper is Windows-only and is hidden, not disabled, on macOS.** There is no reliable public macOS equivalent (it would mean writing `com.apple.wallpaper` or driving AppleScript), so the item would always fail — better absent than permanently broken.
+
+`SystemParametersInfoW(SPI_SETDESKWALLPAPER)` **only accepts BMP**; given a PNG or JPEG it returns success but the wallpaper does not change (silent failure). The image is therefore converted first via .NET's `System.Drawing` in a short PowerShell child process — .NET is guaranteed present on Windows and reads every format, so no codec dependency is added. The temporary BMP is deliberately **not deleted**: Windows records its path, and removing it makes the wallpaper fall back to a solid colour after a restart.
+
+PowerShell paths must use `-LiteralPath`-style escaping (doubled single quotes): `[` and `]` are wildcards to PowerShell and would break ordinary `-Path` handling.
 
 ### Decorative feature defaults
 

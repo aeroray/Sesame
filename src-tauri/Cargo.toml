@@ -52,7 +52,9 @@ fontdb = "0.24"
 # 版本必须与 Cargo.lock 中 wry 使用的一致，否则类型不兼容。
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_Storage_FileSystem", "Win32_Security"] }
+# `Win32_UI_WindowsAndMessaging` 是「设为壁纸」需要的：
+# `SystemParametersInfoW(SPI_SETDESKWALLPAPER, …)` 定义在那里。
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem", "Win32_Security"] }
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
