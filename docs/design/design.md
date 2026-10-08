@@ -490,9 +490,23 @@ Every status-bar item needs a label or `title` tooltip (`Line 19, Col 17`, not `
 | Cursor position | Line 19, Col 17 | Cursor position (line:col) |
 | Language | JavaScript | — (self-evident) |
 | Encoding | UTF-8 (**clickable**) | Reopen with encoding… |
-| Line endings | CRLF | Line ending style |
+| Line endings | CRLF (**clickable**) | Convert line endings… |
 
 **Encoding must be clickable** — detection is never fully right (Big5 / Shift_JIS / BOM-less UTF-16LE misdetect as GBK); untitled tab → non-clickable.
+
+**Line endings are clickable too** — CRLF into git shows the whole file as changed, and a stray `\r` breaks shebangs. Converting must be possible in place.
+
+The conversion is a **field change plus a dirty flag**, not a rewrite: the backend already normalises every newline to `\n` on load and reapplies `tab.lineEnding` on save, so nothing in the document changes until the user saves. No confirmation dialog is needed (unlike encoding, which re-reads from disk and would discard edits). Binary tabs are not convertible.
+
+### Popovers with a bounded list need a plain scroll container, not `ScrollArea`
+
+**Rule: a popover list uses `overflow-y-auto` + `max-h-*`.** Used by the encoding and line-ending pickers.
+
+Rejected: `ScrollArea`. Its viewport carries `size-full` (`height: 100%`), and against a parent that only has `max-height` a percentage height resolves to `auto` — the viewport grows with the content, never overflows, and **never scrolls**. Measured: `clientHeight` 418 = `scrollHeight` 418, i.e. immovable; with `overflow-y-auto` it becomes 256 / 418 and scrolls.
+
+`app.css` already restyles raw scrollbars globally, so nothing is lost by not using the component.
+
+**In a pick-one list, every row must show a marker**: a filled check for the current item, a hollow dot for the rest. Rejected: drawing the check only on the selected row — the column then reads as plain text and nothing signals that the rows are selectable. Both markers take the same width (`size-3.5`) so the labels stay on one left edge.
 
 ### Decorative feature defaults
 

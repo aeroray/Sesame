@@ -23,7 +23,6 @@ import { Check } from '@lucide/svelte';
 import { message } from '@tauri-apps/plugin-dialog';
 import { Popover as PopoverPrimitive } from 'bits-ui';
 import { reopenWithEncoding } from '$lib/actions/encoding';
-import { ScrollArea } from '$lib/components/ui/scroll-area';
 import { t } from '$lib/i18n';
 import { encodingList, ensureEncodings } from '$lib/state/encodings.svelte';
 import { notify } from '$lib/state/status.svelte';
@@ -94,31 +93,54 @@ async function pick(encoding: string): Promise<void> {
       sideOffset={4}
       class="z-50 w-56 rounded-lg border border-border-subtle bg-popover p-1 shadow-md outline-none"
     >
-      <div class="px-2 py-1 text-[10px] tracking-wide text-content-faint">
-        {t('encoding.change')}
-      </div>
-
       {#if encodingList.loading}
         <div class="px-2 py-3 text-center text-xs text-content-faint">
           {t('fontPicker.loading')}
         </div>
       {:else}
-        <ScrollArea class="max-h-64">
-          <div class="flex flex-col gap-0.5">
-            {#each encodingList.all as enc (enc)}
-              <button
-                type="button"
-                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface-sunken"
-                onclick={() => void pick(enc)}
-              >
-                <Check
-                  class="size-3.5 shrink-0 {enc === tab.encoding ? '' : 'opacity-0'}"
-                />
-                <span class="truncate">{enc.toUpperCase()}</span>
-              </button>
-            {/each}
-          </div>
-        </ScrollArea>
+        <!--
+          用**原生滚动**，不用 `ScrollArea`。
+
+          实测原因：bits-ui 的 ScrollArea 把 viewport 做成 `size-full`
+          （height:100%），而这里外层只有 `max-height`、没有确定高度，
+          百分比高度于是解析成 `auto`——viewport 跟着内容一直长高，
+          永不溢出，滚动条自然不出现。实测该 viewport 的
+          clientHeight 与 scrollHeight 都是 418，即完全滚不动。
+
+          换成 `overflow-y-auto` + `max-h-64` 后 clientHeight=256、
+          scrollHeight=418，正常可滚。
+
+          列表只有 9 项，本来也不需要 ScrollArea 那套自定义滚动条；
+          全局 `app.css` 已经把原生滚动条的样式统一过了。
+        -->
+        <div class="flex max-h-64 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
+          {#each encodingList.all as enc (enc)}
+            {@const selected = enc === tab.encoding}
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface-sunken"
+              aria-checked={selected}
+              role="menuitemradio"
+              onclick={() => void pick(enc)}
+            >
+              <!--
+                已选中：实心对勾。
+                未选中：一个空心圆点，表示「这是可选项、当前没选它」。
+                早先未选中项什么都不画（只给对勾 `opacity-0`），
+                整列看起来像纯文字，看不出哪些能被选中。
+                两者都占 `size-3.5`，因此文字左缘始终对齐。
+              -->
+              {#if selected}
+                <Check class="size-3.5 shrink-0" />
+              {:else}
+                <span class="flex size-3.5 shrink-0 items-center justify-center">
+                  <span class="size-1.5 rounded-full border border-current opacity-40"></span>
+                </span>
+              {/if}
+              <span class="truncate">{enc.toUpperCase()}</span>
+            </button>
+          {/each}
+        </div>
       {/if}
     </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>

@@ -287,6 +287,7 @@ export const en = {
     lf: 'LF (Unix)',
     crlf: 'CRLF (Windows)',
     cr: 'CR (legacy Mac)',
+    changed: 'Line endings set to {style} — saved on next save',
   },
 
   /** 需要用户**做决定**的原生对话框。 */

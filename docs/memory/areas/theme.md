@@ -65,3 +65,19 @@ Decision:
 
 Reason:
 Button base has `bg-clip-padding`, so hover fills skip the 1px border ring. Tailwind v4 only emits classes present in source.
+
+## MC-AREA-20261104-e5f6a7b8 — Popover lists use plain overflow
+
+Status: active
+Scope: area:theme
+Entry-Type: decision
+Subject: MC-SUBJ-20261015-c3d4e5f6
+Facet: workflow
+Evidence:
+- repo:src/lib/components/common/EncodingPicker.svelte
+
+Decision:
+Popover lists use `overflow-y-auto` + `max-h-*`, never `ScrollArea`. Mark rows: check = current, dot = other.
+
+Reason:
+`ScrollArea`'s `size-full` viewport never scrolls under `max-height`.

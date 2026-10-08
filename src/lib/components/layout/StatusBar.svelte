@@ -7,6 +7,7 @@ import { Code, Eye, ListOrdered, WrapText } from '@lucide/svelte';
 import { requestTogglePreview } from '$lib/actions/preview';
 import EncodingPicker from '$lib/components/common/EncodingPicker.svelte';
 import Hint from '$lib/components/common/Hint.svelte';
+import LineEndingPicker from '$lib/components/common/LineEndingPicker.svelte';
 import { Badge } from '$lib/components/ui/badge';
 import { LANGUAGE_LABELS } from '$lib/editor/languages';
 import { t } from '$lib/i18n';
@@ -37,11 +38,6 @@ const encodingLabel = $derived(tab?.encoding.toUpperCase() ?? '');
  * 保存会把有损解码的乱码写回去，把原文件毁掉。
  */
 const isBinary = $derived(tab?.encoding === 'binary');
-
-/** 换行风格的展示名。 */
-const lineEndingLabel = $derived(
-  tab?.lineEnding === 'crlf' ? 'CRLF' : tab?.lineEnding === 'cr' ? 'CR' : 'LF',
-);
 </script>
 
 <!--
@@ -120,8 +116,10 @@ const lineEndingLabel = $derived(
         <span class="px-1" title={t('editor.language')}>{LANGUAGE_LABELS[tab.language]}</span>
         {@render separator()}
         <!--
-          编码可点击：探测不可能全对，用户需要一个纠正误判的入口。
-          未命名标签没有磁盘文件可重读，因此只在有路径时可交互。
+          编码与换行都可点击：
+          编码——探测不可能全对，需要纠正误判的入口；
+          换行——跨平台摩擦（CRLF 进 git 整篇显示为改动），需要就地转换。
+          未命名标签没有磁盘文件可重读，因此编码只在有路径时可交互。
         -->
         {#if tab.path}
           <EncodingPicker {tab} />
@@ -129,7 +127,7 @@ const lineEndingLabel = $derived(
           <span class="px-1" title={t('editor.encoding')}>{encodingLabel}</span>
         {/if}
         {@render separator()}
-        <span class="px-1" title={t('editor.lineEnding')}>{lineEndingLabel}</span>
+        <LineEndingPicker {tab} />
 
         {#if tab.truncated}
           {@render separator()}

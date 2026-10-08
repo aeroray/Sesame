@@ -286,6 +286,7 @@ export const zhCN: Messages = {
     lf: 'LF（Unix）',
     crlf: 'CRLF（Windows）',
     cr: 'CR（旧版 Mac）',
+    changed: '换行风格已改为 {style}，保存后生效',
   },
 
   dialog: {
