@@ -16,7 +16,7 @@ Decision:
 Derive tokens and write them as inline styles on `<html>`; CSS keeps fallbacks only. Accents switch through `data-accent`.
 
 Reason:
-Hard-coding them in CSS guarantees that someone changes a background and forgets the border.
+Hard-coding them in CSS guarantees someone changes a background and forgets the border.
 
 ## MC-AREA-20261010-b2c3d4e5 — Font stacks must name a CJK font
 
@@ -29,10 +29,10 @@ Evidence:
 - repo:src/app.css
 
 Decision:
-UI and editor fonts are set separately and fall back to different stacks; both stacks must list a CJK font explicitly.
+UI and editor fonts fall back to different stacks; both must list a CJK font explicitly.
 
 Reason:
-Monospace fonts rarely include CJK glyphs, so omitting one puts two fonts on the same line.
+Monospace fonts rarely include CJK glyphs, so omitting one puts two fonts on a line.
 
 ## MC-AREA-20261010-c3d4e5f6 — app.css state-variant bridge is load-bearing
 
@@ -45,10 +45,10 @@ Evidence:
 - repo:src/app.css
 
 Constraint:
-Keep the declarations at the top of `app.css` that map bits-ui `data-state` onto variants such as `data-checked:`.
+Keep the `app.css` declarations mapping bits-ui `data-state` onto variants such as `data-checked:`.
 
 Reason:
-Removing them strips styling from switches, selected states, and expanded states.
+Removing them strips styling from switches, selected and expanded states.
 
 ## MC-AREA-20261103-d4e5f6a7 — Icon buttons need `bg-clip-border`
 
@@ -80,4 +80,5 @@ Decision:
 Popover lists use `overflow-y-auto` + `max-h-*`, never `ScrollArea`. Mark rows: check = current, dot = other.
 
 Reason:
-`ScrollArea`'s `size-full` viewport never scrolls under `max-height`.
+`ScrollArea`'s `size-full` viewport never scrolls under `max-height`. Scroll only when needed.
+

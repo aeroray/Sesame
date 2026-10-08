@@ -65,3 +65,19 @@ Fit to window by default, tracked by `ResizeObserver`; lay the image out at its 
 
 Reason:
 Native-size image plus `transform` keeps the original overflow range when zoomed out, so edges cannot be scrolled to.
+
+## MC-AREA-20261105-f6a7b8c9 — Copy image via canvas to RGBA
+
+Status: active
+Scope: area:editor
+Entry-Type: decision
+Subject: MC-SUBJ-20261021-d4e5f6a7
+Facet: compatibility
+Evidence:
+- repo:src/lib/utils/clipboard.ts
+
+Decision:
+`writeClipboardImage` draws the data URL to a canvas, reads `getImageData`, then `Image.new` and `image.close()`.
+
+Reason:
+`writeImage`'s path and bytes branches need tauri's `image-png` / `image-ico` features, which are off.

@@ -99,21 +99,19 @@ async function pick(encoding: string): Promise<void> {
         </div>
       {:else}
         <!--
-          用**原生滚动**，不用 `ScrollArea`。
+          **不用滚动容器，9 项直接全展示。**
 
-          实测原因：bits-ui 的 ScrollArea 把 viewport 做成 `size-full`
-          （height:100%），而这里外层只有 `max-height`、没有确定高度，
-          百分比高度于是解析成 `auto`——viewport 跟着内容一直长高，
-          永不溢出，滚动条自然不出现。实测该 viewport 的
-          clientHeight 与 scrollHeight 都是 418，即完全滚不动。
+          后端 `SELECTABLE_ENCODINGS` 一共 9 个，每项约 33px，合计约 300px；
+          窗口最小高度 480px，弹层朝上开也放得下。加滚动条反而多一层
+          交互成本（还要先发现它能滚），而且弹层里出现滚动条本身也不好看。
 
-          换成 `overflow-y-auto` + `max-h-64` 后 clientHeight=256、
-          scrollHeight=418，正常可滚。
-
-          列表只有 9 项，本来也不需要 ScrollArea 那套自定义滚动条；
-          全局 `app.css` 已经把原生滚动条的样式统一过了。
+          早先这里用 `ScrollArea` 时**根本滚不动**：它的 viewport 是
+          `size-full`（height:100%），而外层只有 `max-height`、没有确定高度，
+          百分比高度于是解析成 `auto`，viewport 跟着内容长高、永不溢出
+          （实测 clientHeight 与 scrollHeight 都是 418）。改成原生
+          `overflow-y-auto` 后能滚了，但既然放得下，干脆连滚动也不需要。
         -->
-        <div class="flex max-h-64 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
+        <div class="flex flex-col gap-0.5">
           {#each encodingList.all as enc (enc)}
             {@const selected = enc === tab.encoding}
             <button

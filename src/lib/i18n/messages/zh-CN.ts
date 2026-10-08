@@ -14,7 +14,6 @@ import type { Messages } from './en';
 
 export const zhCN: Messages = {
   app: {
-    name: 'Sesame',
     tagline: '轻量文本编辑器',
   },
 
@@ -251,6 +250,9 @@ export const zhCN: Messages = {
     applications: '应用程序',
     loading: '正在读取图片…',
     displayFailed: '无法显示此图片',
+    copyImage: '复制图片',
+    imageCopied: '已复制图片',
+    copyImageFailed: '无法复制图片',
   },
 
   fontPicker: {
@@ -273,9 +275,6 @@ export const zhCN: Messages = {
      */
     change: '选择文本编码…',
     title: '以指定编码重新打开',
-    description: '将从磁盘重新读取内容，本标签未保存的修改会丢失。',
-    autoDetected: '自动探测',
-    unsupported: '不支持这种编码',
     loseChanges: '重新打开会丢弃本标签未保存的修改。要继续吗？',
     reopened: '已按 {encoding} 重新打开',
   },
@@ -324,7 +323,6 @@ export const zhCN: Messages = {
     notWritable: '图片不支持保存',
     nothingToSave: '没有可保存的内容',
     unknown: '发生未知错误',
-    linkOpenFailed: '打开链接失败',
     renderFailed: '无法渲染此文档',
     copyFailed: '无法复制到剪贴板',
     revealFailed: '无法在文件夹中显示',

@@ -508,6 +508,23 @@ Rejected: `ScrollArea`. Its viewport carries `size-full` (`height: 100%`), and a
 
 **In a pick-one list, every row must show a marker**: a filled check for the current item, a hollow dot for the rest. Rejected: drawing the check only on the selected row — the column then reads as plain text and nothing signals that the rows are selectable. Both markers take the same width (`size-3.5`) so the labels stay on one left edge.
 
+**The encoding list needs no scroll container at all.** `SELECTABLE_ENCODINGS` has 9 entries ≈ 313px total, and the minimum window height is 480px, so the whole list fits. Adding a scroll container costs a layer of interaction (the user must first discover it scrolls) and a scrollbar inside a popover looks worse. Rule: **add scrolling only when the content can actually exceed the available height.**
+
+### The image viewer has its own context menu
+
+Text and images get **different** menus, because they support different actions.
+
+| Menu | Contents |
+| --- | --- |
+| Editor (text) | Cut, Copy, Paste, Copy path, Show in folder, Find, Go to line, Select all |
+| Image viewer | Copy image, Copy path, Show in folder, Open with external app |
+
+**Copy image copies pixels, not a path** — the two are one row apart and produce completely different results, so they are separated by a rule and use distinguishable icons.
+
+Implementation: `writeImage` accepts a path, PNG bytes, or RGBA. Only **RGBA** works here — the path and bytes branches both need tauri's `image-png` / `image-ico` features, which this project does not enable (`tauri = { features = [] }`). The data URL is therefore drawn to a canvas and read back with `getImageData` (straight, non-premultiplied alpha — exactly what the clipboard wants), wrapped as a `Uint8Array` sharing the same buffer (no copy), registered via `Image.new`, then released with `image.close()` — skipping that leaks the resource table.
+
+Permission: `clipboard-manager:allow-write-image`. `Image.new` needs none of its own — `core:image:default` already includes `allow-new`.
+
 ### Decorative feature defaults
 
 Criterion: attention competition, not usefulness.

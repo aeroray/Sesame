@@ -15,7 +15,6 @@
  */
 export const en = {
   app: {
-    name: 'Sesame',
     tagline: 'Lightweight text editor',
   },
 
@@ -259,6 +258,9 @@ export const en = {
     loading: 'Reading image…',
     /** 图片数据拿到了但没法渲染（格式损坏等）。 */
     displayFailed: 'Could not display this image',
+    copyImage: 'Copy image',
+    imageCopied: 'Image copied',
+    copyImageFailed: 'Could not copy the image',
   },
 
   fontPicker: {
@@ -274,9 +276,6 @@ export const en = {
     /** 手动指定编码的入口。 */
     change: 'Reopen with encoding…',
     title: 'Reopen with encoding',
-    description: 'Content is re-read from disk. Unsaved changes in this tab will be lost.',
-    autoDetected: 'Auto-detected',
-    unsupported: 'This encoding is not supported',
     loseChanges: 'Reopening will discard the unsaved changes in this tab. Continue?',
     reopened: 'Reopened as {encoding}',
   },
@@ -329,7 +328,6 @@ export const en = {
     notWritable: 'Image files cannot be saved',
     nothingToSave: 'There is nothing to save',
     unknown: 'An unknown error occurred',
-    linkOpenFailed: 'Could not open the link',
     renderFailed: 'Could not render this document',
     copyFailed: 'Could not copy to the clipboard',
     revealFailed: 'Could not show the file in its folder',

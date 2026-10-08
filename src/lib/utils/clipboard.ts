@@ -12,7 +12,8 @@
  * 由 Rust 直接访问系统剪贴板，**不经过任何权限询问**。
  *
  * 插件的 `default` 权限集是空的，`capabilities/default.json` 里只开了
- * `allow-read-text` 与 `allow-write-text`——正好是本文件用到的两项。
+ * `allow-read-text`、`allow-write-text` 与 `allow-write-image`
+ * ——正好是本文件用到的三项。
  *
  * ## 剪切/复制为什么仍用 `execCommand`
  *
@@ -25,7 +26,8 @@
  * 时还能兜住，不至于让复制功能整个失效。
  */
 
-import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { Image } from '@tauri-apps/api/image';
+import { readText, writeImage, writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 /**
  * 读剪贴板文本。
@@ -93,4 +95,77 @@ export function cutSelection(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * 把图片放进剪贴板。
+ *
+ * ## 为什么要绕一圈 canvas
+ *
+ * 插件的 `writeImage` 接受三种入参，但本项目能用的只有一种：
+ *
+ * - **文件路径** —— 需要 tauri 的 `image-png` / `image-ico` feature 才能解码，
+ *   本项目没启用（`tauri = { features = [] }`），传路径会直接失败。
+ * - **PNG 字节** —— 同样依赖上面那两个 feature。
+ * - **RGBA 像素** —— 不需要任何 feature，走 `plugin:image|new` 把数据
+ *   登记进资源表，再由剪贴板按 RGBA 写入。**这是唯一可行的路径。**
+ *
+ * 而我们手上只有 `dataUrl`（后端读图后给的 base64 data URL）。
+ * 因此先画到 canvas 取 `getImageData` 拿到 RGBA——
+ * `getImageData` 返回的是**直通 alpha**（非预乘），正是剪贴板要的格式。
+ *
+ * ## 为什么要显式给宽高
+ *
+ * `Image.new` 必须知道尺寸，而 canvas 的尺寸取自图片自身的
+ * `naturalWidth/Height`，不是显示尺寸——缩放不影响复制结果，
+ * 复制出去的始终是原图。
+ */
+export async function writeClipboardImage(dataUrl: string): Promise<boolean> {
+  try {
+    const bitmap = await loadImageElement(dataUrl);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.naturalWidth;
+    canvas.height = bitmap.naturalHeight;
+    if (canvas.width === 0 || canvas.height === 0) return false;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(bitmap, 0, 0);
+
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    /*
+     * `getImageData().data` 是 `Uint8ClampedArray`，而 `Image.new` 收
+     * `Uint8Array`。两者底层都是字节缓冲，用同一个 buffer 包一层即可，
+     * 不必复制（大图复制一次就是几十 MB 的额外开销）。
+     */
+    const rgba = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+
+    // 交给 Rust 的资源表，再写剪贴板；用完必须 free，否则资源表会泄漏
+    const image = await Image.new(rgba, width, height);
+    try {
+      await writeImage(image);
+      return true;
+    } finally {
+      await image.close();
+    }
+  } catch {
+    return false;
+  }
+}
+
+/** 把 data URL 解码成可绘制的图片元素。 */
+function loadImageElement(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    /*
+     * 用 `createElement('img')` 而不是 `new Image()`：
+     * 本文件顶部从 `@tauri-apps/api/image` 引入了同名的 `Image`（Tauri 的
+     * 资源句柄类），`new Image()` 会解析成那个，拿不到 DOM 图片元素。
+     */
+    const img = document.createElement('img');
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('无法解码图片'));
+    img.src = dataUrl;
+  });
 }

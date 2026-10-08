@@ -1,7 +1,9 @@
 <script lang="ts">
 /** 图片查看器：真实显示尺寸决定滚动范围，默认适应窗口。 */
 import {
+  Copy,
   ExternalLink,
+  FolderOpen,
   ImageOff,
   Loader2,
   Maximize,
@@ -12,8 +14,16 @@ import {
 } from '@lucide/svelte';
 import { open } from '@tauri-apps/plugin-dialog';
 import { tick, untrack } from 'svelte';
+import { copyPath, revealInFolder } from '$lib/actions/file-actions';
 import { reportError } from '$lib/actions/open-file';
 import Hint from '$lib/components/common/Hint.svelte';
+import {
+  Content as ContextMenuContent,
+  Item as ContextMenuItem,
+  Root as ContextMenuRoot,
+  Separator as ContextMenuSeparator,
+  Trigger as ContextMenuTrigger,
+} from '$lib/components/ui/context-menu';
 import { t } from '$lib/i18n';
 import { openImageExternally } from '$lib/ipc/fs';
 import {
@@ -24,7 +34,9 @@ import {
   retainImage,
   setImageDimensions,
 } from '$lib/state/images.svelte';
+import { notify } from '$lib/state/status.svelte';
 import type { Tab } from '$lib/state/types';
+import { writeClipboardImage } from '$lib/utils/clipboard';
 import { IS_MAC } from '$lib/utils/platform';
 
 interface Props {
@@ -311,6 +323,27 @@ async function openExternally() {
     openingExternally = false;
   }
 }
+
+/**
+ * 复制图片到剪贴板。
+ *
+ * 与「复制文件路径」不同——那个复制的是**路径文本**，
+ * 这个复制的是**像素本身**，可以直接粘进聊天窗口或文档里。
+ * 这也是图片最常用的动作之一，值得放进右键菜单。
+ */
+let copyingImage = $state(false);
+
+async function copyImage() {
+  if (!payload || copyingImage) return;
+  copyingImage = true;
+  try {
+    const ok = await writeClipboardImage(payload.dataUrl);
+    if (ok) notify.success(t('image.imageCopied'));
+    else notify.error(t('image.copyImageFailed'));
+  } finally {
+    copyingImage = false;
+  }
+}
 </script>
 
 <div class="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface-sunken">
@@ -353,43 +386,107 @@ async function openExternally() {
     </span>
   </div>
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable image region needs keyboard focus for scrolling and panning.) -->
-  <div
-    bind:this={viewport}
-    role="region"
-    aria-label={t('image.viewArea')}
-    tabindex="0"
-    class="image-viewport relative min-h-0 min-w-0 flex-1 overflow-auto"
-    class:select-none={spaceHeld}
-    style:cursor={dragging ? 'grabbing' : spaceHeld ? 'grab' : undefined}
-    style="overflow-anchor: none;"
-  >
-    {#if !active}
-      <!-- Release decoded bitmap surfaces for hidden tabs while retaining view state. -->
-    {:else if loading && !payload}
-      <div class="flex h-full items-center justify-center gap-2 text-xs text-content-faint">
-        <Loader2 class="size-4 animate-spin" />
-        {t('image.loading')}
-      </div>
-    {:else if payload && !displayFailed}
-      <!-- Explicit image dimensions prevent unscaled overflow after zooming out. -->
-      <div class="grid min-h-full min-w-full place-items-center p-4" style="width: max-content; height: max-content;">
-        <img
-          bind:this={image}
-          src={payload.dataUrl}
-          alt={payload.name}
-          onload={onLoad}
-          onerror={() => (displayFailed = true)}
-          class="block max-h-none max-w-none"
-          style={`width: ${displayWidth}px; height: ${displayHeight}px; visibility: ${natural ? 'visible' : 'hidden'};`}
-          draggable={false}
-        />
-      </div>
-    {:else}
-      <div class="flex h-full flex-col items-center justify-center gap-2 text-content-faint">
-        <ImageOff class="size-6" />
-        <p class="text-xs">{t('image.displayFailed')}</p>
-      </div>
-    {/if}
-  </div>
+  <!--
+    图片区的右键菜单。
+
+    图片上右键原先什么都不弹（全局拦截器只是挡住了 WebView 的原生菜单），
+    而图片恰恰有几个只在图片上有意义的动作：复制像素、用外部程序打开。
+    文本区的菜单里放这些没有意义，所以单独做一份。
+
+    `ContextMenuTrigger` 包住整个视口，因此在图片外的留白处右键也有效——
+    那是查看区的一部分，用户不会觉得意外。
+  -->
+  <ContextMenuRoot>
+    <ContextMenuTrigger>
+      {#snippet child({ props })}
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable image region needs keyboard focus for scrolling and panning.) -->
+        <div
+          {...props}
+          bind:this={viewport}
+          role="region"
+          aria-label={t('image.viewArea')}
+          tabindex="0"
+          class="image-viewport relative min-h-0 min-w-0 flex-1 overflow-auto"
+          class:select-none={spaceHeld}
+          style:cursor={dragging ? 'grabbing' : spaceHeld ? 'grab' : undefined}
+          style="overflow-anchor: none;"
+        >
+          {#if !active}
+            <!-- Release decoded bitmap surfaces for hidden tabs while retaining view state. -->
+          {:else if loading && !payload}
+            <div class="flex h-full items-center justify-center gap-2 text-xs text-content-faint">
+              <Loader2 class="size-4 animate-spin" />
+              {t('image.loading')}
+            </div>
+          {:else if payload && !displayFailed}
+            <!-- Explicit image dimensions prevent unscaled overflow after zooming out. -->
+            <div class="grid min-h-full min-w-full place-items-center p-4" style="width: max-content; height: max-content;">
+              <img
+                bind:this={image}
+                src={payload.dataUrl}
+                alt={payload.name}
+                onload={onLoad}
+                onerror={() => (displayFailed = true)}
+                class="block max-h-none max-w-none"
+                style={`width: ${displayWidth}px; height: ${displayHeight}px; visibility: ${natural ? 'visible' : 'hidden'};`}
+                draggable={false}
+              />
+            </div>
+          {:else}
+            <div class="flex h-full flex-col items-center justify-center gap-2 text-content-faint">
+              <ImageOff class="size-6" />
+              <p class="text-xs">{t('image.displayFailed')}</p>
+            </div>
+          {/if}
+        </div>
+      {/snippet}
+    </ContextMenuTrigger>
+
+    <ContextMenuContent class="w-56">
+      <!--
+        「复制图片」复制的是**像素**，而下一项复制的是**路径文本**。
+        两者名字相近、结果完全不同，因此用分隔线隔开，
+        并让图标区分（Copy 对 FolderOpen / ExternalLink）。
+      -->
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!payload || copyingImage}
+        onSelect={() => void copyImage()}
+      >
+        <Copy class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.copyImage')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuSeparator />
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!tab.path}
+        onSelect={() => void copyPath(tab)}
+      >
+        <Copy class="size-3.5 shrink-0" />
+        <span class="truncate">{t('action.copyPath')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!tab.path}
+        onSelect={() => void revealInFolder(tab)}
+      >
+        <FolderOpen class="size-3.5 shrink-0" />
+        <span class="truncate">{t('action.revealInFolder')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuSeparator />
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!tab.path || openingExternally}
+        onSelect={() => void openExternally()}
+      >
+        <ExternalLink class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.openExternal')}</span>
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenuRoot>
 </div>
