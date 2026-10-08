@@ -3,6 +3,8 @@
 import {
   Copy,
   ExternalLink,
+  FlipHorizontal,
+  FlipVertical,
   FolderOpen,
   HardDriveDownload,
   ImageOff,
@@ -10,7 +12,9 @@ import {
   Maximize,
   Monitor,
   RotateCcw,
+  RotateCw,
   SquareDot,
+  Undo2,
   ZoomIn,
   ZoomOut,
 } from '@lucide/svelte';
@@ -32,13 +36,28 @@ import {
   ensureImage,
   getImage,
   getImageDimensions,
+  getTransform,
   isLoading,
   retainImage,
   setImageDimensions,
+  setTransform,
 } from '$lib/state/images.svelte';
 import { notify } from '$lib/state/status.svelte';
+import { markDirty } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { writeClipboardImage } from '$lib/utils/clipboard';
+import {
+  applyTransform,
+  decodeImage,
+  flipHorizontal,
+  flipVertical,
+  IDENTITY,
+  type ImageTransform,
+  isIdentity,
+  rotateCCW,
+  rotateCW,
+  transformedSize,
+} from '$lib/utils/image-transform';
 import { IS_MAC, IS_WINDOWS } from '$lib/utils/platform';
 
 interface Props {
@@ -180,18 +199,104 @@ const PADDING = 16;
 const MIN_ZOOM = 0.01;
 const MAX_ZOOM = 8;
 
+/** 当前的旋转 / 翻转状态。 */
+const transform = $derived(getTransform(tab.id));
+const transformed = $derived(!isIdentity(transform));
+
+/**
+ * 变换后的图片 data URL。
+ *
+ * ## 为什么预渲染成一张新图，而不是用 CSS `transform`
+ *
+ * CSS 只改显示、不改像素：旋转 90° 后宽高互换，而元素占的仍是原来的
+ * 盒子，于是要么被裁掉、要么留下大片空白，滚动范围也跟着错。
+ * 本项目早先就因为这个原因放弃了用 `transform` 做缩放。
+ *
+ * 这里在 canvas 上**真正重绘**成一张尺寸正确的新位图，
+ * 之后的适应窗口、缩放、滚动全都按正常路径工作，不需要任何特例——
+ * 因为它们拿到的就是一张普通图片。
+ *
+ * ## 只在变换变化时重算
+ *
+ * 这个 effect 的依赖只有 `payload.dataUrl` 与 `transform` 的四个字段。
+ * 缩放、滚动、窗口大小变化都**不会**触发它，因此拖拽与缩放依然流畅。
+ */
+let displayUrl = $state<string | null>(null);
+
+$effect(() => {
+  const source = payload?.dataUrl;
+  // 不要把这个变量命名为 `t`：那会遮蔽 i18n 的 `t()` 函数，
+  // 而下面的 catch 分支正好要用它（实测报 "not callable"）。
+  const next = transform;
+
+  // 恒等变换：直接用原图，连解码都省了
+  if (!source || isIdentity(next)) {
+    displayUrl = null;
+    return;
+  }
+
+  let cancelled = false;
+  void (async () => {
+    try {
+      const bitmap = await decodeImage(source);
+      if (cancelled) return;
+      const canvas = applyTransform(bitmap, bitmap.naturalWidth, bitmap.naturalHeight, next);
+      if (cancelled) return;
+      /*
+       * 一律按 PNG 编码显示。
+       *
+       * 这是**仅供显示**的中间图，不落盘；用 PNG 避免为了预览而
+       * 对 JPEG 做一次有损重编码（那会让屏幕上的画质比文件更差，
+       * 而保存时才是有损的那一次）。代价是内存里多一份较大的
+       * data URL，仅在旋转后才存在。
+       */
+      displayUrl = canvas.toDataURL('image/png');
+    } catch (err) {
+      if (!cancelled) reportError(err, t('error.readImageFailed'));
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+});
+
+/** 实际渲染用的图源。 */
+const shownUrl = $derived(displayUrl ?? payload?.dataUrl);
+
+/**
+ * 尺寸：变换会交换宽高。
+ *
+ * `natural` 是**解码后**的真实尺寸，由 `onLoad` 写入。旋转后 `img` 的
+ * 源换成了新图，`onLoad` 会用新尺寸覆盖它，两者因此始终一致。
+ */
+const shownSize = $derived(
+  natural ? transformedSize(natural.width, natural.height, transform) : undefined,
+);
+
 const fitZoom = $derived(
-  natural && viewportSize.width > 0 && viewportSize.height > 0
+  shownSize && viewportSize.width > 0 && viewportSize.height > 0
     ? Math.min(
         1,
-        Math.max(1, viewportSize.width - PADDING * 2) / natural.width,
-        Math.max(1, viewportSize.height - PADDING * 2) / natural.height,
+        Math.max(1, viewportSize.width - PADDING * 2) / shownSize.width,
+        Math.max(1, viewportSize.height - PADDING * 2) / shownSize.height,
       )
     : 1,
 );
 const effectiveZoom = $derived(fit ? fitZoom : zoom);
-const displayWidth = $derived(Math.max(1, Math.floor((natural?.width ?? 1) * effectiveZoom)));
-const displayHeight = $derived(Math.max(1, Math.floor((natural?.height ?? 1) * effectiveZoom)));
+const displayWidth = $derived(Math.max(1, Math.floor((shownSize?.width ?? 1) * effectiveZoom)));
+const displayHeight = $derived(Math.max(1, Math.floor((shownSize?.height ?? 1) * effectiveZoom)));
+
+/**
+ * 施加一次变换并标记为未保存。
+ *
+ * 不直接写文件：JPEG 重编码有损（实测 `rgb(32,64,128)` → `rgb(30,66,123)`），
+ * 每点一次就写一次等于反复掉画质且无法撤销。用户按 Ctrl+S 才落盘。
+ */
+function applyAndMark(next: ImageTransform) {
+  setTransform(tab.id, next);
+  markDirty(tab.id, true);
+}
 
 $effect(() => {
   const id = tab.id;
@@ -235,7 +340,17 @@ $effect(() => {
 
 function onLoad(event: Event) {
   const img = event.currentTarget as HTMLImageElement;
-  setImageDimensions(tab.id, { width: img.naturalWidth, height: img.naturalHeight });
+  /*
+   * 只在**恒等变换**时记录尺寸。
+   *
+   * `natural` 必须始终是**原图**的解码尺寸，因为 `shownSize` 会用它
+   * 配合 `transform` 算出显示尺寸。旋转后 `<img>` 的源换成了重绘过的新图，
+   * 它的 `naturalWidth` 已经是互换过的值——若照收，`shownSize` 会再交换
+   * 一次，尺寸就转回去了（表现为「旋转后宽高没变」）。
+   */
+  if (isIdentity(getTransform(tab.id))) {
+    setImageDimensions(tab.id, { width: img.naturalWidth, height: img.naturalHeight });
+  }
   displayFailed = false;
 }
 
@@ -339,7 +454,7 @@ async function copyImage() {
   if (!payload || copyingImage) return;
   copyingImage = true;
   try {
-    const ok = await writeClipboardImage(payload.dataUrl);
+    const ok = await writeClipboardImage(shownUrl ?? payload.dataUrl);
     if (ok) notify.success(t('image.imageCopied'));
     else notify.error(t('image.copyImageFailed'));
   } finally {
@@ -420,6 +535,66 @@ async function setWallpaper() {
       <Hint label={t('image.actualSize')} side="top" class="size-6" disabled={!natural} onclick={actualSize}>
         <SquareDot class="size-3.5" />
       </Hint>
+
+      <!--
+        旋转 / 翻转放在缩放组之后、外部打开之前：前者是「怎么看这张图」，
+        后者是「拿它去别处用」，中间隔开更清楚。
+      -->
+      <Hint
+        label={t('image.rotateCCW')}
+        side="top"
+        class="size-6"
+        disabled={!natural}
+        onclick={() => applyAndMark(rotateCCW(transform))}
+      >
+        <RotateCcw class="size-3.5" />
+      </Hint>
+      <Hint
+        label={t('image.rotateCW')}
+        side="top"
+        class="size-6"
+        disabled={!natural}
+        onclick={() => applyAndMark(rotateCW(transform))}
+      >
+        <RotateCw class="size-3.5" />
+      </Hint>
+      <Hint
+        label={t('image.flipH')}
+        side="top"
+        class="size-6"
+        disabled={!natural}
+        active={transform.flipH}
+        toggle
+        onclick={() => applyAndMark(flipHorizontal(transform))}
+      >
+        <FlipHorizontal class="size-3.5" />
+      </Hint>
+      <Hint
+        label={t('image.flipV')}
+        side="top"
+        class="size-6"
+        disabled={!natural}
+        active={transform.flipV}
+        toggle
+        onclick={() => applyAndMark(flipVertical(transform))}
+      >
+        <FlipVertical class="size-3.5" />
+      </Hint>
+      <!--
+        只在确实变换过之后才显示「重置」。
+        恒等状态下它无事可做，常驻只会占位置并让工具栏变长。
+      -->
+      {#if transformed}
+        <Hint
+          label={t('image.resetTransform')}
+          side="top"
+          class="size-6"
+          onclick={() => applyAndMark(IDENTITY)}
+        >
+          <Undo2 class="size-3.5" />
+        </Hint>
+      {/if}
+
       <Hint label={t('image.openExternal')} side="top" class="size-6" disabled={openingExternally} onclick={() => void openExternally()}>
         <ExternalLink class="size-3.5" />
       </Hint>
@@ -463,12 +638,12 @@ async function setWallpaper() {
             <div class="grid min-h-full min-w-full place-items-center p-4" style="width: max-content; height: max-content;">
               <img
                 bind:this={image}
-                src={payload.dataUrl}
+                src={shownUrl}
                 alt={payload.name}
                 onload={onLoad}
                 onerror={() => (displayFailed = true)}
                 class="block max-h-none max-w-none"
-                style={`width: ${displayWidth}px; height: ${displayHeight}px; visibility: ${natural ? 'visible' : 'hidden'};`}
+                style={`width: ${displayWidth}px; height: ${displayHeight}px; visibility: ${shownSize ? 'visible' : 'hidden'};`}
                 draggable={false}
               />
             </div>
@@ -521,6 +696,62 @@ async function setWallpaper() {
         <FolderOpen class="size-3.5 shrink-0" />
         <span class="truncate">{t('action.revealInFolder')}</span>
       </ContextMenuItem>
+
+      <ContextMenuSeparator />
+
+      <!--
+        旋转 / 翻转。
+
+        与工具栏上那几个按钮是**同一组操作**，两处都给是刻意的：
+        工具栏便于连续点（看一张歪图时最常用），右键菜单便于发现
+        （用户不会去研究工具栏每个图标）。
+
+        它们只改内存里的显示，标脏但不写盘——用户按 Ctrl+S 才落盘。
+        理由见 `actions/save-image.ts`：JPEG 重编码有损，
+        不能每点一次就写一次。
+      -->
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!natural}
+        onSelect={() => applyAndMark(rotateCCW(transform))}
+      >
+        <RotateCcw class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.rotateCCW')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!natural}
+        onSelect={() => applyAndMark(rotateCW(transform))}
+      >
+        <RotateCw class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.rotateCW')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!natural}
+        onSelect={() => applyAndMark(flipHorizontal(transform))}
+      >
+        <FlipHorizontal class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.flipH')}</span>
+      </ContextMenuItem>
+
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!natural}
+        onSelect={() => applyAndMark(flipVertical(transform))}
+      >
+        <FlipVertical class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.flipV')}</span>
+      </ContextMenuItem>
+
+      {#if transformed}
+        <ContextMenuItem class="gap-2" onSelect={() => applyAndMark(IDENTITY)}>
+          <Undo2 class="size-3.5 shrink-0" />
+          <span class="truncate">{t('image.resetTransform')}</span>
+        </ContextMenuItem>
+      {/if}
 
       <ContextMenuSeparator />
 

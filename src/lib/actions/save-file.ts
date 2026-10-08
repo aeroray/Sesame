@@ -5,6 +5,7 @@
 import { message, save } from '@tauri-apps/plugin-dialog';
 import { dropDraft } from '$lib/actions/draft';
 import { reportError } from '$lib/actions/open-file';
+import { saveImage } from '$lib/actions/save-image';
 import { clearProgress, getProgress, initProgress } from '$lib/editor/large-file.svelte';
 import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
@@ -64,8 +65,17 @@ function prefixBytesFor(tab: Tab): number | undefined {
  * 保存标签页。
  *
  * 未命名标签会先走「另存为」。
+ *
+ * **图片标签走另一条路**：它的「保存」是把内存里的旋转 / 翻转
+ * 重绘结果写回文件（见 `actions/save-image.ts`），与文本的
+ * 「取正文 → 按编码写回」没有任何共同点，因此在这里分流。
+ * 没有变换的图片视为「没什么可保存」，不提示也不报错——
+ * 用户按 Ctrl+S 时它本来就是干净状态。
  */
 export async function saveTab(tab: Tab): Promise<boolean> {
+  if (tab.kind === 'image') {
+    return documentTasks.run(tab.id, () => saveImage(tab));
+  }
   return documentTasks.run(tab.id, () => performSave(tab, { silent: false }));
 }
 

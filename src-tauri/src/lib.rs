@@ -265,6 +265,7 @@ pub fn run() {
             commands::media::open_image_externally,
             commands::media::save_image_as,
             commands::media::set_as_wallpaper,
+            commands::media::write_image_data,
             commands::fonts::list_fonts,
             commands::recent::recent_list,
             commands::recent::recent_add,

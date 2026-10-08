@@ -266,6 +266,15 @@ export const en = {
     savedAs: 'Saved as {name}',
     setWallpaper: 'Set as desktop wallpaper',
     wallpaperSet: 'Desktop wallpaper updated',
+    rotateCW: 'Rotate right',
+    rotateCCW: 'Rotate left',
+    flipH: 'Flip horizontally',
+    flipV: 'Flip vertically',
+    resetTransform: 'Reset rotation and flip',
+    saveTitle: 'Save image',
+    lossySaveWarning:
+      'This format loses quality when re-encoded. Overwrite the original file anyway?',
+    savedRotated: 'Image saved',
   },
 
   fontPicker: {

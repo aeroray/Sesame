@@ -50,7 +50,7 @@ Over 5 MB load a prefix only; chunked appends must not mark the tab dirty. Deep 
 Reason:
 Reversing the order deletes the text just saved.
 
-## MC-AREA-20261007-e5f6a7b8 — Image viewer lays out at true size
+## MC-AREA-20261007-e5f6a7b8 — Image viewer: true-size layout and transforms
 
 Status: active
 Scope: area:editor
@@ -61,10 +61,10 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Decision:
-Fit to window by default, tracked by `ResizeObserver`; lay the image out at its real scaled size, not with `transform`.
+Fit to window by default via `ResizeObserver`. Rotate/flip redraw pixels on a canvas; keep `(turns, flipH, flipV)`.
 
 Reason:
-Native-size image plus `transform` keeps the original overflow range when zoomed out, so edges cannot be scrolled to.
+CSS `transform` changes only the display, so the box keeps its old size and edges cannot be scrolled to.
 
 ## MC-AREA-20261105-f6a7b8c9 — Image clipboard goes through canvas
 

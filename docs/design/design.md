@@ -517,7 +517,7 @@ Text and images get **different** menus, because they support different actions.
 | Menu | Contents |
 | --- | --- |
 | Editor (text) | Cut, Copy, Paste, Copy path, Show in folder, Find, Go to line, Select all |
-| Image viewer | Copy image, Save image as…, Copy path, Show in folder, Open with external app, Set as desktop wallpaper (Windows only) |
+| Image viewer | Copy image, Save image as…, Copy path, Show in folder, Rotate left/right, Flip H/V, Reset transform, Open with external app, Set as desktop wallpaper (Windows only) |
 
 **Copy image copies pixels, not a path** — the two are one row apart and produce completely different results, so they are separated by a rule and use distinguishable icons.
 
@@ -532,6 +532,27 @@ Permission: `clipboard-manager:allow-write-image`. `Image.new` needs none of its
 `SystemParametersInfoW(SPI_SETDESKWALLPAPER)` **only accepts BMP**; given a PNG or JPEG it returns success but the wallpaper does not change (silent failure). The image is therefore converted first via .NET's `System.Drawing` in a short PowerShell child process — .NET is guaranteed present on Windows and reads every format, so no codec dependency is added. The temporary BMP is deliberately **not deleted**: Windows records its path, and removing it makes the wallpaper fall back to a solid colour after a restart.
 
 PowerShell paths must use `-LiteralPath`-style escaping (doubled single quotes): `[` and `]` are wildcards to PowerShell and would break ordinary `-Path` handling.
+
+### Rotate and flip are in-memory until saved; the pixels are really redrawn
+
+**Rule: rotation and flip change only the in-memory buffer and mark the tab dirty. The file is written on an explicit save.** Every current viewer works this way (Preview, IrfanView, Photoshop); writing to disk on a toolbar click is legacy Windows Photo Viewer behaviour, not current practice.
+
+Rejected: writing immediately. JPEG re-encoding is lossy — measured `rgb(32,64,128)` → `rgb(30,66,123)` — so an immediate write loses quality on every click and cannot be undone. Rejected: marking dirty without providing a save path — `saveTab` rejects images, so the close prompt would offer a "save" that always errors.
+
+**The pixels are genuinely redrawn on a canvas, never CSS-transformed.** `transform: rotate(90deg)` changes only the display: the box keeps its old dimensions, so the image is clipped or leaves gaps and the scroll range is wrong. The same reasoning already ruled out `transform` for zoom.
+
+The display swap is pre-rendered to a data URL and fed to the existing `<img>`, so fit-to-window, zoom and scrolling need no special cases — they receive an ordinary image.
+
+**Transform state is `(quarter turns, flipH, flipV)`**, not a matrix: 16 enumerable states, easy to compose and to test for identity. The canvas applies flip first, then rotation.
+
+**EXIF orientation does not cause double rotation** (measured with `Orientation=6`: the file is 40×80, `<img>` reports 80×40, the canvas already shows the corrected pixels, and re-encoding **drops the EXIF segment**). That last part is exactly what IrfanView does — change pixels *and* reset orientation to 1 — so other software will not rotate the saved file again. The cost is that the rest of the EXIF (camera, timestamp) is lost; preserving it would mean parsing and rewriting the segment, which is not worth it here.
+
+Shortcuts are `Ctrl+R` / `Ctrl+Shift+R` (rotate) and `Ctrl+H` / `Ctrl+Shift+H` (flip). Rejected: `Ctrl+[` / `Ctrl+]` — those are CodeMirror's indent commands. Rejected: bare `L` / `R` / `H` / `V` as IrfanView uses — `registerHotkeys` calls `preventDefault()` before the handler, so a bare letter would swallow every keystroke of that letter in the editor.
+
+**Re-encoding is confirmed before overwriting a lossy format** (JPEG/WebP/GIF). PNG and BMP re-encode losslessly and skip the prompt, so the dialog does not become noise. The image is always re-encoded in its **original** format; "save as" never silently changes it.
+
+A JPEG that is merely rotated is *not* re-encoded losslessly (no DCT-level path, which would need a JPEG library). The prompt exists precisely because of that.
+
 
 ### Decorative feature defaults
 

@@ -27,14 +27,22 @@ import { getProgress, loadAll, loadNextChunk } from '$lib/editor/large-file.svel
 import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { startHibernationLoop } from '$lib/state/hibernation.svelte';
+import { getImageDimensions, getTransform, setTransform } from '$lib/state/images.svelte';
 import { isPreviewing, layout, toggleSidebar } from '$lib/state/layout.svelte';
 import { refreshRecents } from '$lib/state/recents.svelte';
 import { resumeSessionSave, saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
 import { loadSettings, settings } from '$lib/state/settings.svelte';
 import { notify } from '$lib/state/status.svelte';
-import { activateTab, tabs } from '$lib/state/tabs.svelte';
+import { activateTab, markDirty, tabs } from '$lib/state/tabs.svelte';
 import { documentTasks } from '$lib/utils/async';
 import { registerHotkeys } from '$lib/utils/hotkeys';
+import {
+  flipHorizontal,
+  flipVertical,
+  type ImageTransform,
+  rotateCCW,
+  rotateCW,
+} from '$lib/utils/image-transform';
 import { logError } from '$lib/utils/log';
 import Sidebar from './Sidebar.svelte';
 import StatusBar from './StatusBar.svelte';
@@ -212,6 +220,54 @@ $effect(() => {
         group: t('shortcuts.groupView'),
         handler: () => openSettings('shortcuts'),
       },
+      /*
+       * 图片旋转 / 翻转的快捷键。
+       *
+       * 只在当前标签是**图片**时生效（handler 内部判断），
+       * 因此不会与编辑器里同名的按键冲突。
+       *
+       * ## 键位选择的依据（查过主流实现）
+       *
+       * IrfanView 用**裸字母** `L` / `R` / `H` / `V`；Preview 用 `Cmd+L` / `Cmd+R`。
+       * 裸字母在这里**不能用**：`registerHotkeys` 是先 `preventDefault()`
+       * 再调 handler，一个裸 `L` 绑定会把编辑器里每次输入 `L` 都吞掉。
+       * 要支持裸字母就得让绑定能「拒绝」，那是另一套机制，不值得为四个
+       * 低频快捷键引入。
+       *
+       * 也**不能**用 `Ctrl+[` / `Ctrl+]`：那两个是 CodeMirror 的
+       * 减少/增加缩进（`indentLess` / `indentMore`），在文本标签里
+       * 会直接抢掉缩进操作。
+       *
+       * 最终选 `Ctrl+R` / `Ctrl+Shift+R`（旋转）与
+       * `Ctrl+H` / `Ctrl+Shift+H`（翻转）：四个都未被占用，
+       * 且 `R` / `H` 与 rotate / horizontal 有助记关系。
+       * `Ctrl+H` 在 CodeMirror 的 `searchKeymap` 里**没有**绑定
+       * （替换是 `Mod-h` 之外的组合），因此不冲突。
+       */
+      {
+        keys: 'Ctrl+R',
+        label: t('image.rotateCW'),
+        group: t('shortcuts.groupView'),
+        handler: () => rotateActiveImage(rotateCW),
+      },
+      {
+        keys: 'Ctrl+Shift+R',
+        label: t('image.rotateCCW'),
+        group: t('shortcuts.groupView'),
+        handler: () => rotateActiveImage(rotateCCW),
+      },
+      {
+        keys: 'Ctrl+H',
+        label: t('image.flipH'),
+        group: t('shortcuts.groupView'),
+        handler: () => rotateActiveImage(flipHorizontal),
+      },
+      {
+        keys: 'Ctrl+Shift+H',
+        label: t('image.flipV'),
+        group: t('shortcuts.groupView'),
+        handler: () => rotateActiveImage(flipVertical),
+      },
       {
         keys: 'Ctrl+Tab',
         label: t('tab.next'),
@@ -237,6 +293,19 @@ function cycleTab(step: number) {
   const next = (index + step + tabs.items.length) % tabs.items.length;
   const target = tabs.items[next];
   if (target) activateTab(target.id);
+}
+
+/**
+ * 对当前标签的图片施加一次旋转 / 翻转。
+ *
+ * 非图片标签、图片尚未解码完成时什么都不做——
+ * 快捷键在文本标签下是「无效按键」，不该报错。
+ */
+function rotateActiveImage(op: (t: ImageTransform) => ImageTransform) {
+  if (active?.kind !== 'image') return;
+  if (!getImageDimensions(active.id)) return;
+  setTransform(active.id, op(getTransform(active.id)));
+  markDirty(active.id, true);
 }
 
 /** 拖拽文件到窗口即打开。 */

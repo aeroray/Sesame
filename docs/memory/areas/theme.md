@@ -13,10 +13,10 @@ Evidence:
 - repo:src/lib/theme/theme-tokens.ts
 
 Decision:
-Derive tokens and write them as inline styles on `<html>`; CSS keeps fallbacks only. Accents switch through `data-accent`.
+Derive tokens and write them as inline styles on `<html>`; CSS keeps fallbacks. Accents switch via `data-accent`.
 
 Reason:
-Hard-coding them in CSS guarantees someone changes a background and forgets the border.
+Hard-coding them in CSS guarantees someone changes a background and forgets a border.
 
 ## MC-AREA-20261010-b2c3d4e5 — Font stacks must name a CJK font
 
@@ -29,7 +29,7 @@ Evidence:
 - repo:src/app.css
 
 Decision:
-UI and editor fonts fall back to different stacks; both must list a CJK font explicitly.
+UI and editor fonts fall back to different stacks; both must list a CJK font.
 
 Reason:
 Monospace fonts rarely include CJK glyphs, so omitting one puts two fonts on a line.
@@ -45,10 +45,10 @@ Evidence:
 - repo:src/app.css
 
 Constraint:
-Keep the `app.css` declarations mapping bits-ui `data-state` onto variants such as `data-checked:`.
+Keep the `app.css` declarations mapping bits-ui `data-state` onto variants like `data-checked:`.
 
 Reason:
-Removing them strips styling from switches, selected and expanded states.
+Removing them strips styling from switches and selected states.
 
 ## MC-AREA-20261103-d4e5f6a7 — Icon buttons need `bg-clip-border`
 
@@ -65,7 +65,6 @@ Decision:
 
 Reason:
 Button base has `bg-clip-padding`, so hover fills skip the 1px border ring. Tailwind v4 only emits classes present in source.
-
 ## MC-AREA-20261104-e5f6a7b8 — Popover lists use plain overflow
 
 Status: active
@@ -81,4 +80,6 @@ Popover lists use `overflow-y-auto` + `max-h-*`, never `ScrollArea`. Mark rows: 
 
 Reason:
 `ScrollArea`'s `size-full` viewport never scrolls under `max-height`. Scroll only when needed.
+
+
 

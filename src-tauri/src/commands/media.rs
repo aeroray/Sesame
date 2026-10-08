@@ -213,3 +213,81 @@ pub async fn set_as_wallpaper(path: String) -> AppResult<()> {
     .await
     .map_err(AppError::from_join)?
 }
+
+/// 把前端重绘后的图片数据写回文件。
+///
+/// ## 为什么数据由前端给
+///
+/// 旋转 / 翻转是**像素级重绘**（见 `lib/utils/image-transform.ts` 的说明：
+/// CSS 变换只改显示、不改像素，会导致尺寸与滚动范围错乱）。
+/// 重绘在前端的 canvas 上完成，因此这里接收的是已经编码好的图片字节
+/// （base64 data URL），只负责落盘。
+///
+/// 这样 Rust 侧**不需要任何图像编解码依赖**——这正是本项目保持轻量的
+/// 关键取舍：解码交给 WebView（它本来就会），编码交给 canvas。
+///
+/// ## 安全边界
+///
+/// - 只接受 `data:image/*;base64,` 前缀，拒绝其它内容
+/// - 大小上限沿用 `MAX_IMAGE_BYTES`
+/// - 走 `atomic::write_bytes`（临时文件 + fsync + rename），
+///   写到一半失败不会把原图毁成残缺文件
+///
+/// ## 关于画质
+///
+/// JPEG 重编码必然有损（实测 `rgb(32,64,128)` → `rgb(30,66,123)`）。
+/// **这个事实由调用方负责告知用户**——Rust 侧只管写，
+/// 不做「静默降级」之类的额外决策。
+#[tauri::command]
+pub async fn write_image_data(path: String, data_url: String) -> AppResult<()> {
+    let resolved = paths::normalize(&path, None)?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let slash = paths::to_slash(&resolved);
+
+        if lang_map::image_mime(&slash).is_none() {
+            return Err(AppError::InvalidPath(format!(
+                "不是可识别的图片格式：{slash}"
+            )));
+        }
+
+        /*
+         * 解析 data URL。
+         *
+         * 只认 `data:image/<subtype>;base64,<payload>` 这一种形式。
+         * 前端给的是 canvas 的 `toDataURL()` 结果，格式固定；
+         * 这里仍严格校验，因为这个参数来自前端，
+         * 不该假定它一定是预期形态。
+         */
+        let comma = data_url
+            .find(',')
+            .ok_or_else(|| AppError::InvalidPath("图片数据格式不正确".to_string()))?;
+        let (header, payload) = data_url.split_at(comma);
+        let payload = &payload[1..];
+
+        if !header.starts_with("data:image/") || !header.ends_with(";base64") {
+            return Err(AppError::InvalidPath(
+                "图片数据必须是 data:image/*;base64 形式".to_string(),
+            ));
+        }
+
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(payload)
+            .map_err(|err| AppError::InvalidPath(format!("图片数据不是合法的 base64：{err}")))?;
+
+        if bytes.is_empty() {
+            return Err(AppError::InvalidPath("图片数据为空".to_string()));
+        }
+        if bytes.len() as u64 > MAX_IMAGE_BYTES {
+            return Err(AppError::TooLarge {
+                size: bytes.len() as u64,
+                limit: MAX_IMAGE_BYTES,
+            });
+        }
+
+        crate::core::atomic::write_bytes(&resolved, &bytes)?;
+        Ok(())
+    })
+    .await
+    .map_err(AppError::from_join)?
+}

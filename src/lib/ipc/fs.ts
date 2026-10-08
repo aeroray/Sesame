@@ -192,6 +192,16 @@ export function setAsWallpaper(path: string): Promise<void> {
   return call<void>('set_as_wallpaper', { path });
 }
 
+/**
+ * 把重绘后的图片数据写回文件。
+ *
+ * 数据由前端 canvas 编码后给出（`data:image/*;base64,…`），
+ * 这样 Rust 侧不需要任何图像编解码依赖。
+ */
+export function writeImageData(path: string, dataUrl: string): Promise<void> {
+  return call<void>('write_image_data', { path, dataUrl });
+}
+
 /** 读取上次会话快照。 */
 export function sessionLoad(): Promise<SessionSnapshot> {
   return call<SessionSnapshot>('session_load');

@@ -258,6 +258,14 @@ export const zhCN: Messages = {
     savedAs: '已另存为 {name}',
     setWallpaper: '设为桌面壁纸',
     wallpaperSet: '已更新桌面壁纸',
+    rotateCW: '向右旋转',
+    rotateCCW: '向左旋转',
+    flipH: '水平翻转',
+    flipV: '垂直翻转',
+    resetTransform: '重置旋转与翻转',
+    saveTitle: '保存图片',
+    lossySaveWarning: '这种格式重新编码后会损失画质。仍要覆盖原文件吗？',
+    savedRotated: '图片已保存',
   },
 
   fontPicker: {
