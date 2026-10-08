@@ -43,7 +43,7 @@ Evidence:
 - repo:docs/design/design.md
 
 Rejected:
-Writing angle-bracket tag names inside Svelte script comments.
+Angle-bracket tag names in Svelte script comments; `/* */` in a template region; an HTML comment's closing marker written inside a comment.
 
 Reason:
-The parser treats them as real tags, reports left open, and the whole component fails to compile.
+Tag names in script comments leave the component unclosed. A template renders `/* */` as literal text, so the comment showed up in the toolbar. A closing marker ends the comment early, exposing the rest as text.
