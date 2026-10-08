@@ -16,25 +16,33 @@
  *
  * 中央区域留给**状态提示**（见 StatusLine.svelte），不再重复显示文件名——
  * 标签栏已经写着当前文件名，两者相距不到 40px。
+ *
+ * ## 为什么是齿轮而不是汉堡包
+ *
+ * 这里原先是汉堡包（☰）菜单。桌面上 ☰ 的公认含义是「折叠起来的菜单栏」
+ * （JetBrains 的 ☰ 里装的正是完整的 File/Edit/View），而我们里面只有
+ * 设置与快捷键两项——用菜单栏的隐喻装两个入口，反而让人以为还有更多。
+ *
+ * 改成齿轮后语义直白：**点它 = 打开设置**，一步到位，不再是「先开菜单、
+ * 再点设置」。齿轮是设置的通配符号，不需要用户学习。
  */
 
-import { Minus, PanelLeft, Square, X } from '@lucide/svelte';
+import { Minus, PanelLeft, Settings, Square, X } from '@lucide/svelte';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import AppLogo from '$lib/components/common/AppLogo.svelte';
 import Hint from '$lib/components/common/Hint.svelte';
 import { t } from '$lib/i18n';
 import { toggleSidebar } from '$lib/state/layout.svelte';
+import { formatKeys } from '$lib/utils/hotkeys';
 import { IS_MAC } from '$lib/utils/platform';
-import AppMenu from './AppMenu.svelte';
 import StatusLine from './StatusLine.svelte';
 import ThemeMenu from './ThemeMenu.svelte';
 
 interface Props {
   onOpenSettings: () => void;
-  onOpenShortcuts: () => void;
 }
 
-let { onOpenSettings, onOpenShortcuts }: Props = $props();
+let { onOpenSettings }: Props = $props();
 
 const appWindow = getCurrentWindow();
 
@@ -78,9 +86,8 @@ $effect(() => {
   macOS 左侧要给红绿灯让位（位置由 trafficLightPosition 定为 x=12，
   按钮区宽约 70px），因此左内边距比 Windows 大得多。
 
-  左侧放两个按钮：侧栏开关 + 应用菜单（汉堡包）。
-  汉堡包从右侧移过来，是为了让「打开菜单」与「侧栏」这两个
-  「界面骨架」类操作都在左边，右侧只留窗口级操作（主题、最小化…）。
+  左侧放两个按钮：侧栏开关 + 设置（齿轮）。
+  两者都是「界面骨架」类操作，右侧只留窗口级操作（主题、最小化…）。
 -->
 <header
   class="flex h-9 shrink-0 select-none items-center gap-1 border-b border-border-subtle bg-surface-sunken pr-0 {IS_MAC
@@ -96,7 +103,16 @@ $effect(() => {
     <PanelLeft class="size-4" />
   </Hint>
 
-  <AppMenu {onOpenSettings} {onOpenShortcuts} />
+  <!--
+    齿轮：直接打开设置，不再经一层菜单。
+    快捷键提示写进 tooltip，用户不必先点开才知道有 Ctrl+,。
+  -->
+  <Hint
+    label={`${t('menu.settings')} · ${formatKeys('Ctrl+,')}`}
+    onclick={onOpenSettings}
+  >
+    <Settings class="size-4" />
+  </Hint>
 
   <!--
     中央：状态提示。

@@ -40,24 +40,22 @@ export const en = {
     reopenClosed: 'Reopen closed tab',
     closeOthers: 'Close other tabs',
     closeToRight: 'Close tabs to the right',
+    cut: 'Cut',
+    copy: 'Copy',
+    paste: 'Paste',
     done: 'Done',
-    gotIt: 'Got it',
   },
 
   /** 右键菜单。 */
   contextMenu: {
-    fileTab: 'Tab actions',
-    editor: 'Editor actions',
     recentlyClosed: 'Recently closed',
     noClosedTabs: 'Nothing to reopen',
+    pasteFailed: 'Cannot read the clipboard — press Ctrl+V instead',
   },
 
   menu: {
-    label: 'Application menu',
     settings: 'Settings',
     shortcuts: 'Keyboard Shortcuts',
-    language: 'Language',
-    current: 'Current',
   },
 
   tab: {
@@ -103,6 +101,7 @@ export const en = {
     pathCopied: 'Path copied',
     noPathToCopy: 'This tab has no path yet',
     noPathToReveal: 'This tab has no path yet',
+    nothingSelected: 'Nothing selected',
     restoredDrafts: {
       one: 'Restored {count} unsaved file',
       other: 'Restored {count} unsaved files',
@@ -135,8 +134,6 @@ export const en = {
   },
 
   shortcuts: {
-    title: 'Keyboard Shortcuts',
-    description: 'Editor commands match the conventions of mainstream editors.',
     groupFile: 'File',
     groupEdit: 'Edit',
     groupView: 'View',

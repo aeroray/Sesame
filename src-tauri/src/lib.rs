@@ -85,9 +85,9 @@ fn files_from_args(args: impl IntoIterator<Item = String>, cwd: &std::path::Path
         .collect()
 }
 
-/// 关掉 WebView2 的浏览器快捷键。
+/// 关掉 WebView2 的浏览器快捷键，以及原生右键菜单与开发者工具。
 ///
-/// ## 为什么必须关
+/// ## 为什么必须关掉浏览器快捷键
 ///
 /// Tauri 用的是 WebView2（Chromium），它默认带一整套**浏览器**快捷键：
 /// `Ctrl+F` 弹查找栏、`Ctrl+P` 打印、`F3` 下一个匹配、`Ctrl+加号` 缩放……
@@ -99,13 +99,32 @@ fn files_from_args(args: impl IntoIterator<Item = String>, cwd: &std::path::Path
 /// `SetAreBrowserAcceleratorKeysEnabled(false)`，会关闭全部浏览器专有快捷键，
 /// 同时保留复制、粘贴、全选等通用编辑快捷键。
 ///
+/// ## 为什么还要关掉原生右键菜单与 DevTools
+///
+/// 关掉浏览器快捷键**不包含**右键菜单——WebView2 仍会在任何位置弹出
+/// 它自己的菜单，里面是「刷新」「另存为」「打印」「检查」这类网页操作。
+/// 在一款文本编辑器里，这些项与用户在做的事毫无关系；而「检查」更会
+/// 直接打开开发者工具，把应用界面变成一个调试窗口。
+///
+/// 所以这里一并关掉：
+///
+/// - `SetAreDefaultContextMenusEnabled(false)` —— 不再弹出 WebView2 的
+///   原生菜单。**我们自己的右键菜单不受影响**：那些是页面里用 DOM 事件
+///   实现的（bits-ui 的 ContextMenu），与 WebView2 的原生菜单是两套东西。
+/// - `SetAreDevToolsEnabled(false)` —— 同时掐掉 `F12` / `Ctrl+Shift+I`
+///   打开开发者工具的路径。**正式版必须关**；开发时想看 DevTools，
+///   用 `tauri.conf.json` 里的 devtools 特性或调试构建，而不是留着这个口子。
+///
+/// 这两个属性都定义在基础的 `ICoreWebView2Settings` 上（不是 Settings3），
+/// 因此不需要像 `SetAreBrowserAcceleratorKeysEnabled` 那样先 cast。
+///
 /// ## 为什么不用 `additionalBrowserArgs`
 ///
 /// 传 `--disable-features=...` 那种做法要求我们自己拼完整的参数串，
 /// 而且会覆盖 wry 默认加的那几个 feature 开关；用 `with_webview`
 /// 直接改设置对象更精确，也不会破坏默认行为。
 #[cfg(desktop)]
-fn disable_browser_hotkeys(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+fn harden_webview(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window.with_webview(|webview| {
         #[cfg(windows)]
         {
@@ -113,11 +132,8 @@ fn disable_browser_hotkeys(window: &tauri::WebviewWindow) -> tauri::Result<()> {
             use windows::core::Interface;
 
             /*
-             * 取 Settings3 接口——AreBrowserAcceleratorKeysEnabled 定义在它上面，
-             * 基础的 ICoreWebView2Settings 没有这个属性。
-             *
              * 这几个调用都是 COM 方法（`unsafe`）。整段包在一个 unsafe 块里，
-             * 比在每个调用点单独标注更易读；这里只是读设置对象并改一个布尔开关，
+             * 比在每个调用点单独标注更易读；这里只是读设置对象并改几个布尔开关，
              * 不涉及裸指针或生命周期假设。
              */
             let result = unsafe {
@@ -125,17 +141,26 @@ fn disable_browser_hotkeys(window: &tauri::WebviewWindow) -> tauri::Result<()> {
                     .controller()
                     .CoreWebView2()
                     .and_then(|core| core.Settings())
-                    .and_then(|settings| settings.cast::<ICoreWebView2Settings3>())
-                    .and_then(|s3| s3.SetAreBrowserAcceleratorKeysEnabled(false))
+                    .and_then(|settings| {
+                        /*
+                         * 三个开关都在同一个 settings 对象上。
+                         * 浏览器快捷键那个要先 cast 到 Settings3，
+                         * 另外两个直接用基础接口。
+                         */
+                        settings.SetAreDefaultContextMenusEnabled(false)?;
+                        settings.SetAreDevToolsEnabled(false)?;
+                        settings.cast::<ICoreWebView2Settings3>()?
+                            .SetAreBrowserAcceleratorKeysEnabled(false)
+                    })
             };
 
             if let Err(err) = result {
                 // 关不掉不该让应用起不来，但要在日志里留痕便于排查
-                eprintln!("关闭浏览器快捷键失败：{err}");
+                eprintln!("加固 WebView 设置失败：{err}");
             }
         }
 
-        // 其它平台（macOS / Linux）的 WebView 没有等价的浏览器快捷键问题，
+        // 其它平台（macOS / Linux）的 WebView 没有等价的问题，
         // 保持空实现即可，避免为不存在的 API 写条件编译分支。
         #[cfg(not(windows))]
         let _ = webview;
@@ -192,11 +217,11 @@ pub fn run() {
                 state.set_startup_files(files);
             }
 
-            // 关掉 WebView2 自带的浏览器快捷键（Ctrl+F 查找栏、Ctrl+P 打印等），
+            // 加固 WebView：关掉浏览器快捷键、原生右键菜单与开发者工具，
             // 并装上导航守卫（默认拒绝外部导航）。
             #[cfg(desktop)]
             if let Some(window) = app.get_webview_window("main") {
-                let _ = disable_browser_hotkeys(&window);
+                let _ = harden_webview(&window);
             }
 
             Ok(())

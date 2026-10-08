@@ -15,9 +15,6 @@ Evidence:
 Decision:
 Informational feedback shows one line in the title-bar centre and auto-dismisses; decisions use a native dialog.
 
-Reason:
-See `do-not-use.md`.
-
 ## MC-AREA-20261009-b2c3d4e5 — Window skeleton
 
 Status: active
@@ -42,13 +39,13 @@ Entry-Type: decision
 Subject: MC-SUBJ-20261003-b2c3d4e5
 Facet: architecture
 Evidence:
-- repo:src/lib/components/layout/AppMenu.svelte
+- repo:src/lib/components/layout/TitleBar.svelte
 
 Decision:
-Hamburger holds app-level items only. File actions go to the tab menu, text actions to the editor menu, reopen-closed to the tab strip, version to Settings > About.
+Settings is a title-bar gear, not a hamburger. File actions go to the tab menu, text actions to the editor menu, reopen-closed to the tab strip, version to Settings > About.
 
 Reason:
-One flat list mixed three ownerships.
+A ☰ means "collapsed menu bar"; two entries misread as more.
 
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 

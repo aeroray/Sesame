@@ -37,23 +37,21 @@ export const zhCN: Messages = {
     reopenClosed: '重新打开已关闭的标签',
     closeOthers: '关闭其他标签',
     closeToRight: '关闭右侧标签',
+    cut: '剪切',
+    copy: '复制',
+    paste: '粘贴',
     done: '完成',
-    gotIt: '知道了',
   },
 
   contextMenu: {
-    fileTab: '标签操作',
-    editor: '编辑器操作',
     recentlyClosed: '最近关闭',
     noClosedTabs: '没有可重开的标签',
+    pasteFailed: '读不到剪贴板内容，请改用 Ctrl+V',
   },
 
   menu: {
-    label: '应用菜单',
     settings: '设置',
     shortcuts: '快捷键',
-    language: '语言',
-    current: '当前',
   },
 
   tab: {
@@ -98,6 +96,7 @@ export const zhCN: Messages = {
     pathCopied: '已复制路径',
     noPathToCopy: '此标签还没有路径',
     noPathToReveal: '此标签还没有路径',
+    nothingSelected: '没有选中内容',
     restoredDrafts: {
       one: '已恢复 {count} 个未保存的文件',
       other: '已恢复 {count} 个未保存的文件',
@@ -129,8 +128,6 @@ export const zhCN: Messages = {
   },
 
   shortcuts: {
-    title: '快捷键',
-    description: '编辑器内的操作与常见编辑器一致。',
     groupFile: '文件',
     groupEdit: '编辑',
     groupView: '视图',

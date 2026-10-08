@@ -412,10 +412,7 @@ $effect(() => {
 </script>
 
 <div class="flex h-full flex-col overflow-hidden bg-surface text-content" inert={closing}>
-  <TitleBar
-    onOpenSettings={() => openSettings('appearance')}
-    onOpenShortcuts={() => openSettings('shortcuts')}
-  />
+  <TitleBar onOpenSettings={() => openSettings('appearance')} />
 
   <div class="flex min-h-0 flex-1">
     <Sidebar open={layout.sidebarOpen} />

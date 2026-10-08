@@ -837,10 +837,12 @@ Split by **scope of effect**, not frequency:
 
 | Position | What goes there | Examples |
 | --- | --- | --- |
-| **Left** | operations affecting the **UI skeleton** | sidebar toggle, app menu (hamburger) |
+| **Left** | operations affecting the **UI skeleton** | sidebar toggle, settings (gear) |
 | **Right** | **window-level** operations | theme switch, minimise/maximise/close |
 
-**Theme switch is its own button** ([ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)), not inside the hamburger: high-frequency; 3 options. Rejected: duplicating it — users guess which is real.
+**The settings entry is a gear, not a hamburger.** Rejected: a ☰ menu holding two items. On desktop a ☰ conventionally means "the menu bar, collapsed" (JetBrains' ☰ contains the whole File/Edit/View bar), so using it for two entries implies there is more inside. A gear means "settings" with no learning cost, and it opens the dialog directly instead of menu-then-item.
+
+**Theme switch is its own button** ([ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)), not inside the settings dialog: high-frequency; 3 options. Rejected: duplicating it — users guess which is real.
 
 Two judgements in `ThemeMenu`; do not merge:
 
@@ -849,22 +851,36 @@ Two judgements in `ThemeMenu`; do not merge:
 
 ### Menus are split by *what the action belongs to*, not collected into one list
 
-Rule: **app-level → the hamburger; document-level → the tab's context menu; text-level → the editor's context menu.** Rejected: a single flat app menu — it forces the user to read the whole list on every visit, and it hides actions behind an unrelated object.
+Rule: **app-level → the title bar or Settings; document-level → the tab's context menu; text-level → the editor's context menu.** Rejected: a single flat app menu — it forces the user to read the whole list on every visit, and it hides actions behind an unrelated object.
 
 | Owner | Home | Contents |
 | --- | --- | --- |
-| Whole app | Hamburger (`AppMenu.svelte`) | Settings, Shortcuts |
+| Whole app | Title-bar gear → Settings | all settings; Shortcuts and About are tabs inside it |
 | A specific file | Tab context menu (`TabItem.svelte`) | Copy path, Show in folder, Close, Close others, Close to the right |
 | The tab strip | Blank area right of the tabs (`TabBar.svelte`) | Reopen closed tab, Recently closed ▸, New tab |
-| Text content | Editor context menu (`EditorHost.svelte`) | Copy path, Show in folder, Find, Go to line, Select all |
-| App info | Settings → About | Version, platform, engine, licence |
+| Text content | Editor context menu (`EditorHost.svelte`) | Cut, Copy, Paste, Copy path, Show in folder, Find, Go to line, Select all |
 
 Precedent: VS Code registers `copyFilePath` / `revealInExplorer` in six menus and **`MenuId.EditorContext` is not one of them**; Notepad++ ships `contextMenu.xml` (content) and `tabContextMenu.xml` (tab) as separate files; Sublime documents `Context.sublime-menu` vs `Tab Context.sublime-menu`.
 
-- **Settings and Shortcuts are one surface.** `Ctrl+,` lands on Appearance, `Ctrl+/` on Shortcuts; both open `SettingsDialog`. Rejected: a separate shortcuts dialog — two dialogs imply they are unrelated features (JetBrains and Notepad++ both nest the keymap inside Settings).
-- **The version number is read at runtime** via `getVersion()`, never hard-coded. Rejected: the disabled "Sesame 0.1.0" row that used to sit at the bottom of the hamburger — a row that cannot be clicked has no precedent, and a hand-written copy drifts from `package.json` / `Cargo.toml` / `tauri.conf.json`.
+- **Settings and Shortcuts are one surface.** `Ctrl+,` lands on Appearance, `Ctrl+/` on Shortcuts; both open the same dialog. Rejected: a separate shortcuts dialog — two dialogs imply they are unrelated features (JetBrains and Notepad++ both nest the keymap inside Settings).
+- **The version number is read at runtime** via `getVersion()`, never hard-coded. Rejected: a hand-written copy drifts from `package.json` / `Cargo.toml` / `tauri.conf.json`.
 - **Unavailable items are disabled, not hidden**, and an empty submenu shows one greyed line rather than collapsing.
 - **Tab-strip blank area keeps `min-w-6`**: with many tabs it must stay clickable, or "recently closed" becomes unreachable.
+- **The editor menu owns Cut / Copy / Paste.** Blocking the native menu removes the only built-in entry point for them (CodeMirror exports no clipboard commands), so they must be re-provided; order follows VS Code's `9_cutcopypaste` group. Copy/cut act on the DOM selection, paste reads the clipboard and dispatches a CodeMirror transaction (never DOM surgery — that would skip undo history and the dirty flag).
+
+### All native WebView menus and DevTools are blocked, app-wide
+
+**Never let the WebView show its own context menu anywhere.** Rejected: allowing it in text inputs — in a text editor those items ("Reload", "Save as", "Print", "Inspect") have nothing to do with the task, and "Inspect" turns the window into a debugger.
+
+Two independent layers, both required:
+
+1. **Rust** — `SetAreDefaultContextMenusEnabled(false)` and `SetAreDevToolsEnabled(false)` in `harden_webview` ([lib.rs](../../src-tauri/src/lib.rs)). Both live on the base `ICoreWebView2Settings`, so no `cast` is needed.
+2. **Frontend** — a single `window` listener in [`context-menu-guard.ts`](../../src/lib/utils/context-menu-guard.ts), installed **before** `mount()` in `main.ts`. Rust covers Windows only (WKWebView has no equivalent switch) and its call may fail without stopping startup, so the frontend cannot assume it worked.
+
+**The frontend listener must use the bubble phase, never `{ capture: true }`.** `preventDefault()` cancels the browser menu but does not stop propagation, which is exactly how the custom menus work: bits-ui listens for `contextmenu` on its own element and renders in place. Capture phase would run before the component sees the event, and any future `stopPropagation()` would kill every custom menu at once. Verified: the custom-menu handler fires first, the guard last.
+
+**One global listener, not per-component `oncontextmenu`.** Per-component handlers are guaranteed to be missed whenever a new surface is added.
+
 
 ### Status bar: no placeholder text in the empty state
 
@@ -921,7 +937,7 @@ A fill reads as a system notification. Four tones = one icon + one text colour e
 
 WebView2 (Chromium) ships **browser** accelerators: `Ctrl+F` find bar, `Ctrl+P` print, `F3` next match, `Ctrl+plus` zoom — web-page features, not app features.
 
-Fix: `with_browser_accelerator_keys(false)` on the main window in `lib.rs` (WebView2 `SetAreBrowserAcceleratorKeysEnabled(false)`). Keeps copy/paste/select-all.
+Fix: `SetAreBrowserAcceleratorKeysEnabled(false)` in `harden_webview` ([lib.rs](../../src-tauri/src/lib.rs)). Keeps copy/paste/select-all. Same call also disables the native context menus and DevTools — see "All native WebView menus and DevTools are blocked, app-wide".
 
 `Cargo.toml` must declare both `webview2-com` and `windows`, **versions matching wry's in `Cargo.lock`** — else COM types incompatible.
 

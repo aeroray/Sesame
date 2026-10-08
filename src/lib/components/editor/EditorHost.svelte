@@ -9,7 +9,16 @@
  */
 
 import { gotoLine, openSearchPanel } from '@codemirror/search';
-import { Copy, CornerDownRight, FolderOpen, Search, TextSelect } from '@lucide/svelte';
+import {
+  ClipboardPaste,
+  Copy,
+  CornerDownRight,
+  FileText,
+  FolderOpen,
+  Scissors,
+  Search,
+  TextSelect,
+} from '@lucide/svelte';
 import { type Component, untrack } from 'svelte';
 import { scheduleAutoSave } from '$lib/actions/autosave';
 import { scheduleDraft } from '$lib/actions/draft';
@@ -30,7 +39,7 @@ import { editorFontTheme } from '$lib/editor/themes';
 import { t } from '$lib/i18n';
 import { getPreviewText } from '$lib/state/layout.svelte';
 import { settings } from '$lib/state/settings.svelte';
-import { clearSuccess } from '$lib/state/status.svelte';
+import { clearSuccess, notify } from '$lib/state/status.svelte';
 import {
   attachView,
   detachView,
@@ -46,6 +55,7 @@ import {
 } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { themeById } from '$lib/theme/palettes';
+import { copySelection, cutSelection, readClipboardText } from '$lib/utils/clipboard';
 import { formatKeys } from '$lib/utils/hotkeys';
 import ImageViewer from './ImageViewer.svelte';
 
@@ -314,6 +324,61 @@ function runSelectAll() {
   view.focus();
   view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
 }
+
+/**
+ * 当前是否有选区，决定「剪切」「复制」是否可用。
+ *
+ * 读 `view.state.selection` 而非 DOM 选区：那是 CodeMirror 的真实状态，
+ * 而我们要判断的正是它。
+ */
+const hasSelection = $derived(handle ? !handle.view.state.selection.main.empty : false);
+
+/** 只读（二进制或有损解码）时禁掉会改动文档的两项。 */
+const readOnly = $derived(tab.encoding === 'binary' || tab.decodeLossy === true);
+
+function runCut() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+  if (!cutSelection()) {
+    // 选区为空或浏览器拒绝：不静默失败，让用户知道该用快捷键
+    notify.info(t('status.nothingSelected'));
+  }
+}
+
+function runCopy() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+  if (!copySelection()) {
+    notify.info(t('status.nothingSelected'));
+  }
+}
+
+/**
+ * 粘贴。
+ *
+ * `execCommand('paste')` 被浏览器一律拒绝，只能自己读剪贴板再插入。
+ * 读不到（权限被拒或非安全上下文）时提示改用 Ctrl+V——
+ * 那条路径由 WebView 原生处理，不受权限影响。
+ */
+async function runPaste() {
+  const view = handle?.view;
+  if (!view) return;
+  view.focus();
+
+  const text = await readClipboardText();
+  if (text === null) {
+    notify.info(t('contextMenu.pasteFailed'));
+    return;
+  }
+
+  /*
+   * 用 `dispatch` 插入而不是改 DOM：走 CodeMirror 的事务系统，
+   * 撤销历史、脏标记、自动保存都会正常触发。
+   */
+  view.dispatch(view.state.replaceSelection(text));
+}
 </script>
 
 <div class="relative h-full w-full" class:hidden={!active}>
@@ -351,12 +416,46 @@ function runSelectAll() {
       </ContextMenuTrigger>
 
       <ContextMenuContent class="w-56">
+        <!--
+          剪切 / 复制 / 粘贴。
+
+          原生菜单被全局拦掉后，这三项没人提供了——CodeMirror 不导出
+          剪贴板命令，它们原本靠浏览器对 contenteditable 的内置菜单。
+          因此必须自己补，顺序按通行惯例（VS Code 的 `9_cutcopypaste` 组）。
+
+          「剪切」「复制」在没有选区时置灰；只读文件额外禁掉「剪切」
+          与「粘贴」——否则点了没反应，用户以为坏了。
+        -->
+        <ContextMenuItem
+          class="gap-2"
+          disabled={!hasSelection || readOnly}
+          onSelect={runCut}
+        >
+          <Scissors class="size-3.5 shrink-0" />
+          <span class="truncate">{t('action.cut')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+X')}</span>
+        </ContextMenuItem>
+
+        <ContextMenuItem class="gap-2" disabled={!hasSelection} onSelect={runCopy}>
+          <Copy class="size-3.5 shrink-0" />
+          <span class="truncate">{t('action.copy')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+C')}</span>
+        </ContextMenuItem>
+
+        <ContextMenuItem class="gap-2" disabled={readOnly} onSelect={() => void runPaste()}>
+          <ClipboardPaste class="size-3.5 shrink-0" />
+          <span class="truncate">{t('action.paste')}</span>
+          <span class="ml-auto shrink-0 text-[10px] text-content-faint">{formatKeys('Ctrl+V')}</span>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
         <ContextMenuItem
           class="gap-2"
           disabled={!tab.path}
           onSelect={() => void copyPath(tab)}
         >
-          <Copy class="size-3.5 shrink-0" />
+          <FileText class="size-3.5 shrink-0" />
           <span class="truncate">{t('action.copyPath')}</span>
           <span class="ml-auto shrink-0 text-[10px] text-content-faint">
             {formatKeys('Ctrl+Shift+C')}
