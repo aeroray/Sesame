@@ -44,9 +44,6 @@ Evidence:
 Decision:
 Settings is a title-bar gear, not a hamburger. File actions go to the tab menu, text actions to the editor menu, reopen-closed to the tab strip, version to Settings > About.
 
-Reason:
-A ☰ means "collapsed menu bar"; two entries misread as more.
-
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
 Status: active
@@ -94,3 +91,4 @@ Plain text between icon buttons needs `leading-none` to align.
 
 Reason:
 Centring acts on the line box: at 1.5 line-height CJK ink sits 1px high.
+

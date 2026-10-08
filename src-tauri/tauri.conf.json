@@ -15,8 +15,8 @@
       {
         "label": "main",
         "title": "Sesame",
-        "width": 1200,
-        "height": 800,
+        "width": 900,
+        "height": 900,
         "minWidth": 720,
         "minHeight": 480,
         "center": true,

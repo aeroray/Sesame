@@ -49,3 +49,19 @@ Keep the declarations at the top of `app.css` that map bits-ui `data-state` onto
 
 Reason:
 Removing them strips styling from switches, selected states, and expanded states.
+
+## MC-AREA-20261103-d4e5f6a7 — Icon buttons need `bg-clip-border`
+
+Status: active
+Scope: area:theme
+Entry-Type: decision
+Subject: MC-SUBJ-20261015-c3d4e5f6
+Facet: interface
+Evidence:
+- repo:src/lib/components/common/Hint.svelte
+
+Decision:
+`Hint` appends `bg-clip-border` to every icon button.
+
+Reason:
+Button base has `bg-clip-padding`, so hover fills skip the 1px border ring. Tailwind v4 only emits classes present in source.

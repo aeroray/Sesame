@@ -201,8 +201,6 @@ pub fn run() {
                 let _ = app.emit("open-files", ());
             }
         }))
-        // 记住窗口位置与大小，下次启动恢复
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -234,6 +232,23 @@ pub fn run() {
             #[cfg(desktop)]
             if let Some(window) = app.get_webview_window("main") {
                 let _ = harden_webview(&window);
+
+                /*
+                 * 显示窗口。
+                 *
+                 * 配置里是 `visible: false`（先建好、再显示），否则启动瞬间会
+                 * 看到一个白底空窗，等前端挂载完才出内容。
+                 *
+                 * **这一步原先由 `tauri-plugin-window-state` 代劳**——
+                 * 它在 `on_window_ready` 里读回上次的 `visible` 并调 `show()`。
+                 * 那个插件已按要求移除（不再记忆位置与大小），因此这里必须
+                 * 自己显示，否则窗口永远不会出现。
+                 *
+                 * 尺寸与居中由 `tauri.conf.json` 的 width/height/center 决定，
+                 * 每次启动都是 900×900 居中。
+                 */
+                let _ = window.show();
+                let _ = window.set_focus();
             }
 
             Ok(())

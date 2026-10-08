@@ -68,10 +68,24 @@ let {
  *    早先试过品牌色底，视觉上过重、与状态栏整体不协调。
  *    现在：激活 = 亮色（跟随当前主题的前景色），未激活 = 灰色。
  *    这是最克制的做法，也符合「开关只该是一个信号」的定位。
+ * 4. **`bg-clip-border` 是必需的，不能省。**
+ *    Button 基类写着 `border border-transparent bg-clip-padding`，
+ *    而 `padding-box` 让背景**不画在那 1px 边框区**。图标按钮的悬停
+ *    底色因此盖不满：四周留一圈 1px、露出标题栏底色 `--surface-sunken`
+ *    （实测关闭按钮悬停时左、右各差 1px，肉眼是一道白缝）。
+ *    换成 `border-box` 后红色真正盖满 36×36。
+ *
+ *    浅色悬停（`hover:bg-muted`）与栏底本来就接近，那道缝几乎看不出来，
+ *    所以这个问题只在红色上暴露——但根因对所有图标按钮都一样，
+ *    统一在这里修，而不是只给关闭按钮打补丁。
+ *
+ *    注意 Tailwind v4 **按需生成**：这个类必须真的写在源码里才会进
+ *    构建产物，凭空在别处引用一个没出现过的类名是无效的。
  */
 const classes = $derived(
   cn(
     className,
+    'bg-clip-border',
     active && !danger ? 'text-content hover:text-content' : 'text-content-faint',
     danger
       ? 'hover:bg-destructive hover:text-white dark:hover:bg-destructive dark:hover:text-white'

@@ -840,7 +840,7 @@ Split by **scope of effect**, not frequency:
 | **Left** | operations affecting the **UI skeleton** | sidebar toggle, settings (gear) |
 | **Right** | **window-level** operations | theme switch, minimise/maximise/close |
 
-**The settings entry is a gear, not a hamburger.** Rejected: a ☰ menu holding two items. On desktop a ☰ conventionally means "the menu bar, collapsed" (JetBrains' ☰ contains the whole File/Edit/View bar), so using it for two entries implies there is more inside. A gear means "settings" with no learning cost, and it opens the dialog directly instead of menu-then-item.
+**The settings entry is a gear, not a hamburger.** Rejected: a hamburger menu holding two items. On desktop the hamburger conventionally means "the menu bar, collapsed" (JetBrains' version contains the whole File/Edit/View bar), so using it for two entries implies there is more inside. A gear means "settings" with no learning cost, and it opens the dialog directly instead of menu-then-item.
 
 **Theme switch is its own button** ([ThemeMenu.svelte](../../src/lib/components/layout/ThemeMenu.svelte)), not inside the settings dialog: high-frequency; 3 options. Rejected: duplicating it — users guess which is real.
 
@@ -1065,13 +1065,35 @@ Images laid out at scaled `width / height` → scroll range = true size. Rejecte
 - Centering: `max-content`, `min-w-full / min-h-full`, grid centering — centred below viewport, scrollable to all four edges above.
 - Status bar: pixel dimensions, file size, format; toolbar: zoom, reset, fit-to-window, original size, "Open with external program".
 - External open: Windows → system app picker; macOS → installed `.app`. Installer registers OpenWithProgids, SupportedTypes, RegisteredApplications/Capabilities; NSIS + MSI from the `tauri.conf.json` file-type list; UserChoice default never modified.
-- Window `visible: false`, shown after the window-state plugin restores position/size.
+- Window `visible: false` in config, then `show()` in `setup()`. **Not** restored by `tauri-plugin-window-state` — that plugin is gone (see below); if `show()` is ever removed, the window never appears.
 
 ### The shortcuts panel must match the real bindings
 
-`ShortcutsDialog` editor shortcuts come from CodeMirror keymaps, not this project — **verify against `node_modules/@codemirror/*` first.**
+The shortcuts list (`common/ShortcutsList.svelte`, shown in Settings → Shortcuts) takes editor shortcuts from CodeMirror keymaps, not this project — **verify against `node_modules/@codemirror/*` first.**
 
 Errors: `Ctrl+H Replace` (`searchKeymap` has no `Mod-h`); `Ctrl+Shift+Z Redo` (`historyKeymap` uses `Mod-y`; Windows/Linux use `Ctrl+Y`; `Ctrl+Shift+Z` works only on macOS and Linux). Built-ins live in `EDITOR_HOTKEYS` (`utils/hotkeys.ts`).
+
+### Window: fixed 900×900, centred, position and size never remembered
+
+**Rule: every launch opens at 900×900 in the centre of the screen.** `width`/`height`/`center` in `tauri.conf.json` and `tauri.macos.conf.json`.
+
+Rejected: `tauri-plugin-window-state`. It recorded position/size and restored them, so a window the user nudged once reappeared somewhere else at a different size — which reads as "it did not start the way I expect" rather than as a convenience.
+
+**Removing it has a non-obvious consequence.** The config sets `visible: false` (build the window first, show it once the frontend is mounted, to avoid a white flash), and that plugin was what called `show()`. Because its `restore_state` runs `should_show = state.visible; if … { self.show()? }`, dropping the plugin without adding an explicit `show()` leaves the window permanently invisible. `setup()` in `lib.rs` now calls `window.show()` and `set_focus()` itself.
+
+No capability is needed for `show()`: `core:default` includes `core:window:default`, which covers it.
+
+### Icon buttons need `bg-clip-border`, or the hover fill leaves a 1px ring
+
+**Rule: `Hint` appends `bg-clip-border` to every icon button.**
+
+Cause: the component library's Button base carries `border border-transparent bg-clip-padding`. `background-clip: padding-box` means the background is **not painted on the 1px border area**, so a hover fill stops one pixel short on every side and the title-bar colour (`--surface-sunken`) shows through — a visible white ring around the red Close button (measured: left and right each 1 px short).
+
+Fix: `background-clip: border-box` → the fill covers the full 36×36. Layout is unchanged (the border stays 1px and transparent). Measured before/after: insets `left=1 right=1` → `left=0 right=0 top=0 bottom=0`.
+
+Applied in `Hint` rather than only on the Close button: the cause is identical for every icon button; pale hover fills (`hover:bg-muted`) merely hide it because they are close to the bar colour.
+
+**Tailwind v4 generates classes on demand** — `bg-clip-border` only enters the build because the string is now present in source. Referencing a class that appears nowhere produces no rule, which is why an earlier attempt to test it had no effect.
 
 ---
 
