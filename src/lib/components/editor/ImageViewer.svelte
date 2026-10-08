@@ -13,7 +13,7 @@ import {
   Monitor,
   RotateCcw,
   RotateCw,
-  SquareDot,
+  SquareDimensions,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -288,14 +288,27 @@ const displayWidth = $derived(Math.max(1, Math.floor((shownSize?.width ?? 1) * e
 const displayHeight = $derived(Math.max(1, Math.floor((shownSize?.height ?? 1) * effectiveZoom)));
 
 /**
- * 施加一次变换并标记为未保存。
+ * 施加一次变换，并按**实际结果**同步脏状态。
+ *
+ * ## 为什么不能无条件 `markDirty(true)`
+ *
+ * 早先这里直接标脏，于是两种「什么都没变」的操作也会提示保存：
+ *
+ * - 左转一次再右转一次 → 变换回到恒等，但标签仍是脏的
+ * - 左转一次再点「重置」 → 同上
+ *
+ * 关闭时弹「要保存吗」，而图片其实与磁盘上完全一致——
+ * 用户会以为程序搞错了（实测反馈如此）。
+ *
+ * 现在按变换后的状态判断：**回到恒等就清脏，离开恒等才标脏**。
+ * 这与文本编辑器的行为一致（把改动改回去，脏标记也会消失）。
  *
  * 不直接写文件：JPEG 重编码有损（实测 `rgb(32,64,128)` → `rgb(30,66,123)`），
  * 每点一次就写一次等于反复掉画质且无法撤销。用户按 Ctrl+S 才落盘。
  */
 function applyAndMark(next: ImageTransform) {
   setTransform(tab.id, next);
-  markDirty(tab.id, true);
+  markDirty(tab.id, !isIdentity(next));
 }
 
 $effect(() => {
@@ -501,9 +514,33 @@ async function setWallpaper() {
 }
 </script>
 
+/**
+ * 工具栏的分组竖线。
+ *
+ * 用一条 1px 的竖线把按钮按用途隔开，而不是只靠间距：
+ * 间距只能表达「有间隔」，竖线能表达「这是两组不同的功能」。
+ *
+ * `h-4` 而不是撑满高度：留出上下留白，看起来像分隔符而不是边框。
+ */
+{#snippet groupDivider()}
+  <span class="mx-0.5 h-4 w-px shrink-0 bg-border-subtle" aria-hidden="true"></span>
+{/snippet}
+
 <div class="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-surface-sunken">
-  <div class="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border-subtle bg-surface px-2 text-[11px] text-content-muted">
+  <div
+    class="flex h-8 shrink-0 items-center justify-end gap-1 border-b border-border-subtle bg-surface px-2 text-[11px] text-content-muted"
+  >
+    <!--
+      工具栏按**用途分成四组**，组间用一条竖线隔开。
+
+      早先 11 个按钮平铺在一起，没有分组：缩放、视图模式、旋转翻转、
+      外部打开混成一片，用户得逐个辨认图标才知道哪几个是一类。
+
+      分组顺序按使用频率与逻辑依赖：先调缩放，再选视图模式，
+      然后才是会改动图片的变换，最后是「拿出去用」。
+    -->
     <span class="flex items-center gap-0.5">
+      <!-- 组 1：缩放 -->
       <Hint label={t('image.zoomOut')} side="top" class="size-6" disabled={!natural} onclick={() => zoomBy(1 / 1.25)}>
         <ZoomOut class="size-3.5" />
       </Hint>
@@ -521,24 +558,45 @@ async function setWallpaper() {
       <Hint label={t('image.zoomIn')} side="top" class="size-6" disabled={!natural} onclick={() => zoomBy(1.25)}>
         <ZoomIn class="size-3.5" />
       </Hint>
-      <Hint label={t('image.resetZoom')} side="top" class="size-6" disabled={!natural} onclick={resetZoom}>
-        <RotateCcw class="size-3.5" />
-      </Hint>
+
+      {@render groupDivider()}
+
+      <!--
+        组 2：视图模式。
+
+        这里**只有一个**「适应窗口」按钮，没有单独的「重置缩放」。
+        早先两者都在，但它们调用的是同一个 `setView(true)`——
+        两个按钮做同一件事，用户会猜它们有什么区别。
+        「适应窗口」带激活态，已经能表达「当前处于适应模式」，
+        因此删掉那个重复项。
+      -->
       <Hint label={t('image.fit')} side="top" class="size-6" disabled={!natural} active={fit} toggle onclick={resetZoom}>
         <Maximize class="size-3.5" />
       </Hint>
       <!--
-        「原始尺寸」用 `SquareDot`（方框 + 中心点），而不是早先的 `1:1` 文字。
-        `1:1` 在图片语境里会被读成「宽高比 1:1」，与「100% 缩放」不是一回事。
-        形状上也与紧邻的「适应窗口」四角图标构成一放一收的对照。
+        「原始尺寸」用 `SquareDimensions`（带尺寸标注的方框），
+        而不是早先的 `SquareDot`。
+
+        早先那个只是一个方框加中心点，看不出「这是原始尺寸」——
+        用户反馈语义不明（实测反馈）。`SquareDimensions` 画的是
+        方框内侧两个相对的尺寸角标，正是「量出真实尺寸」的图形语言，
+        也与旁边「适应窗口」的四角图标构成「按尺寸显示 / 按窗口缩放」的对照。
       -->
       <Hint label={t('image.actualSize')} side="top" class="size-6" disabled={!natural} onclick={actualSize}>
-        <SquareDot class="size-3.5" />
+        <SquareDimensions class="size-3.5" />
       </Hint>
 
+      {@render groupDivider()}
+
       <!--
-        旋转 / 翻转放在缩放组之后、外部打开之前：前者是「怎么看这张图」，
-        后者是「拿它去别处用」，中间隔开更清楚。
+        组 3：旋转与翻转。
+
+        「重置」**常驻显示**，只是在没有变换时置灰。
+
+        早先它只在有变换时才出现，于是第一次旋转时它会挤进来、
+        把后面所有按钮推开一格——鼠标停在原位置的用户会点到别的按钮
+        （实测反馈：UI 抖动、误点）。常驻 + 置灰既没有位移，
+        又让用户一开始就知道有「可以还原」这个能力。
       -->
       <Hint
         label={t('image.rotateCCW')}
@@ -580,21 +638,19 @@ async function setWallpaper() {
       >
         <FlipVertical class="size-3.5" />
       </Hint>
-      <!--
-        只在确实变换过之后才显示「重置」。
-        恒等状态下它无事可做，常驻只会占位置并让工具栏变长。
-      -->
-      {#if transformed}
-        <Hint
-          label={t('image.resetTransform')}
-          side="top"
-          class="size-6"
-          onclick={() => applyAndMark(IDENTITY)}
-        >
-          <Undo2 class="size-3.5" />
-        </Hint>
-      {/if}
+      <Hint
+        label={t('image.resetTransform')}
+        side="top"
+        class="size-6"
+        disabled={!transformed}
+        onclick={() => applyAndMark(IDENTITY)}
+      >
+        <Undo2 class="size-3.5" />
+      </Hint>
 
+      {@render groupDivider()}
+
+      <!-- 组 4：输出到别处 -->
       <Hint label={t('image.openExternal')} side="top" class="size-6" disabled={openingExternally} onclick={() => void openExternally()}>
         <ExternalLink class="size-3.5" />
       </Hint>
@@ -746,12 +802,21 @@ async function setWallpaper() {
         <span class="truncate">{t('image.flipV')}</span>
       </ContextMenuItem>
 
-      {#if transformed}
-        <ContextMenuItem class="gap-2" onSelect={() => applyAndMark(IDENTITY)}>
-          <Undo2 class="size-3.5 shrink-0" />
-          <span class="truncate">{t('image.resetTransform')}</span>
-        </ContextMenuItem>
-      {/if}
+      <!--
+        「重置」常驻并置灰，而不是没有变换时隐藏。
+
+        右键菜单不像工具栏那样会被「挤动」（菜单弹出后位置就固定了），
+        但两处保持一致更好：用户在工具栏看到过这一项，
+        在菜单里找不到会以为菜单少了一项。
+      -->
+      <ContextMenuItem
+        class="gap-2"
+        disabled={!transformed}
+        onSelect={() => applyAndMark(IDENTITY)}
+      >
+        <Undo2 class="size-3.5 shrink-0" />
+        <span class="truncate">{t('image.resetTransform')}</span>
+      </ContextMenuItem>
 
       <ContextMenuSeparator />
 

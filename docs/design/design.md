@@ -553,6 +553,20 @@ Shortcuts are `Ctrl+R` / `Ctrl+Shift+R` (rotate) and `Ctrl+H` / `Ctrl+Shift+H` (
 
 A JPEG that is merely rotated is *not* re-encoded losslessly (no DCT-level path, which would need a JPEG library). The prompt exists precisely because of that.
 
+**Dirty state follows the actual result, not the act of clicking.** `markDirty(id, !isIdentity(next))` — so rotate-left-then-right, or rotate-then-reset, returns the tab to clean. Rejected: marking dirty unconditionally, which made the close prompt ask to save an image identical to the one on disk (reported twice by the user). The same rule applies to the keyboard handler in `Shell.svelte`.
+
+### The image toolbar is grouped, and never reflows
+
+Four groups separated by 1px rules, in order of use: **zoom** | **view mode** | **rotate/flip/reset** | **open externally**. Rejected: eleven flat buttons — the user has to identify each icon to learn which ones belong together.
+
+**Every button keeps its position in all states.** "Reset transform" used to appear only when a transform existed, which pushed every button to its right one slot over and made a hovered click land on a neighbour (reported as UI jitter). It is now always present and merely `disabled`. Measured: all ten buttons keep identical left edges with and without a transform.
+
+**Rejected: a separate "reset zoom" button.** It called the same `setView(true)` as "fit to window" — two buttons, one action, and users had to guess the difference. "Fit to window" carries the active state, which already communicates the mode.
+
+**"Actual size" uses `SquareDimensions`, not `SquareDot`.** The old square-plus-centre-dot said nothing about size; the new icon draws two opposing dimension brackets inside a frame — the standard "measured size" figure — and contrasts with the neighbouring "fit to window" corner arrows. Verified legible at the real 14px.
+
+**No two toolbar buttons may share an icon.** `resetZoom` and `rotateCCW` both used `RotateCcw`; a duplicate is checked for whenever this toolbar changes.
+
 
 ### Decorative feature defaults
 

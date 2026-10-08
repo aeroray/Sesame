@@ -40,6 +40,7 @@ import {
   flipHorizontal,
   flipVertical,
   type ImageTransform,
+  isIdentity,
   rotateCCW,
   rotateCW,
 } from '$lib/utils/image-transform';
@@ -300,12 +301,17 @@ function cycleTab(step: number) {
  *
  * 非图片标签、图片尚未解码完成时什么都不做——
  * 快捷键在文本标签下是「无效按键」，不该报错。
+ *
+ * 脏状态按**实际结果**同步，而不是无条件标脏：转回恒等（例如左转后
+ * 又右转）就应当恢复为「未修改」，否则关闭时会平白提示保存。
+ * 与 `ImageViewer.svelte` 里的同名逻辑保持一致。
  */
 function rotateActiveImage(op: (t: ImageTransform) => ImageTransform) {
   if (active?.kind !== 'image') return;
   if (!getImageDimensions(active.id)) return;
-  setTransform(active.id, op(getTransform(active.id)));
-  markDirty(active.id, true);
+  const next = op(getTransform(active.id));
+  setTransform(active.id, next);
+  markDirty(active.id, !isIdentity(next));
 }
 
 /** 拖拽文件到窗口即打开。 */

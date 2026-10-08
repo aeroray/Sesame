@@ -76,7 +76,7 @@ Active toggles differ by text colour only, icon unchanged. Hover actions overlap
 Reason:
 A swapped icon makes one toggle look like two.
 
-## MC-AREA-20261011-a1b2c3d4 — `leading-none` between icon buttons
+## MC-AREA-20261011-a1b2c3d4 — Image toolbar: grouped, no reflow
 
 Status: active
 Scope: area:ui
@@ -87,8 +87,8 @@ Evidence:
 - repo:src/lib/components/editor/ImageViewer.svelte
 
 Decision:
-Plain text between icon buttons needs `leading-none` to align.
+Four groups split by 1px rules: zoom | view mode | rotate/flip/reset | external. Buttons keep their place in all states; dirty follows the result, not the click.
 
 Reason:
-Centring acts on the line box: at 1.5 line-height CJK ink sits 1px high.
+A conditional "reset" shifted neighbours and misdirected clicks; unconditional marking prompted to save an unchanged image.
 

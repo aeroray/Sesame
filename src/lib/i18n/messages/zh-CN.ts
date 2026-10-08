@@ -244,7 +244,6 @@ export const zhCN: Messages = {
     fit: '适应窗口',
     fitShort: '适应',
     actualSize: '原始尺寸',
-    resetZoom: '重置为默认缩放（适应窗口）',
     openExternal: '用外部程序打开',
     chooseExternalApp: '选择用于打开此图片的应用程序',
     applications: '应用程序',

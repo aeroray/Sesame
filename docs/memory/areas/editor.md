@@ -82,3 +82,4 @@ Draw the data URL to a canvas, read `getImageData`, then `Image.new` and `image.
 Reason:
 `writeImage`'s path/bytes branches need tauri's `image-png` / `image-ico` features, which are off.
 
+

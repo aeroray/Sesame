@@ -250,7 +250,6 @@ export const en = {
     fit: 'Fit to window',
     fitShort: 'Fit',
     actualSize: 'Actual size',
-    resetZoom: 'Reset zoom (fit to window)',
     openExternal: 'Open with external app',
     chooseExternalApp: 'Choose an application to open this image',
     applications: 'Applications',
