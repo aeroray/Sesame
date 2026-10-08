@@ -866,7 +866,21 @@ Precedent: VS Code registers `copyFilePath` / `revealInExplorer` in six menus an
 - **The version number is read at runtime** via `getVersion()`, never hard-coded. Rejected: a hand-written copy drifts from `package.json` / `Cargo.toml` / `tauri.conf.json`.
 - **Unavailable items are disabled, not hidden**, and an empty submenu shows one greyed line rather than collapsing.
 - **Tab-strip blank area keeps `min-w-6`**: with many tabs it must stay clickable, or "recently closed" becomes unreachable.
-- **The editor menu owns Cut / Copy / Paste.** Blocking the native menu removes the only built-in entry point for them (CodeMirror exports no clipboard commands), so they must be re-provided; order follows VS Code's `9_cutcopypaste` group. Copy/cut act on the DOM selection, paste reads the clipboard and dispatches a CodeMirror transaction (never DOM surgery — that would skip undo history and the dirty flag).
+- **The editor menu owns Cut / Copy / Paste.** Blocking the native menu removes the only built-in entry point for them (CodeMirror exports no clipboard commands), so they must be re-provided; order follows VS Code's `9_cutcopypaste` group. Copy/cut act on the DOM selection; paste reads the clipboard via the Rust plugin and dispatches a CodeMirror transaction (never DOM surgery — that would skip undo history and the dirty flag).
+
+### Clipboard access goes through Rust, never `navigator.clipboard`
+
+**Rule: reading or writing the clipboard uses `tauri-plugin-clipboard-manager`** ([clipboard.ts](../../src/lib/utils/clipboard.ts)).
+
+The Web Clipboard API's permission model exists **for web pages**: a page is untrusted, so reading the clipboard needs explicit user consent, and `readText()` rejects when it is denied. A desktop app has no such premise — the user installed it, and the clipboard is their own. Using the Web API turns Paste, one of the most basic editing actions, into something that can raise a permission prompt.
+
+Rejected: `navigator.clipboard.readText()` — prompts for permission; rejected: `try { await navigator.clipboard.writeText() } catch { execCommand }` as the primary path — it worked, but only because the app happens to be a secure context, and it left the prompt risk on the read side.
+
+Scope is deliberately minimal: `capabilities/default.json` grants **only** `clipboard-manager:allow-read-text` and `allow-write-text`. The plugin's own `default` set is empty by design ("the clipboard can be inherently dangerous"), which matches this project's allow-list policy.
+
+Cut/Copy are the exception: they must act on the **editor's selection** (copy reads it, cut also deletes it), which is a DOM-selection operation, so they use `document.execCommand('copy' | 'cut')` — CodeMirror mirrors its selection onto the DOM selection, so this works. `execCommand` also stays as the write fallback if the plugin call fails.
+
+Both sides must share a major version: `Cargo.lock` and `package.json` are pinned to the same `@tauri-apps/plugin-clipboard-manager` / `tauri-plugin-clipboard-manager` release.
 
 ### All native WebView menus and DevTools are blocked, app-wide
 

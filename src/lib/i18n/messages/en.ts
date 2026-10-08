@@ -50,7 +50,7 @@ export const en = {
   contextMenu: {
     recentlyClosed: 'Recently closed',
     noClosedTabs: 'Nothing to reopen',
-    pasteFailed: 'Cannot read the clipboard — press Ctrl+V instead',
+    pasteFailed: 'The clipboard holds no text',
   },
 
   menu: {

@@ -206,6 +206,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        /*
+         * 剪贴板。
+         *
+         * 走 Rust 而不是前端的 `navigator.clipboard`：后者是**为网页设计的**
+         * 权限模型——网页不可信，读剪贴板要用户授权。桌面应用没有这个前提，
+         * 而「粘贴」是编辑器里最基本的动作，不该弹权限框。
+         *
+         * 权限只开读写文本（见 capabilities/default.json）；
+         * 该插件的 `default` 权限集是空的，必须显式声明，正好契合
+         * 「只开放实际用到的能力」。
+         */
+        .plugin(tauri_plugin_clipboard_manager::init())
         // 导航守卫：默认拒绝一切外部导航，详见 is_allowed_navigation
         .plugin(navigation_guard())
         .manage(AppState::new())

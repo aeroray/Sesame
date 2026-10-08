@@ -24,6 +24,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
+# 剪贴板读写走 Rust 而不是浏览器的 navigator.clipboard。
+#
+# 浏览器的剪贴板权限是**为网页设计的**：网页不可信，所以要用户授权。
+# 桌面应用没有这个前提——用户自己装的软件，读剪贴板就是读自己的剪贴板。
+# 用它会让「粘贴」变成一个会弹权限框的操作，而这是编辑器里最基本的动作。
+tauri-plugin-clipboard-manager = "2"
 # 单实例：再次打开文件时复用已有窗口，而不是起第二个进程。
 # 没有它的话，双击第二个文件会启动第二个 Sesame，
 # 两个进程同时读写 settings.json / session.json 会互相覆盖。

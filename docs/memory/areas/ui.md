@@ -77,7 +77,7 @@ Decision:
 Active toggles differ by text colour only, icon unchanged. Hover actions overlap neighbouring info via `opacity`.
 
 Reason:
-A swapped icon makes one toggle look like two features.
+A swapped icon makes one toggle look like two.
 
 ## MC-AREA-20261011-a1b2c3d4 — `leading-none` between icon buttons
 

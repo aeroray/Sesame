@@ -10,46 +10,9 @@ import { t } from '$lib/i18n';
 import { notify } from '$lib/state/status.svelte';
 import { activeTab } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
+import { writeClipboardText } from '$lib/utils/clipboard';
 import { logError } from '$lib/utils/log';
 import { IS_WINDOWS } from '$lib/utils/platform';
-
-/**
- * 复制文本到剪贴板。
- *
- * 用浏览器内建的 `navigator.clipboard` 而不是 `tauri-plugin-clipboard-manager`：
- * 后者要多引一个插件、多一条权限声明，而这里只需要写一段文本。
- * 应用跑在 `tauri://localhost`（Windows 上是 `http://tauri.localhost`），
- * 属于安全上下文，该 API 可用。
- *
- * 仍需兜底：权限被拒或 API 不存在时（老 WebView）退回 `execCommand`。
- */
-async function writeClipboard(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // 落到下面的兜底
-  }
-
-  // 兜底：临时 textarea + execCommand。已被标记废弃，但兼容性最广。
-  try {
-    const area = document.createElement('textarea');
-    area.value = text;
-    // 放在视口外，避免闪烁
-    area.style.position = 'fixed';
-    area.style.top = '-9999px';
-    area.setAttribute('readonly', '');
-    document.body.appendChild(area);
-    area.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(area);
-    return ok;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * 把内部路径转成适合展示给用户的平台原生路径。
@@ -83,7 +46,7 @@ export async function copyPath(tab: Tab | null = activeTab()): Promise<void> {
     return;
   }
 
-  const ok = await writeClipboard(toDisplayPath(tab.path));
+  const ok = await writeClipboardText(toDisplayPath(tab.path));
   if (ok) {
     notify.success(t('status.pathCopied'));
   } else {

@@ -46,7 +46,7 @@ export const zhCN: Messages = {
   contextMenu: {
     recentlyClosed: '最近关闭',
     noClosedTabs: '没有可重开的标签',
-    pasteFailed: '读不到剪贴板内容，请改用 Ctrl+V',
+    pasteFailed: '剪贴板里没有文本内容',
   },
 
   menu: {

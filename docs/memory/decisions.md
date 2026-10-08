@@ -3,6 +3,21 @@
 Entries are newest first.
 Subsystem knowledge lives in `areas/`; only cross-cutting choices stay here.
 
+## MC-DEC-20261102-e5f6a7b8 — Clipboard goes through Rust
+
+Status: active
+Scope: project
+Subject: MC-SUBJ-20261020-c3d4e5f6
+Facet: compatibility
+Evidence:
+- repo:src/lib/utils/clipboard.ts
+
+Decision:
+Use `tauri-plugin-clipboard-manager` for read/write, granting only `allow-read-text` and `allow-write-text`. Cut/Copy stay on `execCommand` (DOM selection).
+
+Reason:
+`navigator.clipboard` is built for untrusted pages, so paste could prompt. Rust and JS versions must match major.
+
 ## MC-DEC-20261003-a1b2c3d4 — Svelte 5 + Vite + Tailwind v4, no SvelteKit
 
 Status: active

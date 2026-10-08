@@ -341,7 +341,7 @@ function runCut() {
   if (!view) return;
   view.focus();
   if (!cutSelection()) {
-    // 选区为空或浏览器拒绝：不静默失败，让用户知道该用快捷键
+    // 选区为空：不静默失败
     notify.info(t('status.nothingSelected'));
   }
 }
@@ -358,9 +358,10 @@ function runCopy() {
 /**
  * 粘贴。
  *
- * `execCommand('paste')` 被浏览器一律拒绝，只能自己读剪贴板再插入。
- * 读不到（权限被拒或非安全上下文）时提示改用 Ctrl+V——
- * 那条路径由 WebView 原生处理，不受权限影响。
+ * `execCommand('paste')` 被浏览器一律拒绝，因此自己读剪贴板再插入。
+ * 读取走 Rust 插件（见 `utils/clipboard.ts`），**不涉及任何权限询问**。
+ *
+ * 读不到只可能是剪贴板为空或内容非文本，不再有「权限被拒」这一种情况。
  */
 async function runPaste() {
   const view = handle?.view;
@@ -369,9 +370,11 @@ async function runPaste() {
 
   const text = await readClipboardText();
   if (text === null) {
+    // 只有剪贴板为空 / 内容非文本才会走到这里
     notify.info(t('contextMenu.pasteFailed'));
     return;
   }
+  if (text === '') return; // 空剪贴板：静默，不插入也不提示
 
   /*
    * 用 `dispatch` 插入而不是改 DOM：走 CodeMirror 的事务系统，
