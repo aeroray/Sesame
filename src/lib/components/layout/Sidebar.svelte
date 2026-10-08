@@ -5,11 +5,16 @@
  * 默认折叠（见 layout.svelte.ts），需要时按 Ctrl+B 展开。
  * 窄窗口下自动折叠，避免挤压编辑区。
  */
-import { Clock, FolderOpen, Layers, Moon, X } from '@lucide/svelte';
+import { Clock, Layers, Moon, X } from '@lucide/svelte';
 import { requestCloseTab } from '$lib/actions/close-tab';
-import { revealPath } from '$lib/actions/file-actions';
 import { openPath } from '$lib/actions/open-file';
+import RecentMenuItems from '$lib/components/common/RecentMenuItems.svelte';
 import { Button } from '$lib/components/ui/button';
+import {
+  Content as ContextMenuContent,
+  Root as ContextMenuRoot,
+  Trigger as ContextMenuTrigger,
+} from '$lib/components/ui/context-menu';
 import { ScrollArea } from '$lib/components/ui/scroll-area';
 import {
   Content as TooltipContent,
@@ -22,7 +27,7 @@ import { recents, removeRecent } from '$lib/state/recents.svelte';
 import { activateTab, tabs } from '$lib/state/tabs.svelte';
 import { cn } from '$lib/utils/cn';
 import { fileIcon } from '$lib/utils/file-icon';
-import { dirname, formatRelativeTime, tailSegments } from '$lib/utils/format';
+import { formatRelativeTime } from '$lib/utils/format';
 import { RECENT_DISPLAY_LIMIT } from '$src/constants';
 
 let { open }: { open: boolean } = $props();
@@ -141,9 +146,14 @@ const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path
           {:else}
             {#each otherRecents as entry (entry.path)}
               {@const RecentIcon = fileIcon(entry.kind, entry.language)}
-              <div
-                class="group flex items-center rounded-md px-1.5 py-1 text-xs text-content-muted transition-colors hover:bg-surface hover:text-content"
-              >
+              <!-- 整行包在右键菜单里，与首屏的「最近打开」一致。 -->
+              <ContextMenuRoot>
+                <ContextMenuTrigger>
+                  {#snippet child({ props })}
+                    <div
+                      {...props}
+                      class="group flex items-center rounded-md px-1.5 py-1 text-xs text-content-muted transition-colors hover:bg-surface hover:text-content"
+                    >
                 <button
                   type="button"
                   class="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -155,42 +165,12 @@ const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path
                 </button>
 
                 <!--
-                  位置列与「移除」同一套路数：宽度固定、悬停时内容互换，
-                  因此不改变布局。
-
-                  这里用嵌套的 `group/path`：外层 `group` 覆盖整行，
-                  用它的话鼠标一进这一行位置就被图标盖住，读不到路径。
-
-                  侧栏比首屏窄，因此只显示**末尾一级**目录；
-                  完整路径在 `title` 里。
-                -->
-                <span class="group/path relative flex w-20 shrink-0 justify-end" title={entry.path}>
-                  <span
-                    class="truncate text-[10px] text-content-faint transition-opacity group-hover/path:opacity-0"
-                  >
-                    {tailSegments(dirname(entry.path), 1)}
-                  </span>
-
-                  <span
-                    role="button"
-                    tabindex="0"
-                    class="absolute inset-y-0 right-0 flex w-5 cursor-pointer items-center justify-center rounded-xs text-content-faint opacity-0 transition-opacity hover:text-content focus-visible:opacity-100 group-hover/path:opacity-100"
-                    onclick={() => void revealPath(entry.path)}
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        void revealPath(entry.path);
-                      }
-                    }}
-                    aria-label={t('action.revealInFolder')}
-                  >
-                    <FolderOpen class="size-3" />
-                  </span>
-                </span>
-
-                <!--
                   时间与「移除」共用同一位置：悬停时时间淡出、按钮淡入。
                   容器宽度固定、两者重叠，悬停不改变布局。
+
+                  侧栏**不显示路径**：它只有 224px 宽，文件名常常已经占满，
+                  再挤一列位置会把文件名截得更短——而文件名才是这里最该看的东西。
+                  完整路径在 `title` 里，且右键菜单提供「在文件夹中显示」。
                 -->
                 <span class="relative flex w-14 shrink-0 justify-end">
                   <span
@@ -215,7 +195,14 @@ const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path
                     <X class="size-3" />
                   </span>
                 </span>
-              </div>
+                    </div>
+                  {/snippet}
+                </ContextMenuTrigger>
+
+                <ContextMenuContent class="w-56">
+                  <RecentMenuItems {entry} />
+                </ContextMenuContent>
+              </ContextMenuRoot>
             {/each}
           {/if}
         </section>

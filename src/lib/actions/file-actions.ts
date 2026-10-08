@@ -35,23 +35,35 @@ function toDisplayPath(path: string): string {
 }
 
 /**
- * 复制文件路径到剪贴板。
+ * 复制某个路径到剪贴板。
  *
- * 未命名标签没有路径，明确提示而不是静默失败——
- * 静默失败会让用户以为复制成功了，粘贴时才发现是空的。
+ * 收路径而不是 `Tab`：最近文件列表里的条目**还不是标签**，
+ * 拿不到 `Tab` 对象（见 `RecentMenuItems` 的调用）。
+ *
+ * 空路径明确提示而不是静默失败——静默失败会让用户以为复制成功了，
+ * 粘贴时才发现是空的。
  */
-export async function copyPath(tab: Tab | null = activeTab()): Promise<void> {
-  if (!tab?.path) {
+export async function copyPathValue(path: string): Promise<void> {
+  if (!path) {
     notify.info(t('status.noPathToCopy'));
     return;
   }
 
-  const ok = await writeClipboardText(toDisplayPath(tab.path));
+  const ok = await writeClipboardText(toDisplayPath(path));
   if (ok) {
     notify.success(t('status.pathCopied'));
   } else {
     notify.error(t('error.copyFailed'));
   }
+}
+
+/** 复制当前（或指定）标签的文件路径到剪贴板。 */
+export async function copyPath(tab: Tab | null = activeTab()): Promise<void> {
+  if (!tab?.path) {
+    notify.info(t('status.noPathToCopy'));
+    return;
+  }
+  await copyPathValue(tab.path);
 }
 
 /**

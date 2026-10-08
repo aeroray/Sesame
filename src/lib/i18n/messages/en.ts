@@ -86,6 +86,9 @@ export const en = {
     clear: 'Clear',
     emptyTitle: 'No files opened yet',
     emptyHint: 'Drop a file into the window, or press Ctrl+O',
+    /* 最近文件条目的右键菜单。 */
+    open: 'Open',
+    removeFromList: 'Remove from list',
   },
 
   /** 标题栏中央的操作反馈。力求短。 */

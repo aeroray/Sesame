@@ -82,6 +82,8 @@ export const zhCN: Messages = {
     clear: '清空',
     emptyTitle: '还没有打开过文件',
     emptyHint: '把文件拖到窗口里，或按 Ctrl+O 选择',
+    open: '打开',
+    removeFromList: '从列表移除',
   },
 
   status: {

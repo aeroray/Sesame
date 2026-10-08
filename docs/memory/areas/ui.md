@@ -26,10 +26,8 @@ Evidence:
 - repo:src/lib/components/layout/Shell.svelte
 
 Decision:
-Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B).
+Title bar, tab strip, editor area; sidebar collapsed by default (Ctrl+B). Window title is `Sesame` with no file open, else the active tab's name plus a dot when dirty.
 
-Reason:
-Three compact rows express the lightweight positioning.
 ## MC-AREA-20261102-c3d4e5f6 — Menus split by owner
 
 Status: active
@@ -41,7 +39,7 @@ Evidence:
 - repo:src/lib/components/layout/TitleBar.svelte
 
 Decision:
-Settings is a title-bar gear, not a hamburger. File actions to the tab menu, text actions to the editor menu, reopen-closed to the tab strip.
+Settings is a title-bar gear, not a hamburger. File actions to the tab menu, text actions to the editor menu, reopen-closed to the tab strip. Every title-bar button carries a tooltip.
 
 ## MC-AREA-20261009-e5f6a7b8 — Dialogs return button text
 
@@ -70,11 +68,7 @@ Evidence:
 - repo:src/lib/utils/file-icon.ts
 
 Decision:
-All lists resolve icons via `fileIcon(kind, language)`, fields from the backend; Markdown ≠ plain text. Recents show two path segments, swapping for "show in folder".
-
-Reason:
-Per-list icon logic made one `.png` look like text in three of four places.
-
+Icons come from `fileIcon(kind, language)` everywhere, fields from the backend; Markdown must not share plain text's icon. Recents rows open one shared context menu; the welcome page shows two path segments, the sidebar none.
 
 ## MC-AREA-20261011-a1b2c3d4 — Image toolbar: grouped, no reflow
 
@@ -88,8 +82,3 @@ Evidence:
 
 Decision:
 Four groups split by 1px rules: zoom | view mode | rotate/flip/reset | external. Buttons keep their place in all states; dirty follows the result, not the click.
-
-Reason:
-A conditional "reset" shifted neighbours and misdirected clicks; unconditional marking prompted to save an unchanged image.
-
-

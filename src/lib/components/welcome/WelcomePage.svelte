@@ -10,7 +10,13 @@ import { revealPath } from '$lib/actions/file-actions';
 import { newTab } from '$lib/actions/new-tab';
 import { openPath, openViaDialog } from '$lib/actions/open-file';
 import AppLogo from '$lib/components/common/AppLogo.svelte';
+import RecentMenuItems from '$lib/components/common/RecentMenuItems.svelte';
 import { Button } from '$lib/components/ui/button';
+import {
+  Content as ContextMenuContent,
+  Root as ContextMenuRoot,
+  Trigger as ContextMenuTrigger,
+} from '$lib/components/ui/context-menu';
 import { ScrollArea } from '$lib/components/ui/scroll-area';
 import { t } from '$lib/i18n';
 import { clearRecents, recents, removeRecent } from '$lib/state/recents.svelte';
@@ -94,9 +100,24 @@ const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
                 因此图标在这里解析，下面直接用。
               -->
               {@const Icon = fileIcon(entry.kind, entry.language)}
-              <div
-                class="group flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-surface-sunken"
-              >
+              <!--
+                整行包在右键菜单里。
+
+                行内已经有「打开」（点击）与「移除」（悬停按钮）两个操作，
+                但「复制路径」「在文件夹中显示」放不下——空间有限，
+                再多两个图标就把文件名挤没了。放进右键菜单正好：
+                不占版面，且右键的对象就是那一行，语义直接。
+
+                `ContextMenuTrigger` 用 `child` 片段把 props 摊到行容器上，
+                因此右键整行的任何位置（包括文件名与时间）都能唤出菜单。
+              -->
+              <ContextMenuRoot>
+                <ContextMenuTrigger>
+                  {#snippet child({ props })}
+                    <div
+                      {...props}
+                      class="group flex items-center rounded-md px-2 py-1.5 transition-colors hover:bg-surface-sunken"
+                    >
                 <!--
                   整行是一个按钮，时间列与「移除」按钮共用同一个位置：
                   悬停时时间淡出、按钮淡入。这样行尾不再多出一列，
@@ -189,7 +210,14 @@ const visible = $derived(recents.items.slice(0, RECENT_DISPLAY_LIMIT));
                     <X class="size-3" />
                   </span>
                 </span>
-              </div>
+                    </div>
+                  {/snippet}
+                </ContextMenuTrigger>
+
+                <ContextMenuContent class="w-56">
+                  <RecentMenuItems {entry} />
+                </ContextMenuContent>
+              </ContextMenuRoot>
             {/each}
           </div>
         </ScrollArea>

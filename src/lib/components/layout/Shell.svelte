@@ -386,12 +386,30 @@ $effect(() => {
   };
 });
 
-/** 同步窗口标题，任务栏能看出当前文件。 */
+/**
+ * 同步窗口标题。
+ *
+ * ## 规则（按用户要求）
+ *
+ * - **没有打开任何文件**：只显示产品名 `Sesame`。
+ * - **打开了文件**：只显示当前激活标签的文件名（带脏标记），
+ *   **不追加产品名**。
+ *
+ * 早先两种情况都拼成 `${name} — Sesame`：
+ *
+ * - 无文件时 `active` 为 `null`，回退值恰好也是 `'Sesame'`，
+ *   于是标题变成 `Sesame — Sesame`，任务栏上明显重复。
+ * - 有文件时是 `notes.md — Sesame`。但任务栏按钮**本身**已经带了
+ *   应用图标，名字再重复一遍既占宽度又没信息量——
+ *   用户看任务栏是为了区分「哪个窗口是哪个文件」。
+ *
+ * 脏标记保留：它是唯一能提示「这个文件有未保存改动」的地方
+ * （窗口内看得到标签上的圆点，任务栏上只有这个字符能传达）。
+ */
 $effect(() => {
-  const name = active?.name ?? 'Sesame';
-  const dirty = active?.dirty ? ' •' : '';
+  const title = active ? `${active.name}${active.dirty ? ' •' : ''}` : 'Sesame';
   getCurrentWindow()
-    .setTitle(`${name}${dirty} — Sesame`)
+    .setTitle(title)
     .catch(() => {});
 });
 

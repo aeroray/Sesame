@@ -16,7 +16,7 @@ Rejected:
 Letting the WebView show its own context menu; per-component `oncontextmenu` handlers; a capture-phase guard.
 
 Reason:
-Lists Reload / Save as / Print / Inspect, unrelated to editing; Inspect opens DevTools over the UI. Capture phase runs before bits-ui's handler, so any `stopPropagation` kills every custom menu.
+Lists Reload / Save as / Print / Inspect, unrelated to editing. A capture-phase guard runs before bits-ui's handler, so any `stopPropagation` kills every custom menu.
 
 ## MC-DNU-20261009-a1b2c3d4 — No toast for operation feedback
 
@@ -31,19 +31,20 @@ Rejected:
 `toast` / `svelte-sonner` and hand-rolled replacements.
 
 Reason:
-Cards float above content and move on their own, so they carry no spatial link to what just happened. Replaced by the title-bar status line. Three variants already failed the same way — restyled sonner pill, hand-rolled Toaster, neutral background — do not retry.
+Cards float above content and move on their own, so they carry no spatial link to what happened. Three variants failed alike; do not retry.
 
-## MC-DNU-20261009-b2c3d4e5 — No tag names in script comments
+## MC-DNU-20261009-b2c3d4e5 — No characters that break a parser or console
 
 Status: active
 Scope: project
 Subject: MC-SUBJ-20261003-b2c3d4e5
 Facet: performance
 Evidence:
-- repo:docs/design/design.md
+- repo:docs/memory/areas/ui.md
 
 Rejected:
-Angle-bracket tag names in Svelte script comments; `/* */` in a template region; an HTML comment's closing marker written inside a comment.
+Tag names in Svelte script comments; `/* */` in a template region; a comment's closing marker inside a comment; bullet, not-equal or hamburger glyphs in memory prose.
 
 Reason:
-Tag names in script comments leave the component unclosed. A template renders `/* */` as literal text, so the comment showed up in the toolbar. A closing marker ends the comment early, exposing the rest as text.
+Tag names leave the component unclosed. A template renders `/* */` as text, so it showed in the toolbar. The memory CLI prints to a GBK console and dies on a symbol it cannot encode, so `read` exits non-zero and routing looks broken though memory is valid. Write words, not symbols.
+

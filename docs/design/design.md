@@ -1,4 +1,4 @@
-﻿# Sesame Design Spec
+# Sesame Design Spec
 
 Sole authoritative source for Sesame's appearance. **Read before any UI change.** No second set of rules inside components.
 
@@ -583,13 +583,44 @@ Image detection is checked **before** language: `image_mime` recognises `.svg`, 
 
 ### Recents rows show where a file is, and reveal it on hover
 
-**Rule: the path column shows the last two directory segments, and turns into a "show in folder" button on hover.** The sidebar shows one segment (it is narrower).
+**Rule: the welcome page's path column shows the last two directory segments and turns into a "show in folder" button on hover. The sidebar shows no path at all.**
 
 Showing only `basename(dirname(path))` was too terse — two files named `notes.md` in different projects looked identical. The full path is still in `title`; only the tail is shown because the drive and top-level directories are the same on every machine and carry no information. A `…` prefix marks truncation.
+
+**The sidebar drops the column entirely.** It is only 224px wide, so a long filename already fills the row; adding a path column truncated the filename to 30px in measurement. Measured after removal: the same filename gets **110px**, 80px more. The filename is what the user scans for, so it wins the space. Path access there is via the tooltip and the context menu instead.
 
 Rejected: revealing on hover of the **whole row**. The row-wide `group` covers the path column too, so the path would be replaced by the icon the moment the pointer entered the row — hiding the very thing that column exists to show. A named group (`group/path`) scopes the reveal to that column, so the path stays readable while the pointer is on the filename.
 
 The column keeps a **fixed width** and overlays the two states, so nothing shifts on hover. Measured: `name`, path column and time keep identical left edges with and without hover.
+
+### Recent-file rows carry a context menu
+
+**Rule: every row in a recents list opens the same context menu — Open, Copy path, Show in folder, Remove from list.** Both lists render it from the shared `RecentMenuItems.svelte` rather than each writing its own items.
+
+The row already had click-to-open and a hover remove button, but copy-path and show-in-folder do not fit: adding two more hover icons would squeeze the filename out. A context menu costs no layout and its subject is unambiguous — the row you right-clicked.
+
+A shared component, not two copies: the sidebar and welcome page are different lists, but the actions available on one entry are identical, and duplicated menu items drift in icons, disabled states and wording.
+
+**Open is repeated in the menu on purpose.** After right-clicking, the user usually wants to open the file; making them move back and left-click is a wasted step.
+
+### The window title shows either the product or the file, never both
+
+**Rule: with no file open the title is `Sesame`; with a file open it is just the active tab's name (plus ` •` when dirty). The product name is never appended.**
+
+Two bugs came from the old single expression `${name} — Sesame`:
+
+- With no file, `active` is `null` and the fallback was also `'Sesame'`, producing **`Sesame — Sesame`** — visibly duplicated on the taskbar.
+- With a file it produced `notes.md — Sesame`. The taskbar button already carries the app icon, so repeating the name wastes width and adds nothing; the user is reading the taskbar to tell **which window holds which file**.
+
+The dirty marker stays: the in-window dot is invisible on the taskbar, so this character is the only signal there that a file has unsaved changes.
+
+### Tooltips on title-bar buttons are not optional
+
+Every title-bar button has one. The theme button was the exception — a bare `Button` with only `aria-label` — so hovering it showed nothing while its neighbours all showed a tooltip, reading as an oversight.
+
+**The theme tooltip includes the current theme name** (`Theme · Sesame Light`). A tooltip reading only "Theme" tells the user nothing they could not guess from the icon; the name answers the actual question.
+
+Making one button both a `TooltipTrigger` and a `DropdownMenuTrigger` works: nest the triggers and spread both prop sets onto the same `<Button>`. Verified in a real browser — the tooltip appears on hover and the 13-theme menu opens on click, both from the same element.
 
 ### Decorative feature defaults
 
