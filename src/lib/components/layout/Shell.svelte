@@ -28,7 +28,7 @@ import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { startHibernationLoop } from '$lib/state/hibernation.svelte';
 import { getImageDimensions, getTransform, setTransform } from '$lib/state/images.svelte';
-import { isPreviewing, layout, toggleSidebar } from '$lib/state/layout.svelte';
+import { isPreviewing, layout, toggleSidebar, welcome } from '$lib/state/layout.svelte';
 import { refreshRecents } from '$lib/state/recents.svelte';
 import { resumeSessionSave, saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
 import { loadSettings, settings } from '$lib/state/settings.svelte';
@@ -78,6 +78,20 @@ async function openQueuedFiles() {
 
 /** 当前激活的标签页。 */
 const active = $derived(tabs.items.find((t) => t.id === tabs.activeId) ?? null);
+
+/**
+ * 是否显示欢迎页。
+ *
+ * 两个条件取「或」：
+ *
+ * - **没有标签**：必须显示，否则关掉最后一个标签后主区域一片空白。
+ * - **用户主动要求**（点了标签栏最左的欢迎页按钮）。
+ *
+ * 分成两个条件而不是一个字段，是因为它们的优先级相反：
+ * 前者是「没别的可看」，后者是「用户就想看这个」。
+ * 合并成一个布尔值的话，关掉最后一个标签时欢迎页会消失。
+ */
+const showWelcome = $derived(tabs.items.length === 0 || welcome.requested);
 
 /** 当前标签页的大文件加载进度（不是大文件时为 undefined）。 */
 const chunkProgress = $derived(active ? getProgress(active.id) : undefined);
@@ -524,16 +538,27 @@ $effect(() => {
       {/if}
 
       <div class="relative min-h-0 flex-1">
-        {#if tabs.items.length === 0}
+        <!--
+          欢迎页与编辑器**同时挂载**，只切换可见性。
+
+          不能用 `{#if showWelcome}` 二选一：`EditorHost` 在 `$effect` 里
+          创建并销毁 `EditorView`，把它从 DOM 里摘掉会连带销毁视图——
+          而撤销栈存在 EditorState 里，视图一销毁就没了。
+          那样「点一下欢迎页再点回来」会让用户丢掉全部撤销历史，
+          甚至把未保存的改动状态弄乱（视图重建时读的是 Map 里的旧正文）。
+
+          这与标签切换用的是同一套路数（`class:hidden`），保持一致。
+        -->
+        <div class="absolute inset-0" class:hidden={!showWelcome}>
           <WelcomePage />
-        {:else}
-          <!-- 每个标签页保留自己的编辑器实例，切换时只切换可见性 -->
-          {#each tabs.items as tab (tab.id)}
-            <div class="absolute inset-0" class:hidden={tab.id !== tabs.activeId}>
-              <EditorHost {tab} active={tab.id === tabs.activeId} preview={isPreviewing(tab.id)} />
-            </div>
-          {/each}
-        {/if}
+        </div>
+
+        <!-- 每个标签页保留自己的编辑器实例，切换时只切换可见性 -->
+        {#each tabs.items as tab (tab.id)}
+          <div class="absolute inset-0" class:hidden={showWelcome || tab.id !== tabs.activeId}>
+            <EditorHost {tab} active={!showWelcome && tab.id === tabs.activeId} preview={isPreviewing(tab.id)} />
+          </div>
+        {/each}
       </div>
 
       <StatusBar />

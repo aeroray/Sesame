@@ -14,7 +14,7 @@ import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { rememberClosed } from '$lib/state/closed-tabs.svelte';
 import { releaseImage } from '$lib/state/images.svelte';
-import { clearPreview } from '$lib/state/layout.svelte';
+import { clearPreview, closeWelcome } from '$lib/state/layout.svelte';
 import type { DiskBaseline, LanguageId, LineEnding, Tab } from '$lib/state/types';
 import { logError } from '$lib/utils/log';
 import { IS_WINDOWS } from '$lib/utils/platform';
@@ -219,9 +219,18 @@ export function createBlankTab(): Tab {
     lastActiveAt: Date.now(),
     sleep: 'none',
   };
-  // 新标签插到最前，与主流编辑器一致
-  tabs.items.unshift(tab);
-  tabs.activeId = tab.id;
+  /*
+   * 新标签追加到**末尾**（右侧），与 VS Code 一致。
+   *
+   * 早先这里是 `unshift`，注释还写着「与主流编辑器一致」——那句是错的：
+   * VS Code、JetBrains、Sublime 都把新标签放在最右。
+   * 放在最左的问题不只是习惯：已有标签会被整体右推一格，
+   * 用户正在看的位置发生位移，连点两次「新建」还可能点错。
+   */
+  tabs.items.push(tab);
+  // 走 activateTab 而不是直接赋值：它同时负责清掉「主动回到欢迎页」
+  // 状态与唤醒休眠标签，直接写 activeId 会漏掉这两件事。
+  activateTab(tab.id);
 
   // 空白标签的正文就是空串——必须显式登记，
   // 否则「从未加载正文」与「正文为空」无法区分，保存会被误拒。
@@ -261,8 +270,9 @@ export function createTabFromPayload(payload: {
     baseline: { size: payload.meta.size, modifiedNs: payload.meta.modifiedNs },
   };
   setTabContent(tab.id, payload.content);
-  tabs.items.unshift(tab);
-  tabs.activeId = tab.id;
+  // 追加到末尾，与新建标签一致（见 createBlankTab 的说明）
+  tabs.items.push(tab);
+  activateTab(tab.id);
   return tab;
 }
 
@@ -327,8 +337,8 @@ export function createImageTab(payload: { path: string; name: string; size: numb
     lastActiveAt: Date.now(),
     sleep: 'none',
   };
-  tabs.items.unshift(tab);
-  tabs.activeId = tab.id;
+  tabs.items.push(tab);
+  activateTab(tab.id);
   return tab;
 }
 
@@ -341,6 +351,8 @@ export function activateTab(id: string): void {
   // 重新激活即唤醒：EditorHost 的 effect 依赖 sleep，
   // 置回 none 会触发它用保留的正文重建视图。
   tab.sleep = 'none';
+  // 激活标签意味着用户要看内容，因此退出「主动回到欢迎页」状态
+  closeWelcome();
 }
 
 /** 标记为已修改。 */

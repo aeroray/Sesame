@@ -60,12 +60,13 @@ export const en = {
   tab: {
     recoveredFile: 'Recovered {name}',
     untitled: 'Untitled',
-    new: 'New tab',
-    newWithKey: 'New tab · Ctrl+N',
+    new: 'New file',
+    newWithKey: 'New file · Ctrl+N',
     close: 'Close {name}',
     closeDirty: 'Close {name} (unsaved)',
     next: 'Next tab',
     previous: 'Previous tab',
+    welcome: 'Welcome page',
   },
 
   sidebar: {

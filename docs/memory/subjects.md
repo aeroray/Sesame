@@ -267,3 +267,17 @@ Aliases:
 - File lists
 - recents list
 - file rows
+
+## MC-SUBJ-20261111-d6e7f8a9 — Tab strip
+
+Status: active
+Kind: concept
+Canonical-Ref: feature:sesame-tab-strip
+Evidence:
+- repo:src/lib/components/tabs/TabBar.svelte
+- repo:src/lib/state/tabs.svelte.ts
+
+Aliases:
+- Tab strip
+- tab bar
+- tab ordering

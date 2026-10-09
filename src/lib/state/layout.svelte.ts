@@ -13,6 +13,35 @@ export function toggleSidebar(): void {
 }
 
 /**
+ * 是否**主动**回到欢迎页。
+ *
+ * 欢迎页原本只在「一个标签都没有」时出现，于是打开文件后就再也回不去了
+ * ——用户想看最近文件列表，得先把标签全部关掉。现在标签栏最左侧有一个
+ * 欢迎页按钮，这个标志记录它是否被按下。
+ *
+ * 它只表达「用户主动要求」这一件事。真正的显示条件是
+ * 「没有标签 **或** 用户要求」，由 `Shell` 计算——
+ * 把两者合并成一个字段的话，关掉最后一个标签后欢迎页会不出现，
+ * 界面就剩一片空白了。
+ */
+export const welcome = $state({ requested: false });
+
+/** 回到欢迎页。 */
+export function openWelcome(): void {
+  welcome.requested = true;
+}
+
+/**
+ * 离开欢迎页。
+ *
+ * 由「激活标签」「新建标签」「打开文件」调用——这些动作都意味着
+ * 用户要看内容，而不是最近文件列表。
+ */
+export function closeWelcome(): void {
+  welcome.requested = false;
+}
+
+/**
  * 处于 Markdown 预览模式的标签页集合。
  *
  * 用普通对象记录而不是给 Tab 加字段：预览是纯粹的视图开关，

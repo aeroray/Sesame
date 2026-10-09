@@ -56,12 +56,13 @@ export const zhCN: Messages = {
   tab: {
     recoveredFile: '已恢复 {name}',
     untitled: '未命名',
-    new: '新建标签页',
-    newWithKey: '新建标签页 · Ctrl+N',
+    new: '新建文件',
+    newWithKey: '新建文件 · Ctrl+N',
     close: '关闭 {name}',
     closeDirty: '关闭 {name}（未保存）',
     next: '下一个标签页',
     previous: '上一个标签页',
+    welcome: '欢迎页',
   },
 
   sidebar: {

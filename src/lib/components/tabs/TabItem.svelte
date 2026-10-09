@@ -5,14 +5,20 @@
  * 未保存时用圆点替代关闭按钮（悬停时切回关闭按钮），
  * 这是编辑器通行做法，既省空间又能一眼看出哪些没存。
  *
- * 拖拽排序用原生 HTML5 DnD：标签栏是纯横向列表，
- * 引入拖拽库只为这点功能不值得。
+ * ## 拖拽排序用指针事件，不用 HTML5 DnD
  *
- * ## 右键菜单
+ * 早先这里用 `draggable` + `dragstart/dragover/drop`，但在 Windows 上
+ * **完全不起作用**：`tauri.conf.json` 开了 `dragDropEnabled`，
+ * wry 会用 OLE 的 `RegisterDragDrop` 在窗口上注册一个原生拖放目标
+ * 来实现「把文件拖进窗口打开」，那个原生目标会先一步吃掉拖拽操作，
+ * 页面里的 HTML5 拖拽事件根本不会触发。
  *
- * 「复制路径」「在文件夹中显示」这类针对**具体文件**的操作放在这里，
- * 而不是应用菜单——用户右键的对象就是操作对象，不必先激活标签
- * 再去左上角找菜单。
+ * 关掉 `dragDropEnabled` 能修好拖拽排序，但会连带砍掉拖文件打开——
+ * 而欢迎页明确提示「把文件拖到窗口里」，那个功能更常用。
+ *
+ * 改用指针事件（`pointerdown/move/up` + `setPointerCapture`）：
+ * 它走的是普通 DOM 事件，不经过 OLE 拖放通道，与原生文件拖放互不干扰。
+ * 顺带还省掉了 HTML5 DnD 在跨元素时的一堆怪行为。
  */
 import { Copy, FileText, FolderOpen, X } from '@lucide/svelte';
 import { requestCloseOthers, requestCloseTab, requestCloseToRight } from '$lib/actions/close-tab';
@@ -36,13 +42,14 @@ interface Props {
   tab: Tab;
   active: boolean;
   index: number;
-  /** 当前正在被拖拽的标签索引，用于显示落点指示。 */
+  /** 正在被拖拽的标签索引，用于把它显示得淡一些。 */
   draggingIndex: number | null;
   onactivate: (id: string) => void;
   onclose: (tab: Tab) => void;
-  ondragstart: (index: number) => void;
-  ondrop: (index: number) => void;
-  ondragend: () => void;
+  /** 指针按下：既可能是一次点击，也可能是一次拖拽的开始。 */
+  ongrab: (index: number, event: PointerEvent) => void;
+  ongrabbing: (event: PointerEvent) => void;
+  onrelease: (event: PointerEvent) => void;
   /** 方向键导航：+1 下一个，-1 上一个。 */
   onnavigate: (step: number) => void;
 }
@@ -54,9 +61,9 @@ let {
   draggingIndex,
   onactivate,
   onclose,
-  ondragstart,
-  ondrop,
-  ondragend,
+  ongrab,
+  ongrabbing,
+  onrelease,
   onnavigate,
 }: Props = $props();
 
@@ -68,10 +75,7 @@ const TabIcon = $derived(fileIcon(tab.kind, tab.language));
 /** 是否显示关闭按钮：悬停时始终显示。 */
 const showClose = $derived(hovering || !tab.dirty);
 
-/** 是否是拖拽落点。 */
-const isDropTarget = $derived(draggingIndex !== null && draggingIndex !== index);
-
-/** 拖拽源高亮。 */
+/** 正在被拖拽的是不是自己。 */
 const isDragging = $derived(draggingIndex === index);
 
 /** 当前标签在列表中的位置，决定「关闭右侧」是否可用。 */
@@ -92,12 +96,29 @@ const hasOtherTabs = $derived(tabs.items.length > 1);
             ? 'bg-surface text-content'
             : 'bg-surface-sunken text-content-muted hover:bg-surface/60 hover:text-content',
           isDragging && 'opacity-40',
-          isDropTarget && 'ring-1 ring-inset ring-brand-400',
         )}
         role="tab"
         tabindex={active ? 0 : -1}
         aria-selected={active}
-        draggable="true"
+        onpointerdown={(e) => {
+          /*
+           * 只响应主键。右键要留给上下文菜单，中键留给「关闭标签」
+           * 这类浏览器习惯（本项目未实现，但也不该在这里吞掉）。
+           */
+          if (e.button !== 0) return;
+
+          /*
+           * 关闭按钮上的按下不算拖拽，否则用户想关标签却把它拖走了。
+           * 用 `closest` 判断而不是给关闭按钮加 stopPropagation：
+           * 后者会连累 ContextMenu 的触发器，右键关闭按钮时菜单出不来。
+           */
+          if ((e.target as HTMLElement).closest('button')) return;
+
+          ongrab(index, e);
+        }}
+        onpointermove={ongrabbing}
+        onpointerup={onrelease}
+        onpointercancel={onrelease}
         onclick={() => onactivate(tab.id)}
         onkeydown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -120,22 +141,6 @@ const hasOtherTabs = $derived(tabs.items.length > 1);
             onnavigate(-1);
           }
         }}
-        ondragstart={(e) => {
-          // 不设 dataTransfer 的话 Firefox 不会启动拖拽
-          e.dataTransfer?.setData('text/plain', tab.id);
-          if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-          ondragstart(index);
-        }}
-        ondragover={(e) => {
-          // 必须 preventDefault，否则浏览器不会把这里当作合法落点
-          e.preventDefault();
-          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        }}
-        ondrop={(e) => {
-          e.preventDefault();
-          ondrop(index);
-        }}
-        ondragend={ondragend}
         onmouseenter={() => (hovering = true)}
         onmouseleave={() => (hovering = false)}
       >

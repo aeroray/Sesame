@@ -86,6 +86,10 @@ Discover optional memory without loading it. Entries here are not default loads.
   - activation: path-or-explicit
   - paths: `src/lib/editor/**`, `src/lib/components/editor/**`
   - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
+- `areas/tabs.md`
+  - activation: path-or-explicit
+  - paths: `src/lib/components/tabs/**`, `src/lib/state/tabs.svelte.ts`
+  - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
 
 ## Optional rules
 `rules/` files load only through declared canonical tasks or explicit rule input.

@@ -622,6 +622,56 @@ Every title-bar button has one. The theme button was the exception — a bare `B
 
 Making one button both a `TooltipTrigger` and a `DropdownMenuTrigger` works: nest the triggers and spread both prop sets onto the same `<Button>`. Verified in a real browser — the tooltip appears on hover and the 13-theme menu opens on click, both from the same element.
 
+### The welcome page needs an exit, and a way back
+
+**Rule: the tab strip's left end carries a welcome-page button.** It is disabled while the welcome page is showing.
+
+The welcome page used to appear only when no tabs were open, so opening any file made the recent-files list unreachable — the user had to close every tab to get back. That is a navigation dead end, not a deliberate constraint.
+
+**Disabled, not hidden.** Hiding it would shift every tab one slot left the moment the user arrives, moving the target out from under the pointer. Same reasoning as the image toolbar's reset button.
+
+**Left end, not beside "New file".** The button changes what the main area shows (view navigation); "New file" creates something. Grouping them on one side implies they are the same kind of action. The left end is also where the tab list starts, so "go back to the beginning" reads naturally.
+
+**`welcome.requested` is separate from "there are no tabs".** The display condition is `tabs.length === 0 || welcome.requested`. Merging them into one boolean would make the welcome page vanish when the last tab closes, leaving an empty window.
+
+**The welcome page and the editors stay mounted together**, toggled with `class:hidden` rather than `{#if}`. `EditorHost` creates and destroys its `EditorView` in an `$effect`, and the undo stack lives in the `EditorState` — so unmounting to show the welcome page would silently discard every tab's undo history.
+
+### New tabs go to the right
+
+**Rule: `createBlankTab`, `createTabFromPayload` and `createImageTab` all `push` to the end of `tabs.items`.**
+
+These previously called `unshift`, with a comment claiming that matched mainstream editors. **That claim was wrong** — VS Code, JetBrains and Sublime all append on the right. The cost is not only habit: inserting at the left shifts every existing tab one slot right, so the tab the user is looking at moves, and clicking "New file" twice in a row can land on the wrong one.
+
+### Tab reordering uses pointer events, not HTML5 drag-and-drop
+
+**Rule: drag-to-reorder is implemented with `pointerdown`/`pointermove`/`pointerup` plus `setPointerCapture`. Do not reintroduce `draggable` on tabs.**
+
+HTML5 DnD **cannot work in this app on Windows**. `tauri.conf.json` sets `dragDropEnabled: true` (also the default) so that dropping files onto the window opens them. Tauri's own config documentation states the consequence verbatim:
+
+> Disabling it is required to use HTML5 drag and drop on the frontend on Windows since we replace the drag drop handler of WebView2.
+
+wry implements that by calling `SetAllowExternalDrop(false)` and then `RevokeDragDrop` + `RegisterDragDrop` on **every child HWND** of the window, replacing Chromium's own drop target with its own. OLE drops over the page therefore go to wry, not the renderer, and in-page drag events never fire.
+
+The alternative — setting `dragDropEnabled: false` — would fix tab dragging but break drag-a-file-onto-the-window, which the welcome page explicitly advertises ("Drop a file into the window, or press Ctrl+O") and which cannot be reimplemented by path, because the DOM only exposes `File` objects without absolute paths. Pointer events keep both features.
+
+Three details are load-bearing:
+
+- **A 5px threshold** distinguishes a click from a drag. Without it, a 1px tremor turns "activate tab" into "move tab".
+- **Reordering happens during the drag**, by hit-testing each tab's centre, not once on release. Dragging to the far right still works because "nearest centre" always returns a slot, whereas "which rectangle contains x" returns nothing in the gaps.
+- **The click that follows a drag is suppressed** via a timestamp, so releasing a dragged tab does not re-activate it. A boolean flag would need resetting elsewhere and could get stuck; a timestamp expires on its own.
+
+Verified against the real component with real mouse events: dragging tab 1 to slot 3 gives `[1,2,0]`, dragging it back restores `[0,1,2]`, and a 3px jitter changes nothing.
+
+### Ctrl+Tab works in WebView2; Edge is not a valid proxy for it
+
+**Verified: `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle tabs in the built app.** Measured by launching `sesame.exe`, sending OS-level keystrokes, and reading the window title (which shows the active tab's name): `three → beta → alpha → one → two`, and the reverse with Shift.
+
+This is worth recording because the obvious test gives the **wrong** answer. Driving `Ctrl+Tab` into headless Edge through CDP produces **zero** keydown events at the page — Edge consumes it to switch its own browser tabs. WebView2 has no browser tabs, so it does not. Testing the shell instead of the app would have "proved" a bug that does not exist and sent the fix in the wrong direction (to a Rust-side accelerator).
+
+Related: `AreBrowserAcceleratorKeysEnabled(false)` is **not** the cause. Microsoft's documentation lists what it disables (Ctrl+F, Ctrl+P, Ctrl+R, zoom, DevTools) and adds that tab-related accelerators "are always disabled regardless of this setting" because a WebView has no tabs. The page's own JS path was also sound: `matches()` returns `true` for `Ctrl+Tab`, no earlier binding shadows it, and CodeMirror does not intercept it — `indentWithTab` registers `Tab`, and CodeMirror's lookup key for this event is `Ctrl-Tab`, which does not match.
+
+`cycleTab` returns early below two tabs, so the shortcut is a deliberate no-op with a single tab open. That is correct, but it is the first thing a tester tries — worth knowing before "fixing" it.
+
 ### Decorative feature defaults
 
 Criterion: attention competition, not usefulness.
