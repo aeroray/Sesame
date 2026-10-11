@@ -43,6 +43,15 @@ export const FONT_SIZE_MAX = 24;
 /** 自动保存的防抖时长（毫秒）。 */
 export const AUTOSAVE_DEBOUNCE = 1200;
 
+/**
+ * 启动后延迟多久检查更新（毫秒）。
+ *
+ * 不用 0：启动瞬间该把资源留给打开文件与渲染编辑器，
+ * 而且更新检查要发网络请求，与首屏加载抢带宽没有好处。
+ * 3 秒足够让界面稳定下来，用户也还没进入「不想被打扰」的状态。
+ */
+export const STARTUP_UPDATE_DELAY = 3000;
+
 /** 可预览的图片扩展名。与 Rust 端 `lang_map::image_mime` 保持一致。 */
 export const IMAGE_EXTENSIONS = [
   'png',

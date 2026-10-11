@@ -42,3 +42,16 @@ export const IS_MAC = PLATFORM === 'macos';
 
 /** 是否为 Windows。 */
 export const IS_WINDOWS = PLATFORM === 'windows';
+
+/**
+ * 是否运行在 Tauri 宿主里。
+ *
+ * `pnpm dev` 单独跑 Vite 时页面在普通浏览器里，没有 IPC 通道，
+ * 任何 `invoke` 都会失败。需要调用原生能力的模块据此提前退出，
+ * 而不是等调用抛错——那样控制台会刷满无关的报错。
+ *
+ * 判据用 `__TAURI_INTERNALS__`：Tauri 2 注入的是这个名字，
+ * 而 Tauri 1 的 `__TAURI__` 只在开启 `withGlobalTauri` 时才有，
+ * 本项目的 `withGlobalTauri` 是关闭的，因此不能拿它判断。
+ */
+export const IS_TAURI: boolean = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;

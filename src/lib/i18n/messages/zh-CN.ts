@@ -199,6 +199,23 @@ export const zhCN: Messages = {
     aboutLicenseValue: 'MIT',
   },
 
+  update: {
+    title: '自动更新',
+    check: '检查更新',
+    checking: '正在检查…',
+    upToDate: '已是最新版本',
+    available: '有新版本 {version}',
+    download: '下载并安装',
+    downloading: '正在下载… {percent}%',
+    downloadingUnknown: '正在下载…',
+    installing: '正在安装，应用将自动重启',
+    retry: '重试',
+    notes: '更新内容',
+    errorSignature: '下载的安装包未通过签名校验，已中止安装。',
+    errorNetwork: '无法连接更新服务器，请检查网络后重试。',
+    errorGeneric: '更新未能完成。',
+  },
+
   editor: {
     readonly: '只读',
     binary: '二进制文件 · 不可编辑保存',

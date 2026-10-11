@@ -34,6 +34,13 @@ tauri-plugin-clipboard-manager = "2"
 # 没有它的话，双击第二个文件会启动第二个 Sesame，
 # 两个进程同时读写 settings.json / session.json 会互相覆盖。
 tauri-plugin-single-instance = "2"
+# 自动更新：检查 GitHub Release 上的 latest.json，下载并校验签名后安装。
+#
+# 安装包的签名（minisign）在 Rust 侧校验，前端拿不到也无法绕过，
+# 因此即使更新源被劫持，签名不匹配的包也装不上去。
+tauri-plugin-updater = "2"
+# 更新装完后需要重启应用，`relaunch()` 由这个插件提供。
+tauri-plugin-process = "2"
 # 曾经用 tauri-plugin-window-state 记住窗口位置与大小，已移除。
 # 现在每次启动都是固定 900×900 居中：用户临时挪一下窗口，
 # 下次打开却出现在别处、大小也不同，反而像是「没按预期启动」。

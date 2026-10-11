@@ -216,6 +216,21 @@ pub fn run() {
          * 「只开放实际用到的能力」。
          */
         .plugin(tauri_plugin_clipboard_manager::init())
+        /*
+         * 自动更新。
+         *
+         * 端点写在 `tauri.conf.json` 的 `plugins.updater.endpoints`，
+         * 发布时由 `.github/workflows/release.yml` 用
+         * `--config .github/tauri-release.conf.json` 覆盖成当前仓库的地址，
+         * 因此仓库改名或 fork 都不需要改这里的配置。
+         *
+         * 公钥（`pubkey`）是**公开**信息，嵌在配置里没有问题；
+         * 对应的私钥只存在于 GitHub Secrets 与开发者本地。
+         * 签名在 Rust 侧校验，前端绕不过去。
+         */
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // 更新安装完成后需要重启应用，`relaunch()` 来自这个插件
+        .plugin(tauri_plugin_process::init())
         // 导航守卫：默认拒绝一切外部导航，详见 is_allowed_navigation
         .plugin(navigation_guard())
         .manage(AppState::new())

@@ -28,6 +28,7 @@ import AppLogo from '$lib/components/common/AppLogo.svelte';
 import FontPicker from '$lib/components/common/FontPicker.svelte';
 import ShortcutsList from '$lib/components/common/ShortcutsList.svelte';
 import ThemeThumbnail from '$lib/components/common/ThemeThumbnail.svelte';
+import UpdatePanel from '$lib/components/common/UpdatePanel.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
   Content as DialogContent,
@@ -530,6 +531,9 @@ function moveChoice(event: KeyboardEvent, selector: string) {
               <dd class="text-content-muted">{t('settings.aboutLicenseValue')}</dd>
             </div>
           </dl>
+
+          <!-- 自动更新。检查在启动时静默做过一次，这里也可以手动重查。 -->
+          <UpdatePanel />
         {:else}
           <div class="flex items-center justify-between gap-4">
             <Label for="setting-language" class="text-sm font-normal">{t('settings.language')}</Label>

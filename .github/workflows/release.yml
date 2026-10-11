@@ -1,0 +1,133 @@
+name: Release
+
+# 推送 v 开头的 SemVer 标签（例如 v0.2.0）即可构建并发布安装包。
+# 同一个 Release 里还会带上签名过的自动更新产物与 latest.json，
+# Windows 与 macOS 客户端都据此检查更新。
+#
+# 也可以手动触发并填一个**已存在**的标签来重新发布，无需再推标签。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的已有 SemVer 标签，例如 v0.1.0"
+        required: true
+        type: string
+
+# tauri-action 需要写权限来创建 Release 并上传产物
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      # 一个平台失败不要取消另一个——否则 Windows 成功、macOS 失败时，
+      # 已经构建好的 Windows 包也不会被上传，而 latest.json 缺少
+      # darwin 条目其实仍可发布（Windows 客户端照常更新）。
+      fail-fast: false
+      matrix:
+        include:
+          # Windows：只出 NSIS 安装包。
+          # 不带 --target，即宿主默认的 x64。
+          - platform: windows-latest
+            args: "--config .github/tauri-release.conf.json --bundles nsis"
+
+          # macOS：Apple Silicon（aarch64）的 app + dmg。
+          #
+          # 为什么两个都要：
+          # - dmg 是给用户下载的安装镜像
+          # - app 是自动更新产物的来源（macOS 的更新包是 .app.tar.gz，
+          #   不是 dmg）
+          #
+          # 只出 arm64 是刻意的：Intel Mac 已停产多年，
+          # 多一个 universal 目标会让构建时间与产物体积翻倍。
+          - platform: macos-latest
+            args: "--config .github/tauri-release.conf.json --target aarch64-apple-darwin --bundles app,dmg"
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # pnpm 必须在 setup-node 之前安装，否则 setup-node 的
+      # `cache: pnpm` 找不到 pnpm 而无法定位缓存目录。
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 版本由 rust-toolchain 决定；这里只需要 stable。
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Apple Silicon target
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin
+
+      # Cargo 工作区在 src-tauri 而不是仓库根，必须显式指定，
+      # 否则缓存路径算错、每次都全量重编（约 10 分钟）。
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 校验标签版本与 package.json / Cargo.toml 一致。
+      # 不一致就直接失败——标签与内部版本不符会发布出「检查更新永远
+      # 认为已是最新」的包，那种问题在用户端很难查。
+      - name: Verify release version
+        run: node scripts/sync-version.mjs "${{ inputs.tag || github.ref_name }}"
+
+      # 生成 .github/tauri-release.conf.json，把更新源指向当前仓库。
+      # 该文件不入库（见 .gitignore），因为它是按 CI 环境推导出来的。
+      - name: Configure updater endpoint
+        run: node scripts/prepare-release-config.mjs
+
+      # 更新说明来自 docs/releases/<tag>.md。缺失或为空会让这一步失败，
+      # 这是刻意的：宁可发不出去，也不要发一个没有说明的版本。
+      - name: Load release notes
+        id: notes
+        run: node scripts/load-release-notes.mjs "${{ inputs.tag || github.ref_name }}"
+
+      - name: Build and publish release
+        # 固定到 v1 的具体提交，而不是用 @v0 / @v1 这类浮动标签：
+        # 标签会被上游移动，同一份 workflow 在不同时间可能跑到不同代码。
+        # 这个 SHA 是另一个项目（SkillSage）在用的、已验证可用的 v1。
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 自动更新产物的 minisign 私钥。没有它就不会有 .sig 文件与
+          # latest.json，客户端也就永远收不到更新。
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: "Sesame ${{ inputs.tag || github.ref_name }}"
+          # 说明来自 docs/releases/<tag>.md（上一步读取）
+          releaseBody: ${{ steps.notes.outputs.body }}
+          # 关掉自动生成：它可能把一段自动的提交列表插到我们写好的
+          # 说明前面，而那份说明是给人读的
+          generateReleaseNotes: false
+          releaseDraft: false
+          prerelease: false
+          # 汇总各平台产物、生成并上传 latest.json（自动更新的清单）。
+          #
+          # 注意参数名：tauri-action v1 把旧的 `includeUpdaterJson`
+          # 改名成了 `uploadUpdaterJson`。传旧名字**不会报错**，
+          # 只是被忽略，结果是 Release 里没有 latest.json——
+          # 所有已安装的客户端会永远显示「已是最新」，且没有任何提示。
+          uploadUpdaterJson: true
+          args: ${{ matrix.args }}

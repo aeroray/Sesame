@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/sync-version.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
@@ -15,6 +16,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
+    "sync:version": "node scripts/sync-version.mjs",
+    "notes:check": "node scripts/load-release-notes.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
@@ -48,7 +51,9 @@
     "@tauri-apps/plugin-clipboard-manager": "^2.4.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
     "@tauri-apps/plugin-opener": "^2.7.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-store": "^2.5.0",
+    "@tauri-apps/plugin-updater": "^2.13.2",
     "@uiw/codemirror-theme-atomone": "^4.25.12",
     "@uiw/codemirror-theme-dracula": "^4.25.12",
     "@uiw/codemirror-theme-github": "^4.25.12",

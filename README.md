@@ -12,7 +12,7 @@ huge logs, GBK-encoded configs, a stray PNG you just want to look at.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#install)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
-[![Binary size](https://img.shields.io/badge/installer-1.9%20MB-brightgreen.svg)](#why-it-stays-small)
+[![Binary size](https://img.shields.io/badge/installer-2.1%20MB-brightgreen.svg)](#why-it-stays-small)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -48,17 +48,18 @@ file, or change three lines in it**, right now.
 | **Safety net** | Atomic writes, external-modification detection, autosave, and always-on draft backup for untitled buffers |
 | **Multi-tab** | Drag to reorder, per-tab cursor and scroll position, session restore on relaunch, reopen a closed tab with `Ctrl+Shift+T` |
 | **Markdown preview** | Rendered and sanitized with DOMPurify; external links open in your browser, not inside the app |
-| **Image viewer** | Ctrl + wheel to zoom, Space + drag to pan, reset, fit-to-window, actual size, choose an external app; dimensions, file size, and format in the status bar |
+| **Image viewer** | Ctrl + wheel to zoom, Space + drag to pan, rotate, flip, reset, fit-to-window, actual size, choose an external app; dimensions, file size, and format in the status bar |
 | **Find & replace** | Regex, case-sensitive, whole-word and cross-line search, with replace |
 | **Indent guides** | Faint vertical rules at each indent level; on by default, toggle in settings |
-| **Rainbow brackets** | Colour brackets by nesting depth; off by default, toggle in settings |
+| **Rainbow brackets** | Colour brackets by nesting depth; on by default, toggle in settings |
 | **Memory-friendly** | Tabs you haven't touched release their editor instances after a while, and restore instantly when you come back |
-| **Theming** | Light/dark/system, four accent colors, and separately configurable UI and editor fonts |
+| **Theming** | 13 built-in themes (light and dark), each colouring the interface, the editor and syntax highlighting together; UI and editor fonts configurable separately |
 | **Interface language** | English and Simplified Chinese, following your system language by default |
+| **Auto-update** | Checks silently on launch and installs signed updates from within the app |
 
 ### Why it stays small
 
-The Windows installer is about **1.9 MB** (the executable itself is 4.3 MB; the
+The Windows installer is about **2.1 MB** (the executable itself is 4.8 MB; the
 installer compresses it). Sesame uses the operating system's own webview
 (WebView2 on Windows, WKWebView on macOS) rather than bundling a browser engine — which
 is also why it starts as fast as it does.
@@ -74,8 +75,30 @@ project of this size.
 
 ## Install
 
-> **Status: early.** Version 0.1.0 is functional and has been tested on Windows, but
-> prebuilt installers are not published yet. Building from source takes a few minutes.
+### Download an installer
+
+Grab the latest from the [Releases page](https://github.com/aeroray/Sesame/releases):
+
+| Platform | File |
+| --- | --- |
+| Windows (x64) | `Sesame_<version>_x64-setup.exe` |
+| macOS (Apple Silicon) | `Sesame_<version>_aarch64.dmg` |
+
+The Windows installer can register Sesame as the default handler for the text and image
+formats it supports; that is a checkbox during setup, and you can skip it.
+
+> **The macOS build is unsigned and not notarized** — no Apple Developer certificate is
+> involved in this project. macOS will refuse to open it on first launch. Either
+> right-click the app in Finder and choose **Open**, or run:
+>
+> ```bash
+> xattr -rd com.apple.quarantine /Applications/Sesame.app
+> ```
+>
+> This clears the quarantine flag on your machine only; it is not a substitute for Apple
+> code signing. Windows builds are unaffected.
+
+Only Apple Silicon (`aarch64`) macOS builds are published. Intel Macs are not targeted.
 
 ### Build from source
 
@@ -88,26 +111,38 @@ project of this size.
   this means the **C++ Build Tools** and **WebView2** (preinstalled on Windows 11).
   On macOS you need Xcode Command Line Tools; WKWebView is part of the system.
 
-> **Windows is the tested platform.** The macOS build is expected to work — the only
-> platform-specific code is the title bar and the Cmd-key handling — but it has not been
-> verified on real hardware. If you build it on a Mac, please report what you find.
-
 **Build**
 
 ```sh
-git clone https://github.com/OWNER/sesame.git
-cd sesame
+git clone https://github.com/aeroray/Sesame.git
+cd Sesame
 pnpm install
 pnpm tauri build
 ```
 
 The installer lands in `src-tauri/target/release/bundle/`.
 
+> **Windows is the tested platform.** The macOS build is expected to work — the only
+> platform-specific code is the title bar and the Cmd-key handling — but it has not been
+> verified on real hardware. If you build it on a Mac, please report what you find.
+
 **Run in development**
 
 ```sh
 pnpm tauri dev
 ```
+
+## Auto-update
+
+Sesame checks for updates **silently on launch** and, when one is found, shows it under
+**Settings → About**, with the release notes and a one-click install. Nothing is
+downloaded or installed without you clicking that button.
+
+Update packages are signed with [minisign](https://jedisct1.github.io/minisign/). The
+public key is compiled into the app and the signature is verified in Rust before anything
+is installed, so a tampered update server cannot push a modified build — it produces a
+signature failure instead. Note that the release notes are *not* covered by that
+signature, which is why they are rendered as plain text and never as HTML.
 
 ## Usage
 
@@ -220,6 +255,57 @@ Project documentation lives in [`docs/`](docs/):
 - [`docs/design/design.md`](docs/design/design.md) — the single source of truth for
   anything visual. Read this before changing UI.
 - [`docs/memory/`](docs/memory/) — architecture decisions, constraints, and project brief.
+
+## Releasing
+
+Pushing a SemVer tag (for example `v0.2.0`) runs
+[`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the
+Windows NSIS installer and the Apple Silicon DMG, then publishes a GitHub Release with
+the signed updater artifacts and `latest.json`. You can also run the workflow manually
+against an existing tag.
+
+Prepare a release by bumping `package.json`, syncing the Rust version, and writing the
+notes for that exact tag:
+
+```sh
+pnpm sync:version                 # copy the version into src-tauri/Cargo.toml
+$EDITOR docs/releases/v0.2.0.md   # the release body comes from this file
+git commit -am "chore(release): v0.2.0"
+git tag v0.2.0 && git push --tags
+```
+
+The workflow **fails** if the tag disagrees with `package.json` / `Cargo.toml`, or if
+`docs/releases/<tag>.md` is missing or empty. Both are deliberate: a mismatch would
+publish an installer whose internal version never matches the tag, and clients would
+then report "up to date" forever.
+
+### Required repository secrets
+
+| Secret | Required | Purpose |
+| --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | **Yes** | Signs updater artifacts. Without it there is no `latest.json`, so no client can ever update. |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | If the key has one | Password for the private key. |
+
+`GITHUB_TOKEN` is provided by Actions automatically.
+
+Generate the keypair once with `pnpm tauri signer generate -w ~/.tauri/sesame-updater.key`.
+The **public** key goes into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`
+(it is not a secret); the **private** key and its password go into the repository
+secrets and must never be committed. `.gitignore` ignores `*.key` as a second line of
+defence.
+
+> **Keep the private key backed up.** Losing it means you can no longer sign updates for
+> anyone who already installed the app — they would have to download a new build by hand.
+> Generating a replacement key only works if you also ship it in a build those users
+> install manually.
+
+Apple signing and notarization are **not** configured. The macOS DMG ships unsigned,
+which is why the install instructions above mention the quarantine flag. Adding an Apple
+Developer certificate is orthogonal to the update signing above: the former removes a
+system warning, the latter guarantees update integrity. If you do add one, the secrets
+Tauri expects are `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
+`APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID`, passed as
+`env:` on the `tauri-action` step.
 
 ## Contributing
 

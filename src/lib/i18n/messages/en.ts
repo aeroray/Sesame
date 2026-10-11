@@ -203,6 +203,34 @@ export const en = {
     aboutLicenseValue: 'MIT',
   },
 
+  /*
+   * 自动更新。
+   *
+   * 单独成组而不是塞进 `settings`：这些文案由 `state/update.svelte.ts`
+   * 与 `UpdatePanel` 使用，与设置项无关；错误信息更是要在状态模块里
+   * 直接引用，挂在 `settings.*` 下会让那个模块的语义变得别扭。
+   *
+   * 三条错误分开写而不是共用一句「更新失败」：签名校验失败意味着
+   * 下载到的包**不是我们发布的**，与断网是完全不同的两件事，
+   * 用户该做的处置也不同（前者不该重试，后者该检查网络）。
+   */
+  update: {
+    title: 'Updates',
+    check: 'Check for updates',
+    checking: 'Checking…',
+    upToDate: 'You are on the latest version',
+    available: 'Version {version} is available',
+    download: 'Download and install',
+    downloading: 'Downloading… {percent}%',
+    downloadingUnknown: 'Downloading…',
+    installing: 'Installing — the app will restart',
+    retry: 'Try again',
+    notes: "What's new",
+    errorSignature: 'The downloaded package failed its signature check and was not installed.',
+    errorNetwork: 'Could not reach the update server. Check your connection and try again.',
+    errorGeneric: 'The update could not be completed.',
+  },
+
   /** 编辑器状态栏。 */
   editor: {
     readonly: 'Read-only',

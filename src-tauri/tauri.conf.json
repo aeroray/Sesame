@@ -34,6 +34,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi", "dmg", "app"],
+    "createUpdaterArtifacts": true,
     "publisher": "Sesame contributors",
     "copyright": "Copyright (c) 2026 Sesame contributors",
     "category": "DeveloperTool",
@@ -100,5 +101,14 @@
         "role": "Editor"
       }
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5RTQzQUI2QzEyNERGQkIKUldTNzN5VEJ0anJreWM3U1Zhd3loMCtoelpJVTJJVytiQ3lOdWJoTTlCWjdzcEEvOERkQlh2eFIK",
+      "endpoints": ["https://github.com/aeroray/Sesame/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "quiet"
+      }
+    }
   }
 }

@@ -20,6 +20,10 @@ node_modules
 /src-tauri/gen/schemas
 /src-tauri/gen/file-associations.nsh
 /src-tauri/gen/file-associations.wxs
+# 发布时由 scripts/prepare-release-config.mjs 按 CI 环境生成
+# （更新源地址从 GITHUB_REPOSITORY 推导）。
+# 不入库：本地残留一份旧地址会在本地构建时悄悄覆盖正确配置。
+/.github/tauri-release.conf.json
 
 # ---------------------------------------------------------------
 # Environment
@@ -27,6 +31,17 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# ---------------------------------------------------------------
+# Signing keys — 绝不入库
+# ---------------------------------------------------------------
+# Tauri 更新签名私钥。正常情况下它们存在 ~/.tauri 而不是项目里，
+# 这几行是第二道防线：万一有人把密钥导出到这里、又习惯性 `git add -A`，
+# 也能挡住。私钥泄露 = 任何人都能签出被客户端信任的「更新包」。
+#
+# 公钥**不在这里忽略**：它已经硬编码在 src-tauri/tauri.conf.json 的
+# plugins.updater.pubkey 里，本来就是公开信息。
+*.key
 
 # ---------------------------------------------------------------
 # Editors and OS

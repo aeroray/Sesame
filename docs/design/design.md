@@ -1288,6 +1288,9 @@ Applied in `Hint` rather than only on the Close button: the cause is identical f
 | [../src/lib/components/common/Hint.svelte](../../src/lib/components/common/Hint.svelte) | Icon-button + tooltip wrapper |
 | [../src/lib/components/layout/StatusLine.svelte](../../src/lib/components/layout/StatusLine.svelte) | Action feedback in the title-bar centre |
 | [../src/lib/state/status.svelte.ts](../../src/lib/state/status.svelte.ts) | Status-hint state and duration |
+| [../src/lib/components/common/UpdatePanel.svelte](../../src/lib/components/common/UpdatePanel.svelte) | Auto-update UI in Settings → About |
+| [../src/lib/state/update.svelte.ts](../../src/lib/state/update.svelte.ts) | Update phases, silent startup check, install |
+| [../.github/workflows/release.yml](../../.github/workflows/release.yml) | Tag-driven release: NSIS + macOS, signed updater artifacts |
 | [../src/lib/editor/themes.ts](../../src/lib/editor/themes.ts) | CodeMirror light/dark themes and syntax highlighting |
 | [../src/lib/utils/hotkeys.ts](../../src/lib/utils/hotkeys.ts) | Global shortcut registration + `EDITOR_HOTKEYS` (for the panel) |
 | [../src/lib/components/ui/](../../src/lib/components/ui/) | shadcn-svelte components (vendor code: change styles, not structure) |

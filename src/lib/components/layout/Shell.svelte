@@ -34,6 +34,7 @@ import { resumeSessionSave, saveSessionNow, scheduleSessionSave } from '$lib/sta
 import { loadSettings, settings } from '$lib/state/settings.svelte';
 import { notify } from '$lib/state/status.svelte';
 import { activateTab, markDirty, tabs } from '$lib/state/tabs.svelte';
+import { checkForUpdateOnStartup } from '$lib/state/update.svelte';
 import { documentTasks } from '$lib/utils/async';
 import { registerHotkeys } from '$lib/utils/hotkeys';
 import {
@@ -45,6 +46,7 @@ import {
   rotateCW,
 } from '$lib/utils/image-transform';
 import { logError } from '$lib/utils/log';
+import { STARTUP_UPDATE_DELAY } from '$src/constants';
 import Sidebar from './Sidebar.svelte';
 import StatusBar from './StatusBar.svelte';
 import TitleBar from './TitleBar.svelte';
@@ -150,6 +152,28 @@ $effect(() => {
 $effect(() => {
   const stop = startHibernationLoop();
   return stop;
+});
+
+/**
+ * 启动后延迟检查更新。
+ *
+ * **延迟 3 秒**：更新检查要发一个网络请求，而启动瞬间正是最该把
+ * 资源留给「打开文件、渲染编辑器」的时候。用户在前几秒也还没进入状态，
+ * 这时候弹任何东西都是打扰。
+ *
+ * **静默**：断网、代理、GitHub 不可达都会让检查失败，这些都不是用户
+ * 需要处理的问题。失败了什么都不说，成功发现新版本才在
+ * 「设置 → 关于」里亮出入口。
+ *
+ * `checkedOnStartup` 保证整个进程只跑一次——这个 effect 会因为
+ * 依赖变化而重跑，没有那道闸门就会反复发请求。
+ */
+$effect(() => {
+  const timer = window.setTimeout(() => {
+    void checkForUpdateOnStartup();
+  }, STARTUP_UPDATE_DELAY);
+
+  return () => window.clearTimeout(timer);
 });
 
 /** 窄窗口（< 760px）自动折叠侧边栏，避免挤压编辑区。 */

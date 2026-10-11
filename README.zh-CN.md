@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#安装)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-24C8DB.svg)](https://tauri.app)
-[![Binary size](https://img.shields.io/badge/installer-1.9%20MB-brightgreen.svg)](#为什么这么小)
+[![Binary size](https://img.shields.io/badge/installer-2.1%20MB-brightgreen.svg)](#为什么这么小)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -50,14 +50,15 @@
 | **图片查看** | Ctrl＋滚轮缩放、空格＋拖动平移、重置、适应窗口、原始尺寸、选择外部程序打开；尺寸、体积与格式显示在状态栏 |
 | **查找替换** | 支持正则、区分大小写、整词、跨行，并可在面板内替换 |
 | **缩进参考线** | 每一级缩进处画一条淡竖线，默认开启，可在设置里关闭 |
-| **括号彩虹** | 按嵌套层级给括号上色，默认关闭，可在设置里开启 |
+| **括号彩虹** | 按嵌套层级给括号上色，默认开启，可在设置里关闭 |
 | **省内存** | 长时间未看的标签会释放编辑器实例，切回来立刻重建 |
-| **主题** | 亮色 / 暗色 / 跟随系统，4 套强调色，界面字体与编辑器字体可分别设置 |
+| **主题** | 内置 13 套主题（含浅色与深色），每套同时决定界面、编辑器与语法高亮配色；界面字体与编辑器字体可分别设置 |
 | **界面语言** | 简体中文与英文，默认跟随系统语言 |
+| **自动更新** | 启动时静默检查，在应用内安装带签名的更新包 |
 
 ### 为什么这么小
 
-Windows 安装包约 **1.9 MB**（可执行文件本身 4.3 MB，安装包会压缩它）。
+Windows 安装包约 **2.1 MB**（可执行文件本身 4.8 MB，安装包会压缩它）。
 Sesame 使用操作系统自带的 WebView
 （Windows 上是 WebView2，macOS 上是 WKWebView），不打包浏览器内核——
 这也是它启动这么快的原因。
@@ -72,8 +73,29 @@ Linux 不作为目标平台：无边框窗口的红绿灯、文件关联、打�
 
 ## 安装
 
-> **当前是早期版本。** 0.1.0 功能完整，已在 Windows 上实测可用，
-> 但尚未发布预编译安装包。从源码构建需要几分钟。
+### 下载安装包
+
+到 [Releases 页面](https://github.com/aeroray/Sesame/releases) 下载最新版：
+
+| 平台 | 文件名 |
+| --- | --- |
+| Windows (x64) | `Sesame_<版本>_x64-setup.exe` |
+| macOS（Apple Silicon） | `Sesame_<版本>_aarch64.dmg` |
+
+Windows 安装程序可以把 Sesame 注册为它所支持的文本与图片格式的默认打开方式，
+这是安装过程中的一个勾选项，不需要可以取消。
+
+> **macOS 版未做 Apple 签名与公证**，本项目不涉及 Apple 开发者证书。
+> 因此首次打开会被系统拦下。请在 Finder 里右键点击应用并选择「打开」，
+> 或在终端执行：
+>
+> ```bash
+> xattr -rd com.apple.quarantine /Applications/Sesame.app
+> ```
+>
+> 这只清除你这台机器上的隔离标记，不能替代 Apple 代码签名。Windows 版不受影响。
+
+macOS 只发布 Apple Silicon（`aarch64`）版本，不以 Intel Mac 为目标。
 
 ### 从源码构建
 
@@ -93,8 +115,8 @@ Linux 不作为目标平台：无边框窗口的红绿灯、文件关联、打�
 **构建**
 
 ```sh
-git clone https://github.com/OWNER/sesame.git
-cd sesame
+git clone https://github.com/aeroray/Sesame.git
+cd Sesame
 pnpm install
 pnpm tauri build
 ```
@@ -106,6 +128,17 @@ pnpm tauri build
 ```sh
 pnpm tauri dev
 ```
+
+## 自动更新
+
+Sesame 在**启动时静默检查**更新，发现新版本后会显示在
+**设置 → 关于**里，附带更新说明与一键安装按钮。
+在你点击那个按钮之前，不会下载也不会安装任何东西。
+
+更新包使用 [minisign](https://jedisct1.github.io/minisign/) 签名。
+公钥编译在应用里，签名在 Rust 侧校验通过才会安装，
+因此即使更新服务器被劫持也无法推送改过的安装包——只会得到签名校验失败。
+注意更新说明**不在签名保护范围内**，所以它只按纯文本渲染，绝不当作 HTML 解析。
 
 ## 使用
 
@@ -213,6 +246,54 @@ cargo test --lib    # 运行 Rust 单测，需在 src-tauri/ 目录下
 - [`docs/design/design.md`](docs/design/design.md) —— 外观的唯一权威来源，
   改界面前先读这份。
 - [`docs/memory/`](docs/memory/) —— 架构决策、约束与项目概要。
+
+## 发布
+
+推送一个 SemVer 标签（例如 `v0.2.0`）会触发
+[`.github/workflows/release.yml`](.github/workflows/release.yml)，
+构建 Windows NSIS 安装包与 Apple Silicon DMG，并创建 GitHub Release，
+同时上传签过名的自动更新产物与 `latest.json`。
+也可以在 Actions 里手动对一个已有标签触发。
+
+发布前的准备：改 `package.json` 的版本、同步 Rust 版本、写这一版的更新说明。
+
+```sh
+pnpm sync:version                 # 把版本号同步进 src-tauri/Cargo.toml
+$EDITOR docs/releases/v0.2.0.md   # Release 正文来自这个文件
+git commit -am "chore(release): v0.2.0"
+git tag v0.2.0 && git push --tags
+```
+
+以下两种情况 workflow 会**直接失败**：标签与 `package.json` /
+`Cargo.toml` 的版本不一致，或 `docs/releases/<标签>.md` 缺失或为空。
+这两条都是刻意的——版本不一致会发布出「内部版本永远对不上标签」的安装包，
+客户端从此永远显示「已是最新」。
+
+### 需要配置的仓库 Secrets
+
+| Secret | 是否必需 | 用途 |
+| --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | **必需** | 给更新产物签名。没有它就不会有 `latest.json`，客户端永远收不到更新。 |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 私钥设了密码才需要 | 私钥密码。 |
+
+`GITHUB_TOKEN` 由 Actions 自动提供，不用填。
+
+密钥对用 `pnpm tauri signer generate -w ~/.tauri/sesame-updater.key` 生成一次即可。
+**公钥**填进 `src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`
+（它不是秘密）；**私钥**与密码填进仓库 Secrets，绝不能提交。
+`.gitignore` 里已忽略 `*.key` 作为第二道防线。
+
+> **务必备份私钥。** 丢了就意味着再也无法给已经装了旧版的用户签更新——
+> 他们只能手动下载新版。换新密钥只有在「用户先手动装一次带新公钥的版本」
+> 之后才生效。
+
+Apple 签名与公证**没有**配置，因此 macOS 的 DMG 是未签名的，
+这也是上面安装说明里要提 `xattr` 的原因。
+Apple 证书与上面的更新签名是两件独立的事：前者消除系统警告，
+后者保证更新包没被篡改。如果以后要加，Tauri 认的六个 Secret 是
+`APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、
+`APPLE_ID`、`APPLE_PASSWORD`、`APPLE_TEAM_ID`，写在 `tauri-action`
+那一步的 `env:` 下。
 
 ## 参与贡献
 

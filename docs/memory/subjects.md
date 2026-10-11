@@ -281,3 +281,17 @@ Aliases:
 - Tab strip
 - tab bar
 - tab ordering
+
+## MC-SUBJ-20261111-e7f8a9b0 — Release and auto-update
+
+Status: active
+Kind: concept
+Canonical-Ref: feature:sesame-release
+Evidence:
+- repo:.github/workflows/release.yml
+- repo:src/lib/state/update.svelte.ts
+
+Aliases:
+- Release and auto-update
+- release pipeline
+- updater
