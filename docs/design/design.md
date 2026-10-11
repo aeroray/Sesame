@@ -1200,7 +1200,7 @@ Fix — two layers: **outer** `no-repeat`, `background-size` = the line's indent
 
 ### Internal paths use forward slashes; convert to native separators before showing the user
 
-`paths::to_slash()` (Rust) normalises to forward slashes (`C:/Users/...`) — an **internal convention**; cross-platform comparison and dedup rely on it, unit tests pin it. Measured: `Ctrl+Shift+C` copied `C:/Users/PC/AppData/Local/Temp/x.txt` — PowerShell accepts it; cmd.exe `cd`, build scripts, and the Run dialog do not.
+`paths::to_slash()` (Rust) normalises to forward slashes (`C:/Users/...`) — an **internal convention**; cross-platform comparison and dedup rely on it, unit tests pin it. Measured: `Ctrl+Shift+C` copied `C:/Users/me/AppData/Local/Temp/x.txt` — PowerShell accepts it; cmd.exe `cd`, build scripts, and the Run dialog do not.
 
 **Rule: `tab.path` is internal; never display it or hand it to a system shell.** Convert via `toDisplayPath()` (`file-actions.ts`) — Windows → `\`, macOS `/`; `copyPath` / `revealInFolder` both convert.
 

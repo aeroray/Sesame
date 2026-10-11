@@ -23,7 +23,7 @@ import { IS_WINDOWS } from '$lib/utils/platform';
  * 这是**内部约定**：跨平台比较与去重都靠它，一致且简单。
  *
  * 但它不适合直接交给用户。实测按 Ctrl+Shift+C 复制出来的是
- * `C:/Users/PC/AppData/Local/Temp/x.txt`——虽然 PowerShell 能识别，
+ * `C:/Users/me/AppData/Local/Temp/x.txt`——虽然 PowerShell 能识别，
  * 但 cmd.exe 的 `cd`、不少构建脚本、以及「运行」对话框都不认。
  * 用户看到正斜杠也会觉得「这不是 Windows 路径」。
  *
