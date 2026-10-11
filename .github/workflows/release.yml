@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "要发布的已有 SemVer 标签，例如 v0.1.0"
+        description: "要发布的已有 SemVer 标签，例如 v1.0.0"
         required: true
         type: string
 
@@ -85,11 +85,16 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      # 校验标签版本与 package.json / Cargo.toml 一致。
+      # 校验标签与 package.json / Cargo.toml 一致，且 tauri.conf.json
+      # 仍指向 package.json 而不是写死版本号。
+      #
       # 不一致就直接失败——标签与内部版本不符会发布出「检查更新永远
       # 认为已是最新」的包，那种问题在用户端很难查。
+      #
+      # 带 --check：CI 里只读不写。若让它顺手改文件，仓库里就会出现
+      # 未提交的改动，「构建产物对应哪个提交」随之说不清。
       - name: Verify release version
-        run: node scripts/sync-version.mjs "${{ inputs.tag || github.ref_name }}"
+        run: node scripts/version.mjs --check "${{ inputs.tag || github.ref_name }}"
 
       # 生成 .github/tauri-release.conf.json，把更新源指向当前仓库。
       # 该文件不入库（见 .gitignore），因为它是按 CI 环境推导出来的。

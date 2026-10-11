@@ -1,6 +1,6 @@
 [package]
 name = "sesame"
-version = "0.1.0"
+version = "1.0.0"
 description = "Sesame —— 轻量文本编辑器与文件查看器"
 authors = ["Sesame"]
 edition = "2021"

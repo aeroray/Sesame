@@ -258,21 +258,43 @@ Project documentation lives in [`docs/`](docs/):
 
 ## Releasing
 
-Pushing a SemVer tag (for example `v0.2.0`) runs
+Pushing a SemVer tag (for example `v1.0.0`) runs
 [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the
 Windows NSIS installer and the Apple Silicon DMG, then publishes a GitHub Release with
 the signed updater artifacts and `latest.json`. You can also run the workflow manually
 against an existing tag.
 
-Prepare a release by bumping `package.json`, syncing the Rust version, and writing the
-notes for that exact tag:
+### The version lives in one place
+
+`package.json` is the **only** file where the version is written. The other two derive
+from it:
+
+| File | How it gets the version |
+| --- | --- |
+| `package.json` | the source of truth |
+| `src-tauri/tauri.conf.json` | `"version": "../package.json"` — Tauri reads the file itself |
+| `src-tauri/Cargo.toml` | written by `pnpm sync:version` |
+
+So a release is a one-line edit:
 
 ```sh
-pnpm sync:version                 # copy the version into src-tauri/Cargo.toml
-$EDITOR docs/releases/v0.2.0.md   # the release body comes from this file
-git commit -am "chore(release): v0.2.0"
-git tag v0.2.0 && git push --tags
+# 1. bump the version — the only place it is written
+$EDITOR package.json
+
+# 2. propagate. Runs automatically as a prebuild/predev hook; run it by hand if you
+#    build with cargo directly, which bypasses the npm hooks.
+pnpm sync:version
+
+# 3. note the release, then tag it
+$EDITOR docs/releases/v1.0.0.md   # the release body comes from this file
+git commit -am "chore(release): v1.0.0"
+git tag v1.0.0 && git push --tags
 ```
+
+`pnpm version:check` verifies all three agree without writing anything — that is what
+CI runs. It also **fails if `tauri.conf.json` stops pointing at `package.json`** and
+starts carrying a literal version again, since that is exactly the duplication this
+setup removes.
 
 The workflow **fails** if the tag disagrees with `package.json` / `Cargo.toml`, or if
 `docs/releases/<tag>.md` is missing or empty. Both are deliberate: a mismatch would

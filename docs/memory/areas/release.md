@@ -50,21 +50,21 @@ Pin `tauri-action` to the v1 commit; pass `uploadUpdaterJson: true` and `generat
 Reason:
 v1 renamed that key, and the old name is ignored without error, shipping no `latest.json`.
 
-## MC-AREA-20261111-f4d5e6f7 — Notes per tag, version must match
+## MC-AREA-20261111-f6a7b8c9 — One source for the version
 
 Status: active
 Scope: area:release
 Entry-Type: decision
 Subject: MC-SUBJ-20261111-e7f8a9b0
-Facet: lifecycle
+Facet: data-model
 Evidence:
-- repo:scripts/load-release-notes.mjs
+- repo:scripts/version.mjs
 
 Decision:
-The body comes from `docs/releases/<tag>.md`; missing, empty, or a tag disagreeing with `package.json`/`Cargo.toml` fails the build.
+Write the version only in `package.json`; `tauri.conf.json` points at it and `Cargo.toml` is synced by `scripts/version.mjs`.
 
 Reason:
-Inline notes are silently reused when forgotten; a mismatch ships a build whose version never matches its tag.
+Copies kept by hand drift, and one that lags makes clients report "up to date" forever.
 
 ## MC-AREA-20261111-f5e6f7a8 — Update checks stay silent on failure
 
@@ -80,5 +80,4 @@ Decision:
 Check once three seconds after launch; on failure say nothing. Show a found version under Settings > About, its notes as plain text.
 
 Reason:
-Offline or proxy failures are not the user's problem, and the signature covers the binary, not the manifest.
-
+Offline failures are not the user's problem, and the signature covers the binary, not the manifest.

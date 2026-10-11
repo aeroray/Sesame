@@ -101,9 +101,10 @@ const darkThemes = $derived(THEMES.filter((item) => item.mode === 'dark'));
 /**
  * 版本号。
  *
- * **从 Tauri 读取，不写死在界面里。** 早先汉堡菜单里硬编码了
- * "Sesame 0.1.0"，而 `package.json`、`Cargo.toml`、`tauri.conf.json`
- * 各有一份版本号——第四份手写副本迟早与实际版本不一致。
+ * **从 Tauri 读取，不写死在界面里。** 早先汉堡菜单里硬编码过
+ * "Sesame 0.1.0"，那是当时散落的若干份版本号副本之一
+ * （详见 `scripts/version.mjs` 的说明：现在 `package.json` 是唯一来源，
+ * 另外两处都由它派生）。界面再存一份，迟早与实际版本不一致。
  *
  * 读不到时留空而不是显示占位符：`getVersion` 只在 Tauri 运行时可用，
  * 浏览器里跑（如样式验证）会抛错，那时显示 "v" 比显示假的版本号好。

@@ -249,22 +249,43 @@ cargo test --lib    # 运行 Rust 单测，需在 src-tauri/ 目录下
 
 ## 发布
 
-推送一个 SemVer 标签（例如 `v0.2.0`）会触发
+推送一个 SemVer 标签（例如 `v1.0.0`）会触发
 [`.github/workflows/release.yml`](.github/workflows/release.yml)，
 构建 Windows NSIS 安装包与 Apple Silicon DMG，并创建 GitHub Release，
 同时上传签过名的自动更新产物与 `latest.json`。
 也可以在 Actions 里手动对一个已有标签触发。
 
-发布前的准备：改 `package.json` 的版本、同步 Rust 版本、写这一版的更新说明。
+### 版本号只写在一个地方
+
+`package.json` 是**唯一**写版本号的文件，另外两处都从它派生：
+
+| 文件 | 版本号来源 |
+| --- | --- |
+| `package.json` | 唯一来源 |
+| `src-tauri/tauri.conf.json` | 写的是 `"version": "../package.json"`，由 Tauri 自己去读 |
+| `src-tauri/Cargo.toml` | 由 `pnpm sync:version` 写入 |
+
+因此升版本只要改一行：
 
 ```sh
-pnpm sync:version                 # 把版本号同步进 src-tauri/Cargo.toml
-$EDITOR docs/releases/v0.2.0.md   # Release 正文来自这个文件
-git commit -am "chore(release): v0.2.0"
-git tag v0.2.0 && git push --tags
+# 1. 改版本号——全项目只有这一处
+$EDITOR package.json
+
+# 2. 同步。prebuild / predev 钩子会自动跑；若直接用 cargo 构建
+#    （绕过了 npm 钩子），需要手动执行一次
+pnpm sync:version
+
+# 3. 写这一版的说明，然后打标签
+$EDITOR docs/releases/v1.0.0.md   # Release 正文来自这个文件
+git commit -am "chore(release): v1.0.0"
+git tag v1.0.0 && git push --tags
 ```
 
-以下两种情况 workflow 会**直接失败**：标签与 `package.json` /
+`pnpm version:check` 校验三处一致且**不写任何文件**——CI 跑的就是它。
+它还会检查 `tauri.conf.json` 是否仍指向 `package.json`：
+如果有人把它改回字面量版本号，就直接失败，因为那正是本方案要消除的重复。
+
+以下情况 workflow 会**直接失败**：标签与 `package.json` /
 `Cargo.toml` 的版本不一致，或 `docs/releases/<标签>.md` 缺失或为空。
 这两条都是刻意的——版本不一致会发布出「内部版本永远对不上标签」的安装包，
 客户端从此永远显示「已是最新」。

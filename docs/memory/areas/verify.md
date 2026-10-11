@@ -65,3 +65,19 @@ Confirm a build by inspecting what it produced: embedded asset names, signature 
 
 Reason:
 Cargo reuses results by mtime and can "succeed" without compiling. Compressed embedded assets hide literal strings, so compare the asset hash rather than grepping for content.
+
+## MC-AREA-20261111-f4d5e6f7 — Release notes come from a file per tag
+
+Status: active
+Scope: area:verify
+Entry-Type: decision
+Subject: MC-SUBJ-20261111-f1a2b3c4
+Facet: version-policy
+Evidence:
+- repo:scripts/load-release-notes.mjs
+
+Decision:
+The release body comes from `docs/releases/<tag>.md`, and a missing or empty file fails the build rather than publishing silently.
+
+Reason:
+Inline notes get reused verbatim when forgotten, so the previous version's text ships under the new tag.
