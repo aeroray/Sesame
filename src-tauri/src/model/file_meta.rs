@@ -128,6 +128,12 @@ pub struct ImagePayload {
     pub size: u64,
     pub name: String,
     pub path: String,
+    /// 读取时的磁盘指纹，作为写回前的复核基线。
+    ///
+    /// 文本标签一直有这道复核（见 `commands/fs.rs` 的 `save_file`），
+    /// 图片此前没有：旋转后在别的程序改过这个文件，Ctrl+S 会直接覆盖掉
+    /// 对方的改动且不提示。这里把基线一并交给前端，写回时带回来比对。
+    pub baseline: crate::state::Fingerprint,
 }
 
 #[cfg(test)]

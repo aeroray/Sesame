@@ -109,7 +109,7 @@ if (checkOnly || tagArg !== undefined) {
     );
   }
 
-  console.log(`版本校验通过：${version}` + (tag ? `（标签 ${tagArg}）` : '') + '，三处一致。');
+  console.log(`版本校验通过：${version}${tag ? `（标签 ${tagArg}）` : ''}，三处一致。`);
 } else {
   // ---- 同步模式：把唯一来源写进 Cargo.toml ----
   const { cargo, version: cargoVersion } = await readCargoVersion();

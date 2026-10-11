@@ -143,6 +143,13 @@ export interface ImagePayload {
   size: number;
   name: string;
   path: string;
+  /**
+   * 读取时的磁盘指纹。
+   *
+   * 写回时带回去复核：文件若被外部改过，后端返回 `conflict`，
+   * 而不是直接覆盖别人的改动。文本标签一直有这道复核，图片此前没有。
+   */
+  baseline: DiskBaseline;
 }
 
 /**

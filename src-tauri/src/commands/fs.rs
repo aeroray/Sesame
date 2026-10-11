@@ -57,7 +57,10 @@ fn read_meta(path: &Path) -> AppResult<FileMeta> {
 }
 
 /// 取文件指纹（mtime + 大小），用于外部修改检测。
-fn fingerprint(path: &Path) -> AppResult<Fingerprint> {
+///
+/// 对 crate 内可见：图片写回（`commands/media.rs`）要用同一套判定，
+/// 另写一份必然与这里漂移。
+pub(crate) fn fingerprint(path: &Path) -> AppResult<Fingerprint> {
     let meta = std::fs::metadata(path).map_err(|e| AppError::from_io(&paths::to_slash(path), e))?;
     Ok(Fingerprint {
         modified_ns: meta

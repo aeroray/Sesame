@@ -5,12 +5,47 @@
 //! 是运行期才知道的；data URL 不需要任何额外权限，且图片体积本来就有上限。
 
 use base64::Engine;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::constants::MAX_IMAGE_BYTES;
 use crate::core::{lang_map, paths};
 use crate::model::{AppError, AppResult, ImagePayload};
-use crate::state::AppState;
+use crate::state::{AppState, Fingerprint};
+
+/// 把 `data:image/<subtype>;base64,` 里的子类型取出来。
+///
+/// 只接受这一种形态，因此调用方须先确认前缀与后缀已匹配，
+/// 否则这里取到的会是夹在中间的垃圾。
+fn data_url_subtype(header: &str) -> Option<&str> {
+    header
+        .strip_prefix("data:image/")?
+        .strip_suffix(";base64")
+}
+
+/// 判断 data URL 的子类型与目标文件扩展名是否相符。
+///
+/// 为什么需要这道校验：WebView 的 `canvas.toDataURL()` 对**无法编码**的
+/// 类型不会报错，而是**静默退回 PNG**（实测 Edge/WebView2 同版本：
+/// `image/gif`、`image/bmp`、`image/x-icon`、`image/avif` 全部返回
+/// `data:image/png;base64,…`）。若照单写入，`logo.ico` 里就会装进一段
+/// PNG 字节流——文件名没变、内容变了，其它程序按扩展名解码必然失败。
+/// 前端已按同一规则拒绝，这里是第二道，免得将来多一个调用方就绕过去。
+fn subtype_matches_extension(subtype: &str, path: &str) -> bool {
+    let Some(expected) = lang_map::image_mime(path) else {
+        return false;
+    };
+    let Some(expected) = expected.strip_prefix("image/") else {
+        return false;
+    };
+    if subtype == expected {
+        return true;
+    }
+    // 同一种格式的别名写法，逐个列出而不是做模糊匹配
+    matches!(
+        (subtype, expected),
+        ("jpeg", "jpg") | ("jpg", "jpeg") | ("x-icon", "ico") | ("svg+xml", "svg")
+    )
+}
 
 /// Show an application chooser without reopening Sesame through its own default association.
 #[tauri::command]
@@ -65,6 +100,11 @@ fn read_image_sync(resolved: std::path::PathBuf, mime: &'static str) -> AppResul
             limit: MAX_IMAGE_BYTES,
         });
     }
+
+    // 读完再取一次指纹：读取期间文件若被改动，这里取到的是改动后的值，
+    // 与稍后写回前的复核用的是同一时刻的状态，不会误报冲突。
+    let baseline = crate::commands::fs::fingerprint(&resolved)?;
+
     let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
     Ok(ImagePayload {
@@ -73,6 +113,7 @@ fn read_image_sync(resolved: std::path::PathBuf, mime: &'static str) -> AppResul
         size: bytes.len() as u64,
         name: paths::display_name(&resolved),
         path: slash,
+        baseline,
     })
 }
 
@@ -90,17 +131,14 @@ pub async fn read_image(path: String, state: State<'_, AppState>) -> AppResult<I
         .map_err(AppError::from_join)??;
 
     // 记录为二进制，保存路径据此拒绝把文本写回图片。
-    // 指纹留空：图片永远走不到保存前复核那一步（会被 encoding == "binary" 拦掉）。
+    // 指纹用真实值：图片的写回复核（`write_image_data`）以它为基线。
     state.remember(
         payload.path.clone(),
         crate::state::OpenFile {
             encoding: "binary".to_string(),
             line_ending: "lf".to_string(),
             has_bom: false,
-            baseline: crate::state::Fingerprint {
-                modified_ns: None,
-                size: 0,
-            },
+            baseline: payload.baseline.clone(),
         },
     );
 
@@ -134,6 +172,20 @@ pub async fn save_image_as(source: String, target: String) -> AppResult<String> 
         if lang_map::image_mime(&source_slash).is_none() {
             return Err(AppError::InvalidPath(format!(
                 "不是可识别的图片格式：{source_slash}"
+            )));
+        }
+
+        /*
+         * 目标扩展名必须与来源同格式。
+         *
+         * 这里按字节复制、不做任何转码，因此「另存为」只能改位置、不能改格式。
+         * 系统对话框默认会带上原扩展名，但用户可以手动改掉——
+         * 那样 `photo.png` 会变成 `photo.jpg`，内容是 PNG，别的程序按扩展名
+         * 解码必然失败。与其写出一个名不副实的文件，不如直接拒绝。
+         */
+        if !lang_map::same_image_format(&source_slash, &target_slash) {
+            return Err(AppError::Unsupported(format!(
+                "另存为不转换格式，目标扩展名需与源文件一致：{target_slash}"
             )));
         }
 
@@ -229,7 +281,11 @@ pub async fn set_as_wallpaper(path: String) -> AppResult<()> {
 /// ## 安全边界
 ///
 /// - 只接受 `data:image/*;base64,` 前缀，拒绝其它内容
-/// - 大小上限沿用 `MAX_IMAGE_BYTES`
+/// - **子类型必须与文件扩展名相符**（见 `subtype_matches_extension`）：
+///   否则 `logo.ico` 里会装进一段 PNG 字节流
+/// - 大小上限沿用 `MAX_IMAGE_BYTES`，且**在解码之前**按 base64 长度预检，
+///   避免一个超大串先分配出几百 MB 再被拒绝
+/// - 写盘前复核指纹：文件被外部改过就返回 `conflict`，由前端让用户决定
 /// - 走 `atomic::write_bytes`（临时文件 + fsync + rename），
 ///   写到一半失败不会把原图毁成残缺文件
 ///
@@ -239,8 +295,23 @@ pub async fn set_as_wallpaper(path: String) -> AppResult<()> {
 /// **这个事实由调用方负责告知用户**——Rust 侧只管写，
 /// 不做「静默降级」之类的额外决策。
 #[tauri::command]
-pub async fn write_image_data(path: String, data_url: String) -> AppResult<()> {
+pub async fn write_image_data(
+    path: String,
+    data_url: String,
+    expected: Option<Fingerprint>,
+    app: tauri::AppHandle,
+) -> AppResult<Fingerprint> {
     let resolved = paths::normalize(&path, None)?;
+
+    // 前端没带指纹时退回后端记录的基线：图片读进来时已经存过一份
+    // （见 `read_image`），因此这条兜底路径同样有真正的复核，
+    // 而不是「没传就跳过检查」。
+    let baseline = expected.or_else(|| {
+        app.state::<AppState>()
+            .recall(&paths::to_slash(&resolved))
+            .map(|known| known.baseline)
+            .filter(|known| known.modified_ns.is_some())
+    });
 
     tauri::async_runtime::spawn_blocking(move || {
         let slash = paths::to_slash(&resolved);
@@ -271,6 +342,36 @@ pub async fn write_image_data(path: String, data_url: String) -> AppResult<()> {
             ));
         }
 
+        /*
+         * 子类型与扩展名必须相符。
+         *
+         * `toDataURL()` 对无法编码的格式会**静默退回 PNG**，因此前端
+         * 若漏判（或将来多一个调用方），这里就是最后一道：
+         * 绝不让一个 `.ico` 装进 PNG 字节流。
+         */
+        let subtype = data_url_subtype(header)
+            .ok_or_else(|| AppError::InvalidPath("图片数据格式不正确".to_string()))?;
+        if !subtype_matches_extension(subtype, &slash) {
+            return Err(AppError::Unsupported(format!(
+                "图片数据是 {subtype}，与该文件的格式不符：{slash}"
+            )));
+        }
+
+        /*
+         * 先按 base64 长度预检，再解码。
+         *
+         * base64 编码后约为原始字节的 4/3，因此这个上界是紧的。
+         * 早先只在解码之后判大小：一个远超上限的串会先被完整解码分配
+         * 出来，峰值内存白白翻倍——而这张图随后还会被画进 canvas。
+         */
+        const MAX_BASE64_BYTES: usize = MAX_IMAGE_BYTES as usize / 3 * 4 + 4;
+        if payload.len() > MAX_BASE64_BYTES {
+            return Err(AppError::TooLarge {
+                size: (payload.len() as u64 / 4) * 3,
+                limit: MAX_IMAGE_BYTES,
+            });
+        }
+
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(payload)
             .map_err(|err| AppError::InvalidPath(format!("图片数据不是合法的 base64：{err}")))?;
@@ -278,6 +379,7 @@ pub async fn write_image_data(path: String, data_url: String) -> AppResult<()> {
         if bytes.is_empty() {
             return Err(AppError::InvalidPath("图片数据为空".to_string()));
         }
+        // 预检之后仍复核一次：base64 允许填充，边界上可能有几字节出入
         if bytes.len() as u64 > MAX_IMAGE_BYTES {
             return Err(AppError::TooLarge {
                 size: bytes.len() as u64,
@@ -285,9 +387,118 @@ pub async fn write_image_data(path: String, data_url: String) -> AppResult<()> {
             });
         }
 
+        // 写盘前复核：文件被外部改过就让用户决定，而不是直接覆盖别人的改动
+        if let Some(baseline) = baseline.as_ref() {
+            if crate::commands::fs::fingerprint(&resolved).ok().as_ref() != Some(baseline) {
+                return Err(AppError::Conflict(slash));
+            }
+        }
+
         crate::core::atomic::write_bytes(&resolved, &bytes)?;
-        Ok(())
+
+        /*
+         * 写回成功：取一次新指纹，既更新后端记录，也回传给前端。
+         *
+         * 两边都必须更新，否则下一次写回会把自己刚写的结果
+         * 当成「外部修改」而拒绝保存。
+         */
+        let after = crate::commands::fs::fingerprint(&resolved)?;
+        app.state::<AppState>().remember(
+            slash,
+            crate::state::OpenFile {
+                encoding: "binary".to_string(),
+                line_ending: "lf".to_string(),
+                has_bom: false,
+                baseline: after.clone(),
+            },
+        );
+        Ok(after)
     })
     .await
     .map_err(AppError::from_join)?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// data URL 头部的子类型必须能被正确取出。
+    #[test]
+    fn data_url_subtype_extracts_the_declared_format() {
+        assert_eq!(data_url_subtype("data:image/png;base64"), Some("png"));
+        assert_eq!(data_url_subtype("data:image/x-icon;base64"), Some("x-icon"));
+        // 形态不符时不该硬猜
+        assert_eq!(data_url_subtype("data:image/png"), None);
+        assert_eq!(data_url_subtype("image/png;base64"), None);
+        assert_eq!(data_url_subtype("data:text/plain;base64"), None);
+    }
+
+    /// 子类型与扩展名不符时必须拒绝——这是 `.ico` 装进 PNG 字节流的那道防线。
+    ///
+    /// 依据：`canvas.toDataURL()` 对无法编码的格式会静默退回 PNG，
+    /// 实测 `image/gif` / `image/bmp` / `image/x-icon` / `image/avif`
+    /// 都返回 `data:image/png;base64,...`。
+    #[test]
+    fn audit_subtype_must_match_extension() {
+        // 相符：放行
+        assert!(subtype_matches_extension("png", "a/logo.png"));
+        assert!(subtype_matches_extension("jpeg", "a/photo.jpg"));
+        assert!(subtype_matches_extension("webp", "a/pic.webp"));
+
+        // 引擎退回 PNG：`.ico` / `.gif` / `.bmp` / `.avif` 必须被拦住
+        for path in ["a/logo.ico", "a/anim.gif", "a/old.bmp", "a/new.avif"] {
+            assert!(
+                !subtype_matches_extension("png", path),
+                "{path} 接受了 PNG 数据，文件内容会与扩展名不符"
+            );
+        }
+
+        // 非同格式的别名也要拦住
+        assert!(!subtype_matches_extension("png", "a/photo.jpg"));
+        assert!(!subtype_matches_extension("jpeg", "a/logo.png"));
+
+        // 非图片扩展名一律拒绝
+        assert!(!subtype_matches_extension("png", "a/notes.txt"));
+        assert!(!subtype_matches_extension("png", "a/noext"));
+    }
+
+    /// `jpg` 与 `jpeg`、`ico` 与 `x-icon` 是同一格式的别名，应放行。
+    #[test]
+    fn subtype_accepts_case_aliases() {
+        assert!(subtype_matches_extension("jpeg", "a/photo.jpeg"));
+        assert!(subtype_matches_extension("jpg", "a/photo.jpeg"));
+        assert!(subtype_matches_extension("x-icon", "a/favicon.ico"));
+        assert!(subtype_matches_extension("svg+xml", "a/icon.svg"));
+    }
+
+    /// base64 预检的上界必须够宽（不能误伤合法数据）、又确实拦得住超大输入。
+    #[test]
+    fn audit_base64_precheck_bounds_are_correct() {
+        const MAX_BASE64: usize = MAX_IMAGE_BYTES as usize / 3 * 4 + 4;
+
+        // 恰好等于上限的原始字节：编码后长度为 4/3，必须仍被接受
+        let at_limit = MAX_IMAGE_BYTES as usize;
+        let encoded_len = at_limit.div_ceil(3) * 4;
+        assert!(
+            encoded_len <= MAX_BASE64,
+            "合法输入被误判：编码后 {encoded_len} 超过预检上限 {MAX_BASE64}"
+        );
+
+        // 明显超限的输入：必须被预检拦下
+        let over = (MAX_IMAGE_BYTES as usize + 4 * 1024 * 1024).div_ceil(3) * 4;
+        assert!(over > MAX_BASE64, "超限输入会绕过预检，先分配再拒绝");
+    }
+
+    /// `same_image_format` 按格式而非扩展名字符串比较。
+    #[test]
+    fn same_image_format_handles_aliases() {
+        assert!(lang_map::same_image_format("a/pic.jpg", "b/other.jpeg"));
+        assert!(lang_map::same_image_format("a/pic.png", "b/other.png"));
+
+        // 真正换了格式：另存为不做转码，必须拒绝
+        assert!(!lang_map::same_image_format("a/pic.png", "b/other.jpg"));
+
+        // 非图片不参与
+        assert!(!lang_map::same_image_format("a/notes.txt", "b/notes.txt"));
+    }
 }

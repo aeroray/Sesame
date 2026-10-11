@@ -95,6 +95,21 @@ pub fn image_mime(path: &str) -> Option<&'static str> {
     }
 }
 
+/// 两个路径是否属于同一种图片格式。
+///
+/// 用于「另存为」：那一步只复制字节、不做转码，因此目标扩展名必须与来源
+/// 同格式，否则会写出一个名不副实的文件（内容是 PNG 名字却叫 `.jpg`）。
+///
+/// 比较的是 `image_mime` 的结果而不是扩展名字符串，别名因此自动等价：
+/// `jpg` 与 `jpeg` 都是 `image/jpeg`，可以互相另存；
+/// 而 `png` 存成 `jpg` 会被判为不同格式。
+pub fn same_image_format(left: &str, right: &str) -> bool {
+    match (image_mime(left), image_mime(right)) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
+    }
+}
+
 /// 综合文件名与扩展名判定语言。
 pub fn detect_language(path: &str) -> (&'static str, f32) {
     let (name, ext) = split_name(path);

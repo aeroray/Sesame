@@ -284,6 +284,8 @@ export const zhCN: Messages = {
     resetTransform: '重置旋转与翻转',
     saveTitle: '保存图片',
     lossySaveWarning: '这种格式重新编码后会损失画质。仍要覆盖原文件吗？',
+    formatNotWritable:
+      '这种格式无法保存旋转结果：原文件会保持不动，改为另存一份 PNG 副本。要继续吗？',
     savedRotated: '图片已保存',
   },
 
@@ -360,6 +362,10 @@ export const zhCN: Messages = {
     revealFailed: '无法在文件夹中显示',
     encodingFailed: '无法用该编码重新打开',
     saveImageFailed: '无法保存图片',
+    imageConflict: '图片已被外部修改，无法覆盖。请选择位置保存旋转后的副本。',
+    imageTooLargeToTransform: '图片像素过多，无法旋转或翻转。',
+    imageCopyExtensionMismatch: '副本必须以 .{extension} 结尾，否则文件内容会与扩展名不符。',
+    imageCopyAlsoModified: '该位置的文件也已被外部修改，请换一个位置保存。',
     wallpaperFailed: '无法设置桌面壁纸',
   },
 

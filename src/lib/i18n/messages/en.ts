@@ -305,6 +305,8 @@ export const en = {
     saveTitle: 'Save image',
     lossySaveWarning:
       'This format loses quality when re-encoded. Overwrite the original file anyway?',
+    formatNotWritable:
+      'This format cannot store the rotation: the original file stays untouched and a PNG copy will be saved instead. Continue?',
     savedRotated: 'Image saved',
   },
 
@@ -378,6 +380,12 @@ export const en = {
     revealFailed: 'Could not show the file in its folder',
     encodingFailed: 'Could not reopen with that encoding',
     saveImageFailed: 'Could not save the image',
+    imageConflict:
+      'The image changed on disk, so it cannot be overwritten. Choose where to save a rotated copy.',
+    imageTooLargeToTransform: 'This image has too many pixels to rotate or flip.',
+    imageCopyExtensionMismatch:
+      'The copy must end in .{extension}, or its contents will not match its extension.',
+    imageCopyAlsoModified: 'That file was also changed on disk. Please choose another location.',
     wallpaperFailed: 'Could not set the desktop wallpaper',
   },
 

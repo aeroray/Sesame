@@ -182,3 +182,72 @@ export function decodeImage(dataUrl: string): Promise<HTMLImageElement> {
 export function encodeCanvas(canvas: HTMLCanvasElement, mime: string, quality = 0.92): string {
   return canvas.toDataURL(mime, quality);
 }
+
+/**
+ * 可写回的像素上限。
+ *
+ * 重绘要在 canvas 上铺开整张图：宽 × 高 × 4 字节。8000 × 8000 已达 256 MB，
+ * 而 canvas 还会有一份同样大的后备缓冲，因此在重绘之前就该拦住，
+ * 而不是等 WebView 被拖垮。与 Rust 侧 `MAX_IMAGE_BYTES` 是两回事——
+ * 那个限制的是**压缩后**的文件体积，一张 5 MB 的 PNG 完全可能是 1 亿像素。
+ */
+export const MAX_TRANSFORM_PIXELS = 64_000_000;
+
+/** 该尺寸是否值得重绘（避免把几百 MB 铺进 canvas）。 */
+export function isTransformableSize(width: number, height: number): boolean {
+  return width > 0 && height > 0 && width * height <= MAX_TRANSFORM_PIXELS;
+}
+
+/**
+ * 引擎**实际**能编码的图片格式。
+ *
+ * ## 为什么必须探测而不是查表
+ *
+ * `canvas.toDataURL(type)` 对无法编码的 `type` **不报错**，而是静默退回
+ * `image/png`。实测 WebView2（Edge 同版本）：
+ *
+ *     image/gif / image/bmp / image/x-icon / image/avif  ->  data:image/png;base64,...
+ *
+ * 因此「支持哪些格式」这件事只能问引擎本身。用一张 1 × 1 的画布探一次
+ * 并缓存结果：探测是 O(1) 且只跑一次，比维护一张会随引擎版本过期的表可靠。
+ *
+ * 判据是编码结果自称的 MIME 与请求的是否一致——不一致即说明它退回了 PNG。
+ */
+let encodableCache: ReadonlySet<string> | null = null;
+
+/** 候选格式。与 `lang_map::image_mime` 认得的格式保持一致。 */
+const PROBE_MIMES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/bmp',
+  'image/x-icon',
+  'image/avif',
+] as const;
+
+/** 探测一次并缓存引擎支持的编码格式。 */
+export function encodableMimes(): ReadonlySet<string> {
+  if (encodableCache) return encodableCache;
+
+  const found = new Set<string>();
+  try {
+    const probe = document.createElement('canvas');
+    probe.width = 1;
+    probe.height = 1;
+    for (const mime of PROBE_MIMES) {
+      if (probe.toDataURL(mime).startsWith(`data:${mime}`)) found.add(mime);
+    }
+  } catch {
+    // 探测失败（无 DOM 环境）时保守认为只能写 PNG
+    found.add('image/png');
+  }
+
+  encodableCache = found;
+  return found;
+}
+
+/** 该格式能否原格式写回。不能则重绘结果无法保存，须提前告知用户。 */
+export function canWriteBackAs(mime: string): boolean {
+  return encodableMimes().has(mime);
+}

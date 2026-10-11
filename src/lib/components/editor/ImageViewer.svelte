@@ -478,8 +478,10 @@ async function copyImage() {
 /**
  * 另存为。
  *
- * 默认文件名与扩展名取自**原文件**——用户另存一张 PNG 时，
- * 最可能想要的还是一张 PNG（这里不做格式转换，见 Rust 侧说明）。
+ * 默认文件名与扩展名取自**原文件**，并且落在**原文件所在目录**——
+ * 用户另存一张 PNG 时，最可能想要的还是在同一处再放一份 PNG。
+ * 只传裸文件名的话，对话框会打开在上次用过的任意目录，
+ * 与其它保存入口的行为也不一致（这里不做格式转换，见 Rust 侧说明）。
  */
 async function saveAs() {
   if (!tab.path) return;
@@ -487,10 +489,14 @@ async function saveAs() {
   const dot = name.lastIndexOf('.');
   const extension = dot > 0 ? name.slice(dot + 1) : undefined;
 
+  // 内部路径用正斜杠，取最后一段之前的部分即所在目录
+  const slash = tab.path.lastIndexOf('/');
+  const directory = slash > 0 ? tab.path.slice(0, slash) : undefined;
+
   try {
     const target = await save({
       title: t('image.saveAsTitle'),
-      defaultPath: name,
+      defaultPath: directory ? `${directory}/${name}` : name,
       filters: extension ? [{ name: extension.toUpperCase(), extensions: [extension] }] : undefined,
     });
     if (!target) return;

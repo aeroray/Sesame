@@ -197,9 +197,19 @@ export function setAsWallpaper(path: string): Promise<void> {
  *
  * 数据由前端 canvas 编码后给出（`data:image/*;base64,…`），
  * 这样 Rust 侧不需要任何图像编解码依赖。
+ *
+ * `expected` 是读取图片时拿到的指纹：后端写盘前会用它与磁盘复核，
+ * 文件被外部改过就返回 `conflict` 错误，由调用方提示用户。
+ *
+ * 返回写盘后的新指纹，调用方必须用它更新基线，否则下一次写回会被
+ * 后端判成「文件被外部修改」而拒绝——那正是自己刚写的内容。
  */
-export function writeImageData(path: string, dataUrl: string): Promise<void> {
-  return call<void>('write_image_data', { path, dataUrl });
+export function writeImageData(
+  path: string,
+  dataUrl: string,
+  expected?: DiskBaseline,
+): Promise<DiskBaseline> {
+  return call<DiskBaseline>('write_image_data', { path, dataUrl, expected: expected ?? null });
 }
 
 /** 读取上次会话快照。 */
