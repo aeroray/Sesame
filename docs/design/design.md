@@ -679,9 +679,13 @@ Criterion: attention competition, not usefulness.
 | Feature | Default |
 | --- | --- |
 | Indent guides | **on** |
-| Rainbow brackets | **off** |
+| Rainbow brackets | **on** |
+| Editor font size | **16px** |
+| Auto-save | **on** |
 
 Rainbow brackets (`editor/rainbow-brackets.ts`): off past 200,000 chars (O(n) precomputation); skip brackets in strings/comments — else `printf("(((")` mislevels the rest.
+
+**Editor font size default is 16px** (`state/settings.svelte.ts`). It is a default, not a fixed value: the picker offers 11–24 and any saved choice wins, so raising it affects new installs and users who never touched the setting. The document's size comes from `editorFontTheme(settings.editorFont, settings.fontSize)`; the `12px` values in `editor/themes.ts` style the search panel, not the text.
 
 ---
 

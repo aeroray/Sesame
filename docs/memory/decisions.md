@@ -118,7 +118,7 @@ Evidence:
 - user-confirmed
 
 Decision:
-Indent guides default on; rainbow brackets default off.
+Indent guides, rainbow brackets, auto-save and a 16px editor font all default on.
 
 Reason:
-Guides can be ignored, while multi-colour brackets actively compete for attention.
+Guides can be ignored while multi-colour brackets compete for attention, so brackets were off at first; the user overruled that. Font size was raised to 16px, affecting new installs and anyone who never changed it.

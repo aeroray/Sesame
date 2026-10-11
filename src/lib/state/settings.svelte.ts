@@ -22,7 +22,13 @@ const DEFAULTS: Settings = {
   theme: DEFAULT_THEME,
   /** 界面语言。默认跟随系统——绝大多数用户该用这个。 */
   language: 'system',
-  fontSize: 14,
+  /**
+   * 编辑器字号（px）。默认 16（按用户要求）。
+   *
+   * 只影响**默认值**：已经保存过设置的用户保留自己的选择，
+   * 这里改的是新装与从未调过字号的用户看到的初始值。
+   */
+  fontSize: 16,
   tabSize: 2,
   wordWrap: true,
   showLineNumbers: true,
