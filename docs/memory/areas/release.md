@@ -81,3 +81,4 @@ Check once three seconds after launch; on failure say nothing. Show a found vers
 
 Reason:
 Offline or proxy failures are not the user's problem, and the signature covers the binary, not the manifest.
+

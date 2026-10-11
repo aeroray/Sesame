@@ -94,6 +94,10 @@ Discover optional memory without loading it. Entries here are not default loads.
   - activation: path-or-explicit
   - paths: `.github/**`, `scripts/**`, `docs/releases/**`, `src/lib/state/update.svelte.ts`, `src/lib/components/common/UpdatePanel.svelte`
   - description: Load when touched files or task scope clearly match this area or the user explicitly requests it.
+- `areas/verify.md`
+  - activation: path-or-explicit
+  - paths: `docs/design/design.md`
+  - description: Load when writing or interpreting a verification harness, or when a check fails and the probe itself is in question.
 
 ## Optional rules
 `rules/` files load only through declared canonical tasks or explicit rule input.

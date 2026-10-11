@@ -295,3 +295,16 @@ Aliases:
 - Release and auto-update
 - release pipeline
 - updater
+
+## MC-SUBJ-20261111-f1a2b3c4 — Verification method
+
+Status: active
+Kind: concept
+Canonical-Ref: feature:sesame-verification
+Evidence:
+- repo:docs/design/design.md
+
+Aliases:
+- Verification method
+- how to verify
+- probe harness
