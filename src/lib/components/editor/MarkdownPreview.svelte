@@ -13,6 +13,7 @@ import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { ScrollArea } from '$lib/components/ui/scroll-area';
 import { t } from '$lib/i18n';
+import { notify } from '$lib/state/status.svelte';
 import { logError } from '$lib/utils/log';
 
 interface Props {
@@ -28,6 +29,21 @@ marked.use({ gfm: true, breaks: false, async: false });
  *
  * DOMPurify 会剔除 script、事件属性（onerror 等）与 javascript: 协议，
  * 同时保留正常的排版标签与链接。
+ *
+ * ## 为什么必须显式禁掉 `style`
+ *
+ * DOMPurify 3.x 的默认属性白名单**包含 `style`**，而且它还在
+ * `DEFAULT_URI_SAFE_ATTRIBUTES` 里——也就是说这个属性的值既不校验 URI、
+ * 也不做 CSS 净化，原样保留。于是下面这段 Markdown 会被完整渲染出来：
+ *
+ *     <div style="position:fixed;inset:0;z-index:2147483647;background:#fff"></div>
+ *
+ * 它会在整个窗口（含标题栏、标签栏、状态栏）上盖一层不透明遮罩，
+ * 伪装成「未保存 / 另存为」之类的界面骗用户点击。这不需要脚本，
+ * 因此 CSP 拦不住——CSP 管的是脚本执行，不管页面自己怎么排版。
+ *
+ * 另外两个属性同理：`srcdoc`（iframe 内容，虽然 iframe 已被禁）与
+ * `formaction`（表单提交目标）。一并禁掉，避免将来放宽标签白名单时漏掉。
  */
 const html = $derived.by(() => {
   try {
@@ -35,8 +51,14 @@ const html = $derived.by(() => {
     return DOMPurify.sanitize(raw, {
       USE_PROFILES: { html: true },
       // 明确禁止这些危险标签，即使 DOMPurify 默认已处理也写清楚意图
-      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+      FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'link', 'meta', 'base'],
+      /*
+       * `style` 是这里唯一真正起作用的一条：其余 on* 属性 DOMPurify
+       * 默认就会全部剥掉，写出来只是文档。`style` 不一样——它默认被放行。
+       */
+      FORBID_ATTR: ['style', 'srcdoc', 'formaction', 'srcset'],
+      // Markdown 里用不到 data-*，关掉可以少一类注入面
+      ALLOW_DATA_ATTR: false,
     });
   } catch (err) {
     logError('MarkdownPreview', 'Markdown 渲染失败', err);
@@ -86,8 +108,18 @@ $effect(() => {
      */
     if (!/^https?:\/\//i.test(href)) return;
 
+    /*
+     * 失败时**必须告诉用户**，不能只写日志。
+     *
+     * 这里曾经只有 `logError`，而 `logError` 在发行版里是空实现
+     * （见 `utils/log.ts` 的 `ENABLED = import.meta.env.DEV`）——
+     * 于是「点击链接没反应」在正式版里既没有界面反馈，也没有日志，
+     * 完全无法定位。而这类失败是有真实来源的：`opener` 插件的
+     * `open_url` 要求 capability 里声明 URL scope，漏配就会被拒。
+     */
     void openUrl(href).catch((err) => {
       logError('MarkdownPreview', '打开链接失败', err);
+      notify.error(t('error.openLinkFailed'));
     });
   };
 
