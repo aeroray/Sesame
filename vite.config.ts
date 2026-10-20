@@ -31,8 +31,20 @@ export default defineConfig({
     },
   },
 
-  // 让前端能读取 TAURI_ 前缀的环境变量
-  envPrefix: ['VITE_', 'TAURI_'],
+  /*
+   * 只把 `VITE_` 前缀的变量暴露给前端。
+   *
+   * 早先这里还带了 `TAURI_`，理由是「前端要读 TAURI_ 变量」——实际上前端
+   * 一个都没读，需要 `TAURI_DEV_HOST` 的是本配置文件自己（走 `process.env`）。
+   * 而 `TAURI_` 前缀会顺带把 `TAURI_SIGNING_PRIVATE_KEY` 之类**构建期密钥**
+   * 变成 `import.meta.env` 的候选成员：只要将来有人在代码里写一次
+   * `const env = import.meta.env`（诊断日志、版本展示都可能这么写），
+   * 签名私钥就会被打进发行包——等于把更新通道的钥匙随安装包一起发出去，
+   * 而代码审查里几乎看不出来。
+   *
+   * 收紧到 `VITE_` 之后，这类变量在构建期就不存在，写错也读不到。
+   */
+  envPrefix: ['VITE_'],
 
   build: {
     // WebView2 与 WKWebView 都支持 esnext

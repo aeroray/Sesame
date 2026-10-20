@@ -48,28 +48,49 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
 
+    # 发布环境的门禁位。
+    #
+    # 首次使用时 GitHub 会自动创建名为 `release` 的环境（默认无规则，
+    # 行为与不加这一行相同）。在仓库 Settings > Environments 里给它配上
+    # 「Required reviewers」或「限制可部署分支」之后，这一步就成了人工门禁——
+    # 不必再改 workflow。标签本身不受分支保护约束，因此这道门禁是
+    # 「一次误推标签不会立刻对全体用户生效」的最后一道保险。
+    environment: release
+
     steps:
+      # 所有第三方 action 一律固定到**完整提交 SHA**。
+      #
+      # 这个 job 手里有 `contents: write` 和更新签名私钥：一个被上游
+      # 重新指向的 tag（账号被盗、仓库易主、恶意发布）就能在这里执行任意
+      # 代码，读走私钥并发布一个客户端会静默安装的「更新」。浮动 tag
+      # （`@v4`、`@stable`）意味着同一份 workflow 在不同时间跑的是不同代码，
+      # 事后也无法证明发布产物对应哪一份 action 源码。
+      #
+      # 升级时改 SHA 并在注释里同步版本号；建议开启 Dependabot 的
+      # github-actions 生态，让升级变成可审查的 PR。
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.tag || github.ref }}
+          # 需要完整历史才能验证标签提交确实在 main 上（见下方步骤）
+          fetch-depth: 0
 
       # pnpm 必须在 setup-node 之前安装，否则 setup-node 的
       # `cache: pnpm` 找不到 pnpm 而无法定位缓存目录。
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 9
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
 
       # 版本由 rust-toolchain 决定；这里只需要 stable。
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Add Apple Silicon target
         if: matrix.platform == 'macos-latest'
@@ -78,12 +99,22 @@ jobs:
       # Cargo 工作区在 src-tauri 而不是仓库根，必须显式指定，
       # 否则缓存路径算错、每次都全量重编（约 10 分钟）。
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
         with:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
+
+      # 拒绝「标签指向的提交不在 main 上」的发布。
+      #
+      # 标签不受分支保护约束：能推标签的人未必能推 main。一个指向未合并
+      # 分支的标签会直接产出一个已签名、非草稿、客户端立即升级的版本。
+      # 这里要求标签提交必须是 origin/main 的祖先。
+      - name: Ensure the tag is on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD
 
       # 校验标签与 package.json / Cargo.toml 一致，且 tauri.conf.json
       # 仍指向 package.json 而不是写死版本号。
@@ -93,8 +124,16 @@ jobs:
       #
       # 带 --check：CI 里只读不写。若让它顺手改文件，仓库里就会出现
       # 未提交的改动，「构建产物对应哪个提交」随之说不清。
+      #
+      # 标签经 `env:` 传入再在 shell 里展开，**不要**直接把
+      # `${{ inputs.tag || github.ref_name }}` 写进 run 行：那是把
+      # 用户可控的字符串拼进 shell 脚本，双引号挡不住 `$(...)`、反引号、
+      # `;` 和 `&`——git 允许 `v1.0.0$(id)` 这样的标签名。脚本里的校验
+      # 发生在 shell 已经解析完这一行之后，来不及。
       - name: Verify release version
-        run: node scripts/version.mjs --check "${{ inputs.tag || github.ref_name }}"
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: node scripts/version.mjs --check "$RELEASE_TAG"
 
       # 生成 .github/tauri-release.conf.json，把更新源指向当前仓库。
       # 该文件不入库（见 .gitignore），因为它是按 CI 环境推导出来的。
@@ -103,9 +142,13 @@ jobs:
 
       # 更新说明来自 docs/releases/<tag>.md。缺失或为空会让这一步失败，
       # 这是刻意的：宁可发不出去，也不要发一个没有说明的版本。
+      #
+      # 与上一步同理：标签走 `env:` 而不是直接拼进 run 行。
       - name: Load release notes
         id: notes
-        run: node scripts/load-release-notes.mjs "${{ inputs.tag || github.ref_name }}"
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: node scripts/load-release-notes.mjs "$RELEASE_TAG"
 
       - name: Build and publish release
         # 固定到 v1 的具体提交，而不是用 @v0 / @v1 这类浮动标签：
