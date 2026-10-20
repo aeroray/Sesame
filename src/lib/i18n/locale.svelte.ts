@@ -21,14 +21,31 @@ export const locale = $state<{ current: Locale }>({
   current: detectSystemLocale(),
 });
 
+/**
+ * 把当前语言同步到 `<html lang>`。
+ *
+ * 这个属性决定屏幕阅读器用哪种语音朗读、也影响浏览器的语言相关行为
+ * （拼写检查、CJK 与拉丁字形的取舍、字体回退）。`index.html` 里写死的是
+ * `zh-CN`，而界面可以切到英文——不跟着改的话，英文界面会被中文语音朗读。
+ *
+ * 与 `applyTheme` 写 `<html>` 上的 `dark` 类是同一套路数。
+ */
+function syncDocumentLanguage(next: Locale): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = next;
+}
+
 /** 切换语言。 */
 export function setLocale(next: Locale): void {
   locale.current = next;
+  syncDocumentLanguage(next);
 }
 
 /** 把系统语言应用为当前语言（仅在用户没显式选过时调用）。 */
 export function applySystemLocale(): void {
-  locale.current = detectSystemLocale();
+  const next = detectSystemLocale();
+  locale.current = next;
+  syncDocumentLanguage(next);
 }
 
 /**

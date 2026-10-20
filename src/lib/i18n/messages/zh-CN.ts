@@ -320,6 +320,7 @@ export const zhCN: Messages = {
     crlf: 'CRLF（Windows）',
     cr: 'CR（旧版 Mac）',
     changed: '换行风格已改为 {style}，保存后生效',
+    needFullLoad: '请先全部加载：文件还有一部分在磁盘上，此时无法转换换行风格。',
   },
 
   dialog: {
@@ -328,6 +329,8 @@ export const zhCN: Messages = {
 
     conflictTitle: '文件已被外部修改',
     conflictMessage: '「{name}」已被其他程序修改。',
+    conflictPartialMessage:
+      '「{name}」已被其他程序修改。它只加载了一部分，无法覆盖写入——可以重新加载磁盘，或另存一份副本。',
     conflictOverwrite: '覆盖磁盘',
     conflictReload: '加载磁盘',
     conflictSaveAs: '另存为',
@@ -367,6 +370,8 @@ export const zhCN: Messages = {
     imageCopyExtensionMismatch: '副本必须以 .{extension} 结尾，否则文件内容会与扩展名不符。',
     imageCopyAlsoModified: '该位置的文件也已被外部修改，请换一个位置保存。',
     wallpaperFailed: '无法设置桌面壁纸',
+    openLinkFailed: '无法打开该链接',
+    decodeImageFailed: '无法解码图片',
   },
 
   time: {

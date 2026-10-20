@@ -33,7 +33,7 @@ import { refreshRecents } from '$lib/state/recents.svelte';
 import { resumeSessionSave, saveSessionNow, scheduleSessionSave } from '$lib/state/session.svelte';
 import { loadSettings, settings } from '$lib/state/settings.svelte';
 import { notify } from '$lib/state/status.svelte';
-import { activateTab, markDirty, tabs } from '$lib/state/tabs.svelte';
+import { activateTab, markDirty, tabDisplayName, tabs } from '$lib/state/tabs.svelte';
 import { checkForUpdateOnStartup } from '$lib/state/update.svelte';
 import { documentTasks } from '$lib/utils/async';
 import { registerHotkeys } from '$lib/utils/hotkeys';
@@ -320,7 +320,10 @@ $effect(() => {
         handler: () => cycleTab(-1),
       },
     ],
-    () => !closing,
+    // 关窗流程与设置弹层期间都不接受全局快捷键：
+    // 前者要保证关闭流程不被打断，后者要保证焦点在弹层里时按键不被抢走
+    // （输入框/对话框的让路在 `registerHotkeys` 内部还有一道）。
+    () => !closing && !settingsOpen,
   );
   return unregister;
 });
@@ -445,7 +448,10 @@ $effect(() => {
  * （窗口内看得到标签上的圆点，任务栏上只有这个字符能传达）。
  */
 $effect(() => {
-  const title = active ? `${active.name}${active.dirty ? ' •' : ''}` : 'Sesame';
+  // 走 `tabDisplayName()` 而不是 `tab.name`：未命名标签与草稿恢复的标签
+  // 在界面上一律用本地化文案，`tab.name` 只是语言中立的占位值
+  // （它同时是「另存为」的默认文件名，不能存翻译后的文字）。
+  const title = active ? `${tabDisplayName(active)}${active.dirty ? ' •' : ''}` : 'Sesame';
   getCurrentWindow()
     .setTitle(title)
     .catch(() => {});
@@ -491,10 +497,21 @@ $effect(() => {
         }
 
         if (settings.autoSave) {
-          // 自动保存开启：把防抖中的写入立刻落盘，不必再问用户
+          // 自动保存开启：把防抖中的写入立刻落盘
           await flushAutoSave();
-        } else if (tabs.items.some((t) => t.dirty)) {
-          // 未开自动保存且有未保存内容：走确认流程
+        }
+
+        /*
+         * 落盘之后仍可能有**没有自动保存出口**的脏标签，必须走确认流程。
+         *
+         * `flushAutoSave` 只处理「有路径的文本标签」：图片的旋转 / 翻转
+         * 没有任何自动写回路径（`actions/save-image.ts` 刻意不自动保存），
+         * 有损解码的只读标签也写不进去。早先这里写成 `if/else if`，
+         * 于是开了自动保存（默认值）时，一个转过的图片标签会被**直接丢弃**，
+         * 连一句提示都没有——而 Ctrl+W 走的是 `close-tab.ts` 的确认流程，
+         * 同一个动作在两条关闭路径上结果不同。
+         */
+        if (tabs.items.some((t) => t.dirty)) {
           const closed = await requestCloseAll(false);
           // 用户取消或保存失败时中止关闭
           if (!closed) {

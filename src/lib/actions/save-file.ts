@@ -171,17 +171,42 @@ async function writeToPath(
     const progress = getProgress(tab.id);
     if (progress && !progress.complete) {
       initProgress(tab.id, result.size, result.prefixBytes ?? progress.loadedBytes);
+      // 前缀 + 尾部拼完，若尾部为空，这个文件其实已经全部在编辑器里了
+      setTruncated(tab.id, result.prefixBytes !== null && result.prefixBytes < result.size);
+    } else {
+      // 全文已在编辑器里（用户点了「全部加载」或本来就很小）：不再有未加载的尾部。
+      // 不清掉的话状态栏会一直挂着「大文件模式」徽标，与磁盘上的实际情况不符。
+      setTruncated(tab.id, false);
     }
     tab.baseline = { size: result.size, modifiedNs: result.modifiedNs };
 
     return true;
   } catch (err) {
     if (isConflict(err)) {
+      /*
+       * 后台自动保存遇到冲突**不能弹框**。
+       *
+       * `autoSaveTab` 的契约是「不弹提示」（见 `autoSaveTab` 的说明）：
+       * 用户正在打字，突然冒出一个三选对话框已经是打扰；更糟的是
+       * `resolveConflict` 的兜底分支是「另存为」——用户随手关掉对话框，
+       * 就会弹出一个他根本没要求的系统另存为窗口。
+       *
+       * 这里只留一条状态栏提示，保留脏标记与草稿，等用户下次显式
+       * Ctrl+S 时再决定覆盖 / 加载磁盘 / 另存为。
+       */
+      if (opts.silent) {
+        notify.warning(t('status.unsavedStillInEditor'));
+        return false;
+      }
       return resolveConflict(tab, target, content, opts.version);
     }
 
     // 写不进去（只读、被占用、无权限）时给一条出路，而不是只报错就结束
     if (isWriteBlocked(err)) {
+      if (opts.silent) {
+        notify.warning(t('status.unsavedStillInEditor'));
+        return false;
+      }
       return handleWriteBlocked(tab, content, err, opts.version);
     }
 
@@ -247,10 +272,15 @@ function isConflict(err: unknown): boolean {
 /**
  * 处理外部修改冲突。
  *
- * 三个出口，对应三种真实意图：
+ * 出口对应真实意图：
  * - **覆盖磁盘**：以我的内容为准（会丢掉别人的改动，因此措辞要明确）
  * - **加载磁盘**：放弃我的修改，用磁盘上的最新内容重新打开
  * - **另存为**：两边都保留，最安全，也是默认推荐
+ *
+ * 大文件模式下**不提供「覆盖」**：编辑器只持有前缀，写回时后端要从旧文件的
+ * 加载边界处把尾部原样拼回来。文件既然已被外部改动，那个偏移就不再指向
+ * 「当初没读进来的那一段」，拼出来的结果是「我的前缀 + 别人的尾部」。
+ * 后端也会拒绝这种保存，因此这里干脆不把它作为一个可选项给出。
  */
 async function resolveConflict(
   tab: Tab,
@@ -259,11 +289,31 @@ async function resolveConflict(
   version: number,
 ): Promise<boolean> {
   const name = target.split('/').pop() ?? tab.name;
+  const partial = prefixBytesFor(tab) !== undefined;
 
-  // 三个按钮文案先取到局部变量，弹框与比对共用（见 askUnsaved 的说明）
+  // 按钮文案先取到局部变量，弹框与比对共用（见 askUnsaved 的说明）
   const btnOverwrite = t('dialog.conflictOverwrite');
   const btnReload = t('dialog.conflictReload');
   const btnSaveAs = t('dialog.conflictSaveAs');
+
+  /*
+   * 大文件只有两个出口。
+   *
+   * 「覆盖」在分块模式下**不是一个可行的选项**：编辑器只持有前缀，
+   * 写回时后端要从旧文件的加载边界处把尾部拼回来，而文件已被外部改动，
+   * 那个偏移不再指向当初没读进来的那一段。后端会拒绝这种保存
+   * （见 `commands/fs.rs` 的 `splicing` 判断），所以这里也不该把它
+   * 摆在用户面前——点了只会得到一次失败。
+   */
+  if (partial) {
+    const answer = await message(t('dialog.conflictPartialMessage', { name }), {
+      title: t('dialog.conflictTitle'),
+      kind: 'warning',
+      buttons: { ok: btnReload, cancel: btnSaveAs },
+    });
+    if (answer === btnReload) return reloadFromDisk(tab, target);
+    return performSaveAs(tab, content, version);
+  }
 
   const answer = await message(t('dialog.conflictMessage', { name }), {
     title: t('dialog.conflictTitle'),

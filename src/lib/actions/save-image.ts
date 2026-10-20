@@ -38,7 +38,7 @@ import { t } from '$lib/i18n';
 import * as ipc from '$lib/ipc/fs';
 import { clearTransform, getImage, getTransform, setImageData } from '$lib/state/images.svelte';
 import { notify } from '$lib/state/status.svelte';
-import { markDirty } from '$lib/state/tabs.svelte';
+import { editVersion, markDirty } from '$lib/state/tabs.svelte';
 import type { ImagePayload, Tab } from '$lib/state/types';
 import {
   applyTransform,
@@ -290,6 +290,16 @@ export async function saveImage(tab: Tab): Promise<boolean> {
      */
     const dataUrl = encodeCanvas(canvas, payload.mime);
 
+    /*
+     * 记下写入前的编辑版本。
+     *
+     * 与文本保存同一套防护（见 `actions/save-file.ts` 的 `versionBefore`）：
+     * 写入是一次 IPC 往返，用户完全可能在等待期间又按了一次旋转。
+     * 早先这里无条件清变换、清脏标记，于是「等待期间那次旋转」被抹掉，
+     * 标签却显示为已保存——用户以为改动都落盘了。
+     */
+    const version = editVersion(tab.id);
+
     const newBaseline = await ipc.writeImageData(tab.path, dataUrl, payload.baseline);
 
     /*
@@ -308,6 +318,17 @@ export async function saveImage(tab: Tab): Promise<boolean> {
       baseline: newBaseline,
       size: Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75),
     });
+
+    if (editVersion(tab.id) !== version) {
+      /*
+       * 写入期间用户又改了变换：缓存与基线照常更新（磁盘上确实是这张图），
+       * 但**不能**清掉变换与脏标记——那会让用户刚做的那次旋转消失。
+       * 保留脏标记，下一次保存会把新的变换叠上去。
+       */
+      notify.info(t('status.savedWithNewEdits'));
+      return true;
+    }
+
     clearTransform(tab.id);
     markDirty(tab.id, false);
 

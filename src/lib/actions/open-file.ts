@@ -21,9 +21,21 @@ import {
   findByPath,
   pathKey,
 } from '$lib/state/tabs.svelte';
+import { ImageDecodeError } from '$lib/utils/image-transform';
 import { fileFilters, IMAGE_EXTENSIONS } from '$src/constants';
-/** 提示错误信息。 */
+
+/**
+ * 提示错误信息。
+ *
+ * 已知的错误类型先在这里翻译，**不要**直接显示 `err.message`：
+ * 内部抛出的错误消息是中文的（写给开发者看的），直接显示会在英文界面里
+ * 冒出一句中文。未知错误才回落到 `message`，那是后端给的、已经本地化过。
+ */
 export function reportError(err: unknown, fallback = t('error.generic')): void {
+  if (err instanceof ImageDecodeError) {
+    notify.error(t('error.decodeImageFailed'));
+    return;
+  }
   const message =
     typeof err === 'object' && err !== null && 'message' in err
       ? String((err as { message: unknown }).message)

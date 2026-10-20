@@ -334,6 +334,8 @@ export const en = {
     crlf: 'CRLF (Windows)',
     cr: 'CR (legacy Mac)',
     changed: 'Line endings set to {style} — saved on next save',
+    needFullLoad:
+      'Load the whole file first — line endings cannot be converted while part of it is still on disk.',
   },
 
   /** 需要用户**做决定**的原生对话框。 */
@@ -343,6 +345,8 @@ export const en = {
 
     conflictTitle: 'File changed on disk',
     conflictMessage: '“{name}” was modified by another program.',
+    conflictPartialMessage:
+      '“{name}” was modified by another program. It is only partially loaded, so it cannot be overwritten — reload it or save a copy.',
     conflictOverwrite: 'Overwrite',
     conflictReload: 'Reload from disk',
     conflictSaveAs: 'Save As',
@@ -387,6 +391,8 @@ export const en = {
       'The copy must end in .{extension}, or its contents will not match its extension.',
     imageCopyAlsoModified: 'That file was also changed on disk. Please choose another location.',
     wallpaperFailed: 'Could not set the desktop wallpaper',
+    openLinkFailed: 'Could not open that link',
+    decodeImageFailed: 'Could not decode the image',
   },
 
   /** 相对时间（最近文件列表）。 */

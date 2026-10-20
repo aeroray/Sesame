@@ -24,7 +24,7 @@ import {
 } from '$lib/components/ui/tooltip';
 import { t } from '$lib/i18n';
 import { recents, removeRecent } from '$lib/state/recents.svelte';
-import { activateTab, tabs } from '$lib/state/tabs.svelte';
+import { activateTab, tabDisplayName, tabs } from '$lib/state/tabs.svelte';
 import { cn } from '$lib/utils/cn';
 import { fileIcon } from '$lib/utils/file-icon';
 import { formatRelativeTime } from '$lib/utils/format';
@@ -92,7 +92,7 @@ const otherRecents = $derived(visibleRecents.filter((r) => !openPaths.has(r.path
                   title={tab.path ?? tab.name}
                 >
                   <TabIcon class="size-3.5 shrink-0 opacity-70" />
-                  <span class="min-w-0 flex-1 truncate">{tab.name}</span>
+                  <span class="min-w-0 flex-1 truncate">{tabDisplayName(tab)}</span>
                   {#if tab.dirty}
                     <span class="size-1.5 shrink-0 rounded-full bg-brand-500"></span>
                   {:else if tab.sleep === 'deep'}

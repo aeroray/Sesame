@@ -24,13 +24,16 @@ export async function restoreSession(): Promise<number> {
   let restored = 0;
 
   /*
-   * 逆序恢复。
+   * 按快照原顺序恢复。
    *
-   * 新标签一律 `unshift` 到数组最前（与主流编辑器一致），
-   * 因此按原顺序逐个打开会把标签栏整个颠倒过来。
-   * 从后往前打开，最终顺序才与保存时一致。
+   * 早先这里写的是「逆序恢复」，理由是「新标签一律 `unshift` 到数组最前」。
+   * 那句已经过时了：四条创建路径（空白 / 打开 / 草稿 / 图片）现在都是
+   * `push` 到末尾（见 `state/tabs.svelte.ts` 的 `createBlankTab` 等），
+   * 而 `snapshot()` 存的正是标签栏顺序。继续逆序打开，每次启动都会把
+   * 标签栏整个翻过来——`[A, B, C]` 恢复成 `[C, B, A]`。
+   * 它不会报错，只是顺序莫名其妙，因此很难被发现。
    */
-  for (const entry of [...saved.tabs].reverse()) {
+  for (const entry of saved.tabs) {
     // 已打开（例如通过命令行传入）的跳过，避免重复标签
     if (findByPath(entry.path)) continue;
 

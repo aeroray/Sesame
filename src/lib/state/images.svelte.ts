@@ -171,6 +171,20 @@ export function retainImage(tabId: string): void {
   trimCache();
 }
 
+/**
+ * 取消「钉住」。
+ *
+ * `retainImage` 由查看器在标签被激活时调用，用来保证**正在看的那张**不会被
+ * 缓存清理踢掉。但早先没有任何地方解除它：`releaseImage` 只删数据、不动
+ * `retained`，于是最近看过的那张图（最大约 27 MB base64）会永久占着额度，
+ * 其它图片的实际可用缓存被压缩。
+ *
+ * 查看器卸载 / 标签关闭时调用这里。
+ */
+export function releaseRetained(tabId: string): void {
+  if (retained === tabId) retained = undefined;
+}
+
 async function loadImage(tabId: string, path: string): Promise<void> {
   try {
     const payload = await ipc.readImage(path);
@@ -187,6 +201,8 @@ async function loadImage(tabId: string, path: string): Promise<void> {
 
 /** 释放某个标签的图片。 */
 export function releaseImage(tabId: string): void {
+  // 钉住的记录也要一并解除，否则已关闭的标签仍占着缓存额度
+  releaseRetained(tabId);
   // 标记取消，防止在途请求回来后重新写入
   if (loading[tabId]) cancelled.add(tabId);
   else cancelled.delete(tabId);

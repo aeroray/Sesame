@@ -162,6 +162,22 @@ export function applyTransform(
   return canvas;
 }
 
+/**
+ * 图片解码失败。
+ *
+ * 单独定义一个错误类型而不是抛 `new Error('无法解码图片')`：
+ * `reportError` 会优先显示 `err.message`，于是一句中文字符串会出现在
+ * 英文界面里。带 `code` 的错误让 UI 边界自己翻译。
+ */
+export class ImageDecodeError extends Error {
+  readonly code = 'image_decode_failed' as const;
+
+  constructor() {
+    super('image decode failed');
+    this.name = 'ImageDecodeError';
+  }
+}
+
 /** 把 data URL 解码成可绘制的图片元素。 */
 export function decodeImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -169,7 +185,7 @@ export function decodeImage(dataUrl: string): Promise<HTMLImageElement> {
     // 同名导入遮蔽（见 utils/clipboard.ts 里的同类注释）。
     const img = document.createElement('img');
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('无法解码图片'));
+    img.onerror = () => reject(new ImageDecodeError());
     img.src = dataUrl;
   });
 }

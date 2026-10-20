@@ -38,6 +38,7 @@ import {
   getImageDimensions,
   getTransform,
   isLoading,
+  releaseRetained,
   retainImage,
   setImageDimensions,
   setTransform,
@@ -319,6 +320,8 @@ $effect(() => {
     retainImage(id);
     ensureImage(id, path).catch((err) => reportError(err, t('error.readImageFailed')));
   });
+  // 离开这个标签时解除钉住，否则这张图会永久占住缓存额度
+  return () => releaseRetained(id);
 });
 
 $effect(() => {

@@ -111,11 +111,20 @@ $effect(() => {
 // 挂载 / 重建：依赖 sleep 与 container，休眠唤醒或切回编辑模式后自动重建
 $effect(() => {
   const el = container;
-  // 读取 sleep 建立依赖：休眠被唤醒时重新执行本 effect
-  const sleepState = tab.sleep;
+  /*
+   * 只依赖「是否深休眠」，而不是整个 `tab.sleep`。
+   *
+   * `shallow` 档按 `hibernation.svelte.ts` 的说明**只打标记、不释放任何资源**
+   * （作用是让侧栏提示「这个标签闲置了」）。但早先这里读的是 `tab.sleep`，
+   * 于是 30 分钟闲置后从 `none` 变成 `shallow` 也会让 effect 重跑：
+   * 先把整个文档 `toString()` 出来、导出撤销历史、销毁 `EditorView`，
+   * 再重建一次并把正文与历史灌回去。内容是安全的（顺序是对的），
+   * 但这是纯粹的白工，而且对几 MB 的文件会有可感知的卡顿。
+   */
+  const deepSleep = tab.sleep === 'deep';
   // 图片标签没有编辑器；预览模式下也没有容器。
   // 切回编辑模式时 container 变化会重跑本 effect。
-  if (tab.kind === 'image' || sleepState === 'deep' || !el) return;
+  if (tab.kind === 'image' || deepSleep || !el) return;
 
   let disposed = false;
 

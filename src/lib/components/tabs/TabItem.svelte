@@ -32,7 +32,7 @@ import {
 } from '$lib/components/ui/context-menu';
 import { LANGUAGE_LABELS } from '$lib/editor/languages';
 import { t } from '$lib/i18n';
-import { tabs } from '$lib/state/tabs.svelte';
+import { tabDisplayName, tabs } from '$lib/state/tabs.svelte';
 import type { Tab } from '$lib/state/types';
 import { cn } from '$lib/utils/cn';
 import { fileIcon } from '$lib/utils/file-icon';
@@ -161,7 +161,7 @@ const hasOtherTabs = $derived(tabs.items.length > 1);
         <TabIcon class="size-3 shrink-0 opacity-60" />
 
         <span class="min-w-0 flex-1 truncate" title={tab.path ?? LANGUAGE_LABELS[tab.language]}>
-          {tab.name}
+          {tabDisplayName(tab)}
         </span>
 
         <!-- 关闭按钮：未修改时直接显示；已修改时显示圆点，悬停变关闭 -->
@@ -169,8 +169,8 @@ const hasOtherTabs = $derived(tabs.items.length > 1);
           type="button"
           class="flex size-4 shrink-0 items-center justify-center rounded-xs text-content-faint transition-colors hover:bg-border-subtle hover:text-content"
           aria-label={tab.dirty
-            ? t('tab.closeDirty', { name: tab.name })
-            : t('tab.close', { name: tab.name })}
+            ? t('tab.closeDirty', { name: tabDisplayName(tab) })
+            : t('tab.close', { name: tabDisplayName(tab) })}
           onclick={(e) => {
             e.stopPropagation();
             onclose(tab);

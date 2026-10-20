@@ -28,6 +28,7 @@
 
 import { Image } from '@tauri-apps/api/image';
 import { readText, writeImage, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { ImageDecodeError } from '$lib/utils/image-transform';
 
 /**
  * 读剪贴板文本。
@@ -165,7 +166,7 @@ function loadImageElement(dataUrl: string): Promise<HTMLImageElement> {
      */
     const img = document.createElement('img');
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('无法解码图片'));
+    img.onerror = () => reject(new ImageDecodeError());
     img.src = dataUrl;
   });
 }

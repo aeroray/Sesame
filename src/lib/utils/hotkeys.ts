@@ -130,6 +130,30 @@ function matches(event: KeyboardEvent, keys: string): boolean {
 }
 
 /**
+ * 这些元素里，全局快捷键必须让路。
+ *
+ * 输入框、文本域、下拉框、可编辑区域要收下自己的按键（否则 `Ctrl+A`、
+ * `Ctrl+W` 之类会在用户打字时抢走动作）；`role="dialog"` 一类是模态层，
+ * 它开着的时候用户的心智在弹层里，快捷键不该去操作背后的文档。
+ */
+const EDITABLE_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+  '[role="menu"]',
+  '[role="listbox"]',
+].join(', ');
+
+/** 事件目标是否处于「该自己处理按键」的上下文里。 */
+function inEditableContext(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.closest(EDITABLE_SELECTOR) !== null;
+}
+
+/**
  * 注册全局快捷键。
  *
  * 返回注销函数，供组件在销毁时调用。
@@ -140,6 +164,17 @@ export function registerHotkeys(bindings: HotkeyBinding[], enabled = () => true)
     // 否则 Ctrl+/ 会既切换注释又打开快捷键面板——CodeMirror 绑定了 Mod-/，
     // 且它不调用 stopPropagation，事件仍会冒泡到这里。
     if (event.defaultPrevented || event.isComposing || !enabled()) return;
+
+    /*
+     * 焦点在输入框 / 对话框里时让路。
+     *
+     * 早先这里只看 `enabled()`，而 Shell 传进去的是「窗口是否正在关闭」，
+     * 与设置对话框无关。结果：设置面板打开、焦点在字体搜索框里时，
+     * `Ctrl+W` 会关掉**背后**的标签（还可能弹出未保存确认盖在设置上），
+     * `Ctrl+S` 会把背后的文件写盘，`Ctrl+N` 会凭空多出标签。
+     * 用户此刻的注意力在弹层里，这些动作都不该发生。
+     */
+    if (inEditableContext(event.target)) return;
 
     for (const binding of bindings) {
       if (!matches(event, binding.keys)) continue;

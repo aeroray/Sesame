@@ -42,12 +42,30 @@ export function lineEndingLabel(ending: LineEnding): string {
  *
  * 返回是否真的改变了。相同风格时什么都不做——
  * 否则会把一个未修改的标签平白标成脏。
+ *
+ * ## 大文件为什么不能转
+ *
+ * 分块模式下编辑器只持有前缀，尾部仍在磁盘上。保存时后端只对**前缀**
+ * 重新编码，尾部是按原字节直接复制的（`commands/fs.rs` 的
+ * `save_large_file_from_sync`）。若在这里改了换行风格，写出来的就是
+ * 「前缀是新风格、尾部是旧风格」的混合文件——正是本项目打开时
+ * 会主动归一化掉的那种状态，也会让之后每次 diff 都面目全非。
+ *
+ * 早先这个函数的注释写着「后端会把前缀与尾部拼起来再统一换行」，
+ * 那是错的。现在改为拒绝并说明原因，让用户先「全部加载」。
+ * Rust 侧也加了同样的检查（`save_file` 里带 `prefix_bytes` 时校验
+ * 编码与换行风格未变），作为第二道。
  */
 export function setLineEnding(tab: Tab, ending: LineEnding): boolean {
   // 二进制文件不能保存，改换行没有意义
   if (tab.encoding === 'binary') return false;
 
   if (tab.lineEnding === ending) return false;
+
+  if (tab.truncated) {
+    notify.warning(t('lineEnding.needFullLoad'));
+    return false;
+  }
 
   tab.lineEnding = ending;
 
