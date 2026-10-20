@@ -255,3 +255,19 @@ export function draftList(): Promise<Draft[]> {
 export function draftClear(): Promise<void> {
   return call<void>('draft_clear');
 }
+
+/**
+ * 读取设置的原始 JSON 文本。
+ *
+ * 返回 `null` 表示「没有已保存的设置」——文件不存在、读不出来，
+ * 或者路径解析失败。校验与默认值合并由 `utils/settings.ts` 负责，
+ * Rust 侧只做读写，因此这里拿到的是不可信文本，必须照此处理。
+ */
+export function settingsLoad(): Promise<string | null> {
+  return call<string | null>('settings_load');
+}
+
+/** 写入设置（前端序列化好的 JSON 文本）。 */
+export function settingsSave(text: string): Promise<void> {
+  return call<void>('settings_save', { text });
+}

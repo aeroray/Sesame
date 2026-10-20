@@ -5,8 +5,8 @@
  * 因此这里导出的是一个 `$state` 对象，通过改属性来触发响应。
  */
 
-import { load, type Store } from '@tauri-apps/plugin-store';
 import { applySystemLocale, resolveLocale, setLocale } from '$lib/i18n';
+import * as ipc from '$lib/ipc/fs';
 import { applyTheme } from '$lib/state/theme.svelte';
 import type { Settings } from '$lib/state/types';
 import { DEFAULT_THEME, THEMES } from '$lib/theme/palettes';
@@ -14,7 +14,7 @@ import { KeyedTaskQueue } from '$lib/utils/async';
 import { CJK_FALLBACK_STACK, quoteFont } from '$lib/utils/fonts';
 import { logError } from '$lib/utils/log';
 import { validateSettings } from '$lib/utils/settings';
-import { FONT_SIZE_MAX, FONT_SIZE_MIN, SETTINGS_KEY, SETTINGS_STORE_FILE } from '$src/constants';
+import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '$src/constants';
 
 /** 默认设置。 */
 const DEFAULTS: Settings = {
@@ -59,12 +59,11 @@ const DEFAULTS: Settings = {
 /** 响应式设置对象。 */
 export const settings = $state<Settings>({ ...DEFAULTS });
 
-let store: Store | null = null;
 let loaded = false;
 const writes = new KeyedTaskQueue();
 
 /** 首次加载时把持久化值与默认值合并。 */
-function merge(stored: Partial<Settings> | undefined): Settings {
+function merge(stored: unknown): Settings {
   return validateSettings(
     stored,
     DEFAULTS,
@@ -79,12 +78,15 @@ function merge(stored: Partial<Settings> | undefined): Settings {
  *
  * 失败时不抛错：设置属于便利功能，读不到就用默认值继续，
  * 否则用户会因为一个损坏的配置文件完全打不开应用。
+ *
+ * 拿到的文本是**不可信输入**：文件可能来自旧版本、被手工改过，
+ * 也可能根本不是 JSON。解析失败与字段校验都收敛到 `merge()`。
  */
 export async function loadSettings(): Promise<void> {
   if (loaded) return;
   try {
-    store = await load(SETTINGS_STORE_FILE, { autoSave: false });
-    const stored = await store.get<Partial<Settings>>(SETTINGS_KEY);
+    const text = await ipc.settingsLoad();
+    const stored: unknown = text === null ? undefined : JSON.parse(text);
     Object.assign(settings, merge(stored));
   } catch (err) {
     logError('settings', '读取设置失败，已使用默认值', err);
@@ -123,14 +125,11 @@ export function applyLanguage(): void {
 
 /** 持久化当前设置。 */
 export async function persistSettings(): Promise<void> {
-  const currentStore = store;
-  if (!currentStore) return;
-  const snapshot = { ...settings };
+  // 传入普通对象而非响应式代理，避免序列化代理失败
+  const text = JSON.stringify({ ...settings });
   return writes.run('settings', async () => {
     try {
-      // 传入普通对象而非响应式代理，避免序列化代理失败
-      await currentStore.set(SETTINGS_KEY, snapshot);
-      await currentStore.save();
+      await ipc.settingsSave(text);
     } catch (err) {
       logError('settings', '保存设置失败', err);
     }

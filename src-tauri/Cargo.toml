@@ -23,7 +23,11 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-store = "2"
+# 设置不再走 tauri-plugin-store：它的权限无法按路径收窄
+# （`store:default` 会把 `load`/`get_store` 一起开出来，而这两个命令接受
+# 任意路径且 `..` 不被折叠），等于把「读写用户可写的任意文件」交给页面。
+# 现在与 session / recent / draft 一样由 Rust 侧固定文件名并原子写入，
+# 见 src/commands/settings.rs。
 # 剪贴板读写走 Rust 而不是浏览器的 navigator.clipboard。
 #
 # 浏览器的剪贴板权限是**为网页设计的**：网页不可信，所以要用户授权。

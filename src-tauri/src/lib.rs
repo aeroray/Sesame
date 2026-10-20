@@ -203,7 +203,15 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
+        /*
+         * 设置不再走 `tauri-plugin-store`。
+         *
+         * 那个插件的权限无法按路径收窄（`store:default` 会把 `load` /
+         * `get_store` 一起开出来，而它们接受任意路径，`..` 不被折叠），
+         * 等于把「读写用户可写的任意文件」交给页面。现在与 session /
+         * recent / draft 一样由 Rust 侧固定文件名、走原子写入，
+         * 见 `commands/settings.rs`。
+         */
         /*
          * 剪贴板。
          *
@@ -293,6 +301,8 @@ pub fn run() {
             commands::draft::draft_delete,
             commands::draft::draft_list,
             commands::draft::draft_clear,
+            commands::settings::settings_load,
+            commands::settings::settings_save,
         ])
         .run(tauri::generate_context!())
         .expect("启动 Sesame 失败");
