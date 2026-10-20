@@ -16,7 +16,7 @@ Rejected:
 Letting the WebView show its own context menu; per-component `oncontextmenu` handlers; a capture-phase guard.
 
 Reason:
-Lists Reload / Save as / Print / Inspect, unrelated to editing. A capture-phase guard runs before bits-ui's handler, so any `stopPropagation` kills every custom menu.
+It lists Reload / Save as / Print / Inspect, and a capture-phase guard runs before bits-ui's handler, so any `stopPropagation` kills every custom menu.
 
 ## MC-DNU-20261009-a1b2c3d4 — No toast for operation feedback
 
@@ -31,7 +31,7 @@ Rejected:
 `toast` / `svelte-sonner` and hand-rolled replacements.
 
 Reason:
-Cards float above content and move on their own, so they carry no spatial link to what happened. Three variants failed alike; do not retry.
+Cards float above content and carry no spatial link to what happened; three variants failed alike.
 
 ## MC-DNU-20261009-b2c3d4e5 — No characters that break a parser or console
 
@@ -46,5 +46,5 @@ Rejected:
 Tag names in Svelte script comments; `/* */` in a template region; a comment's closing marker inside a comment; bullet, not-equal or hamburger glyphs in memory prose.
 
 Reason:
-Tag names leave the component unclosed. A template renders `/* */` as text, so it showed in the toolbar. The memory CLI prints to a GBK console and dies on a symbol it cannot encode, so `read` exits non-zero and routing looks broken though memory is valid. Write words, not symbols.
+Tag names leave the component unclosed, a template renders `/* */` as text, and the memory CLI dies on a symbol its console cannot encode.
 

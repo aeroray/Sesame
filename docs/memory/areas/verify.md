@@ -16,7 +16,7 @@ Decision:
 A harness importing project modules must load from the Vite dev server, never from disk or a proxy forwarding only `/src/**`.
 
 Reason:
-Vite rewrites bare module names when serving; a hand-served copy leaves `from 'svelte'` unresolved, and the failure is silent.
+Vite rewrites bare module names when serving, so a hand-served copy leaves `from 'svelte'` unresolved.
 
 ## MC-AREA-20261111-b8c9d0e1 — Trust the probe only after it can pass
 
@@ -32,7 +32,7 @@ Decision:
 Before acting on a failed check, confirm the probe can report success at all, using a control known to pass. A harness must never restate the CSS it tests.
 
 Reason:
-Four false alarms came from broken probes, not code. See design.md section 16.
+Four false alarms came from broken probes, not code.
 
 ## MC-AREA-20261111-c9d0e1f2 — Test OS input in the built app
 
@@ -45,10 +45,10 @@ Evidence:
 - repo:src/lib/components/layout/Shell.svelte
 
 Decision:
-For OS-level input drive the built `sesame.exe`, not headless Edge. Assert layout with `getBoundingClientRect`, not class names.
+For OS-level input drive the built `sesame.exe`, not headless Edge. Assert layout with `getBoundingClientRect`.
 
 Reason:
-Edge consumes `Ctrl+Tab` for its own tabs, so the shell reports no keydowns and proves a bug that is not there.
+Edge consumes `Ctrl+Tab` for its own tabs, so the shell proves a bug that is not there.
 
 ## MC-AREA-20261111-e1f2a3b4 — Check the artifact, not the build log
 
@@ -64,7 +64,7 @@ Decision:
 Confirm a build by inspecting what it produced: embedded asset names, signature key ids, timestamps. Re-run with a clean package when cargo finishes suspiciously fast.
 
 Reason:
-Cargo reuses results by mtime and can "succeed" without compiling. Compressed embedded assets hide literal strings, so compare the asset hash rather than grepping for content.
+Cargo reuses results by mtime and can "succeed" without compiling, and compressed assets hide literal strings.
 
 ## MC-AREA-20261111-f4d5e6f7 — Release notes come from a file per tag
 

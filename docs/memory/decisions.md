@@ -13,10 +13,10 @@ Evidence:
 - repo:src/lib/utils/clipboard.ts
 
 Decision:
-Use `tauri-plugin-clipboard-manager` for read/write, granting only `allow-read-text` and `allow-write-text`. Cut/Copy stay on `execCommand` (DOM selection).
+Use `tauri-plugin-clipboard-manager` with only the text permissions.
 
 Reason:
-`navigator.clipboard` is built for untrusted pages, so paste could prompt. Rust and JS versions must match major.
+`navigator.clipboard` is built for untrusted pages.
 
 ## MC-DEC-20261003-a1b2c3d4 — Svelte 5 + Vite + Tailwind v4, no SvelteKit
 
@@ -28,10 +28,10 @@ Evidence:
 - repo:package.json
 
 Decision:
-Single-page frontend on Svelte 5 + Vite, styled with Tailwind v4 CSS-first config. No SvelteKit.
+Single-page frontend on Svelte 5 + Vite with Tailwind v4 CSS-first config.
 
 Reason:
-Tauri supplies the desktop shell, so routing and SSR are unnecessary.
+Tauri supplies the desktop shell.
 
 ## MC-DEC-20261003-c1d2e3f4 — Appearance rules live in design.md
 
@@ -43,10 +43,10 @@ Evidence:
 - repo:docs/design/design.md
 
 Decision:
-All appearance and interaction conventions live in `docs/design/design.md`. Read it before changing looks; update it before adding a convention.
+All appearance and interaction conventions live in `docs/design/design.md`.
 
 Reason:
-Rules scattered across components drift until similar controls no longer match.
+Rules scattered across components drift.
 
 ## MC-DEC-20261020-a1b2c3d4 — Typed hand-rolled i18n dictionary
 
@@ -61,7 +61,7 @@ Decision:
 Dictionary under `lib/i18n/`; the English file is the structural source, so a missing translation fails `svelte-check`.
 
 Reason:
-An i18n framework is overkill for two languages; the type system keeps both files in sync.
+A framework is overkill for two languages.
 
 ## MC-DEC-20261020-c3d4e5f6 — Windows and macOS only
 
@@ -76,7 +76,7 @@ Decision:
 Support Windows and macOS only; platform detection collapses to two values.
 
 Reason:
-Linux traffic lights, file associations, and packaging differ per desktop environment.
+Linux packaging and decorations differ.
 
 ## MC-DEC-20261020-d4e5f6a7 — Single-instance plugin registers first
 
@@ -88,10 +88,10 @@ Evidence:
 - repo:src-tauri/src/lib.rs
 
 Decision:
-`tauri-plugin-single-instance` must be registered first; reopening a file reuses the existing window.
+Register `tauri-plugin-single-instance` first; reopening a file reuses the window.
 
 Reason:
-Registering it later initializes and discards other plugins, possibly leaving half-initialized state.
+Registering it later discards other plugins.
 
 ## MC-DEC-20261021-a1b2c3d4 — Preserve undo history across view rebuilds
 
@@ -103,10 +103,10 @@ Evidence:
 - repo:src/lib/editor/create-view.ts
 
 Decision:
-Export and restore undo history when rebuilding the view; take-once, drop on full content replace.
+Export and restore undo history when rebuilding the view; drop it on a full replace.
 
 Reason:
-Sleep/wake and preview toggling both destroy the view, losing the undo stack.
+Sleep and preview both destroy the view.
 
 ## MC-DEC-20261021-b2c3d4e5 — Decorative defaults depend on attention cost
 
@@ -118,7 +118,7 @@ Evidence:
 - user-confirmed
 
 Decision:
-Indent guides, rainbow brackets, auto-save and a 16px editor font all default on.
+Indent guides, rainbow brackets, auto-save and a 16px font all default on.
 
 Reason:
-Guides can be ignored while multi-colour brackets compete for attention, so brackets were off at first; the user overruled that. Font size was raised to 16px, affecting new installs and anyone who never changed it.
+The user overruled the earlier "brackets off" default.
