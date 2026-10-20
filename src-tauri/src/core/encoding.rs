@@ -187,6 +187,48 @@ pub fn decoding_is_lossy(bytes: &[u8], label: &str) -> bool {
     enc.decode_without_bom_handling(&bytes[skip..]).1
 }
 
+/// 判断**探测窗口**的解码是否有损，容忍末尾被切断的半个字符。
+///
+/// 大文件的编码探测只读前 64 KB（`ENCODING_PROBE_BYTES`），窗口边界很可能
+/// 正好落在某个多字节字符中间。那不是文件损坏，只是「我们没读完整」。
+/// 若直接套用 `decoding_is_lossy`，任何长度不是字符宽度整数倍的探测窗口都会
+/// 被判成有损，于是**所有**大文件都变成只读——把一个大文件变成打不开，
+/// 比原本要修的问题更糟。
+///
+/// 因此这里退而求其次：整段严格解码失败时，逐字节裁掉末尾最多 3 个字节
+/// （UTF-8 单字符最大 3 字节残片；UTF-16 只要裁 1 字节）再试一次。
+/// 裁完能严格解出来，说明坏的就是那半个字符。
+pub fn probe_is_lossy(bytes: &[u8], label: &str) -> bool {
+    let enc = encoding_for(label);
+    let skip = Encoding::for_bom(bytes)
+        .filter(|(bom, _)| *bom == enc)
+        .map(|(_, len)| len)
+        .unwrap_or(0);
+    let body = &bytes[skip..];
+
+    if enc
+        .decode_without_bom_handling_and_without_replacement(body)
+        .is_some()
+    {
+        return false;
+    }
+
+    // 末尾残片最多 3 字节；不裁到空，避免把「整段都是坏字节」误判成干净。
+    for trim in 1..=3usize {
+        if body.len() <= trim {
+            break;
+        }
+        if enc
+            .decode_without_bom_handling_and_without_replacement(&body[..body.len() - trim])
+            .is_some()
+        {
+            return false;
+        }
+    }
+
+    true
+}
+
 /// 探测并解码字节流。
 ///
 /// 顺序：BOM → 严格 UTF-8 → GBK（容错）→ 有损 UTF-8 兜底 → 二进制判定。

@@ -5,7 +5,24 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
+
+/// 取锁，并**从中毒状态里恢复**。
+///
+/// 这些锁保护的都是「要么整体更新、要么没动」的普通数据（一个 `()`、
+/// 一张表、一个列表），即使持锁线程 panic，留下的状态依然自洽。
+/// 因此中毒后继续用比放弃更好：
+///
+/// - `open` 表若因中毒而读不到，`save_file` 就看不到「这是二进制文件」的记录，
+///   二进制写入防护**静默失效**；
+/// - `gates` 表若因中毒而报错，那个文件的每一次保存都会失败到重启为止。
+///
+/// 两者都是「为了防御一个已经发生的 panic，反而把功能弄坏」。
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 /// 文件指纹，用于检测外部修改。
 ///
@@ -61,36 +78,27 @@ impl AppState {
 
     /// 记录启动参数中的文件路径。
     pub fn set_startup_files(&self, files: Vec<String>) {
-        if let Ok(mut slot) = self.startup_files.lock() {
-            slot.extend(files);
-        }
+        lock(&self.startup_files).extend(files);
     }
 
     /// 取出并清空启动文件列表，避免重复打开。
     pub fn take_startup_files(&self) -> Vec<String> {
-        self.startup_files
-            .lock()
-            .map(|mut slot| std::mem::take(&mut *slot))
-            .unwrap_or_default()
+        std::mem::take(&mut *lock(&self.startup_files))
     }
 
     /// 记录一次成功打开/保存后的文件状态。
     pub fn remember(&self, path: String, file: OpenFile) {
-        if let Ok(mut map) = self.open.lock() {
-            map.insert(Self::key(&path), file);
-        }
+        lock(&self.open).insert(Self::key(&path), file);
     }
 
     /// 取出已知状态。
     pub fn recall(&self, path: &str) -> Option<OpenFile> {
-        self.open.lock().ok()?.get(&Self::key(path)).cloned()
+        lock(&self.open).get(&Self::key(path)).cloned()
     }
 
     /// 关闭文件时移除记录。
     pub fn forget(&self, path: &str) {
-        if let Ok(mut map) = self.open.lock() {
-            map.remove(&Self::key(path));
-        }
+        lock(&self.open).remove(&Self::key(path));
     }
 
     fn key(path: &str) -> String {
@@ -110,10 +118,7 @@ impl AppState {
                 .unwrap_or_else(|| path.to_path_buf())
         });
         let key = Self::key(&identity.to_string_lossy());
-        let mut gates = self
-            .gates
-            .lock()
-            .map_err(|_| crate::model::AppError::Io("文件写入锁失效".into()))?;
+        let mut gates = lock(&self.gates);
         gates.retain(|_, weak| weak.strong_count() > 0);
         if let Some(existing) = gates.get(&key).and_then(Weak::upgrade) {
             return Ok(existing);

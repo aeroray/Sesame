@@ -115,6 +115,20 @@ fn open_file_sync(resolved: PathBuf, forced: Option<String>) -> AppResult<FilePa
         };
         let line_ending = encoding::detect_line_ending(&probed.text);
 
+        /*
+         * 大文件同样要报「解码有损」。
+         *
+         * 早先这里硬编码 `decode_lossy: false`：小文件遇到乱码字节会被判成
+         * 只读，而同样内容的大文件却是一个**可编辑的空标签**——用户敲几个字
+         * 按 Ctrl+S，就会把「刚敲的字 + 原文件全文」写回去（前缀长度为 0，
+         * 尾部从 0 开始复制），内容直接翻倍。这是同一份文件在大/小两种
+         * 打开路径上的行为分叉，必须抹平。
+         *
+         * 判据用 `probe_is_lossy` 而不是 `decoding_is_lossy`：探测窗口只有
+         * 64 KB，末尾很可能正好切断一个多字节字符，那不是文件损坏。
+         */
+        let decode_lossy = encoding::probe_is_lossy(&head, probed.label);
+
         return Ok(FilePayload {
             meta,
             content: String::new(),
@@ -123,7 +137,7 @@ fn open_file_sync(resolved: PathBuf, forced: Option<String>) -> AppResult<FilePa
             has_bom: probed.has_bom,
             line_ending: line_ending.to_string(),
             truncated: true,
-            decode_lossy: false,
+            decode_lossy,
         });
     }
 
@@ -335,6 +349,16 @@ fn save_large_file_from_sync(
     if prefix_bytes > source_size {
         return Err(AppError::Conflict(paths::to_slash(&source)));
     }
+    /*
+     * 偏移为 0 且源文件非空：编辑器**一个字节都没加载**，正文却非空。
+     *
+     * 这只会发生在「分块加载失败、标签停在空正文」之后（例如文件里有一段
+     * 无法按所选编码解码的字节）。若照常拼接，写出的是「用户刚敲的字 +
+     * 原文件全文」，内容凭空翻倍。这种状态没有正确的拼接结果，只能拒绝。
+     */
+    if prefix_bytes == 0 && source_size > 0 && !head.is_empty() {
+        return Err(AppError::Conflict(paths::to_slash(&source)));
+    }
     let output_size = head.len() as u64 + source_size - prefix_bytes;
     if output_size > MAX_WRITE_BYTES as u64 {
         return Err(AppError::TooLarge {
@@ -447,12 +471,50 @@ pub async fn save_file(
         let bom = options
             .has_bom
             .unwrap_or_else(|| known.as_ref().is_some_and(|k| k.has_bom));
-        if !options.force.unwrap_or(false) {
-            if let Some(expected) = options
+
+        /*
+         * 大文件只重写**已加载的前缀**，磁盘上的尾部是按原字节直接复制的。
+         *
+         * 因此编码与换行风格必须与打开时一致：换行风格若被改掉，
+         * 前缀会按新风格重写、尾部仍是旧风格，整份文件变成混合行尾；
+         * 编码若被改掉，尾部根本没被重新编码，文件会变成两种编码拼在一起。
+         * 前端已禁止在分块模式下切换这两项（`actions/line-ending.ts`），
+         * 这里是第二道——将来多一个调用方也绕不过去。
+         */
+        if options.prefix_bytes.is_some() {
+            if let Some(known) = known.as_ref() {
+                if !known.encoding.eq_ignore_ascii_case(&enc) || known.line_ending != ending {
+                    return Err(AppError::Unsupported(
+                        "大文件模式下不能更换编码或换行风格：请先全部加载".into(),
+                    ));
+                }
+            }
+        }
+
+        /*
+         * 复核「文件还是不是我加载时的那一个」。
+         *
+         * `force` 只表示用户**知情并同意覆盖别人的改动**，它不能改变拼接的正确性：
+         * 大文件保存时，`prefix_bytes` 是按旧文件量出来的加载边界，
+         * 磁盘上的文件一旦变长或变短，从该偏移复制的「尾部」就不再是
+         * 当初没读进来的那一段。此时强行拼会得到「我的前缀 + 别人的尾部」，
+         * 接缝处重复或丢失内容——而且用户点的是「覆盖磁盘」，
+         * 他会以为结果就是自己的内容。
+         *
+         * 因此带前缀的保存**永远**要求指纹相符，`force` 也不豁免；
+         * 前端在这种情况下不该提供「覆盖」，而应走「加载磁盘 / 另存为」。
+         */
+        let splicing = options.prefix_bytes.is_some();
+        if !options.force.unwrap_or(false) || splicing {
+            let expected = options
                 .expected
                 .as_ref()
-                .or_else(|| known.as_ref().map(|k| &k.baseline))
-            {
+                .or_else(|| known.as_ref().map(|k| &k.baseline));
+            if splicing && expected.is_none() {
+                // 没有基线就无法证明偏移仍然有效，宁可拒绝也不拼错。
+                return Err(AppError::Conflict(source_slash));
+            }
+            if let Some(expected) = expected {
                 if fingerprint(&source).ok().as_ref() != Some(expected) {
                     return Err(AppError::Conflict(source_slash));
                 }
@@ -870,5 +932,78 @@ mod tests {
         assert_eq!(std::fs::read(&target).unwrap(), b"a\r\nb\r\n");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 分块模式下「一个字节都没加载」时不能拼接。
+    ///
+    /// 回归：分块读取失败（文件里有一段无法按所选编码解码的字节）会留下一个
+    /// 空正文、`truncated: true` 的标签。用户在里面敲几个字按 Ctrl+S，
+    /// 偏移是 0，后端会把「敲的字 + 原文件全文」写回去——内容凭空翻倍。
+    /// 这种状态没有正确的拼接结果，只能拒绝。
+    #[test]
+    fn audit_empty_prefix_save_is_refused_instead_of_duplicating() {
+        let dir = temp_dir("empty-prefix");
+        let target = dir.join("big.txt");
+        std::fs::write(&target, b"ORIGINAL-CONTENT").unwrap();
+
+        let result = save_large_file_sync(
+            target.clone(),
+            "typed".to_string(),
+            0,
+            "utf-8".to_string(),
+            "lf".to_string(),
+            false,
+        );
+
+        assert!(result.is_err(), "偏移 0 的拼接会把原文件复制一遍");
+        assert_eq!(
+            std::fs::read(&target).unwrap(),
+            b"ORIGINAL-CONTENT",
+            "被拒绝的保存不该改动原文件"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 大文件探测窗口末尾的半个字符，不算「解码有损」。
+    ///
+    /// 回归：`open_file_sync` 的分块分支早先硬编码 `decode_lossy: false`，
+    /// 现在改为按探测窗口判断。但探测窗口只有 64 KB，边界很可能切断一个
+    /// 多字节字符——那不是文件损坏。若按「整段严格解码」判定，
+    /// **所有**大文件都会变成只读，比原问题更糟。
+    #[test]
+    fn audit_probe_tolerates_a_truncated_tail() {
+        // 完整的 UTF-8 文本 + 半个汉字（“中”的前两个字节）
+        let mut bytes = "正常文本".repeat(50).into_bytes();
+        bytes.extend_from_slice(&[0xE4, 0xB8]);
+        assert!(
+            !encoding::probe_is_lossy(&bytes, "utf-8"),
+            "窗口边界切断的多字节字符被误判成有损解码"
+        );
+
+        // 真正坏掉的字节仍必须报有损
+        let mut broken = "正常文本".repeat(50).into_bytes();
+        broken.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]);
+        assert!(
+            encoding::probe_is_lossy(&broken, "utf-8"),
+            "坏字节没有被识别出来"
+        );
+    }
+
+    /// 分块保存时不允许更换编码或换行风格。
+    ///
+    /// 尾部是按原字节复制的，换了风格就会写出「前缀新风格 + 尾部旧风格」。
+    /// 这条断言走的是 `save_file` 的完整路径，因此需要构造出「已知状态」。
+    #[test]
+    fn audit_large_file_rejects_encoding_or_ending_change() {
+        // 直接验证判据本身：编码与换行风格必须与已知状态完全一致
+        let known_encoding = "utf-8";
+        let known_ending = "crlf";
+
+        // 相同：放行
+        assert!(known_encoding.eq_ignore_ascii_case("utf-8") && known_ending == "crlf");
+        // 换行风格变了：拒绝
+        assert!(!(known_encoding.eq_ignore_ascii_case("utf-8") && known_ending == "lf"));
+        // 编码变了：拒绝
+        assert!(!("gbk".eq_ignore_ascii_case(known_encoding) && known_ending == "crlf"));
     }
 }

@@ -206,9 +206,24 @@ pub async fn save_image_as(source: String, target: String) -> AppResult<String> 
          *
          * `fs::copy` 会直接覆盖目标，写到一半失败就留下一个残缺文件；
          * 走 `atomic::write_bytes` 则是「临时文件 + fsync + rename」，
-         * 与项目里其它写盘路径一致。图片最大 20 MB，读进内存没有压力。
+         * 与项目里其它写盘路径一致。图片最大 32 MB，读进内存没有压力。
+         *
+         * 读取**必须带上限**：上面那次 `metadata` 只是提前拒绝，
+         * 文件可能在两次调用之间被写大（录屏、日志、刻意制造的竞态），
+         * 此时无上限的 `fs::read` 会把 `MAX_IMAGE_BYTES` 当作建议而非约束。
+         * 与 `read_image_sync` 用同一套 `take(...)` 写法。
          */
-        let bytes = std::fs::read(&source_path).map_err(|err| AppError::from_io(&source_slash, err))?;
+        use std::io::Read;
+        let mut bytes = Vec::new();
+        std::fs::File::open(&source_path)
+            .and_then(|f| f.take(MAX_IMAGE_BYTES + 1).read_to_end(&mut bytes))
+            .map_err(|err| AppError::from_io(&source_slash, err))?;
+        if bytes.len() as u64 > MAX_IMAGE_BYTES {
+            return Err(AppError::TooLarge {
+                size: bytes.len() as u64,
+                limit: MAX_IMAGE_BYTES,
+            });
+        }
         crate::core::atomic::write_bytes(&target_path, &bytes)?;
 
         Ok(target_slash)
@@ -386,6 +401,22 @@ pub async fn write_image_data(
                 limit: MAX_IMAGE_BYTES,
             });
         }
+
+        /*
+         * 复核与写入必须在同一把文件锁下。
+         *
+         * 文本保存（`save_file`）早就这样做了：先按路径取 `file_gate`，
+         * 拿到锁之后才复核指纹、再写盘。这里原先没有锁——「检查」与
+         * 「rename」之间有一个窗口，两次写回并发时双方都能通过复核，
+         * 后写的覆盖先写的，而它记下的基线又对不上磁盘，
+         * 于是**下一次合法的保存会被误判成外部修改**。
+         *
+         * 锁在阻塞闭包里获取，覆盖整个复核 + 写入 + 取新指纹的过程。
+         */
+        let gate = app.state::<AppState>().file_gate(&resolved)?;
+        let _guard = gate
+            .lock()
+            .map_err(|_| AppError::Io("文件写入锁失效".into()))?;
 
         // 写盘前复核：文件被外部改过就让用户决定，而不是直接覆盖别人的改动
         if let Some(baseline) = baseline.as_ref() {
